@@ -139,6 +139,7 @@ import {
 import { getSetting, setSetting, TELEMETRY_SETTING_LIMITS } from "../settings" 
 import { startProfileLogin, completeProfileLogin, completeProfileLoginFromCallback, getProfileLoginStatus } from "./profileLogin"
 import { startProfileAdd, completeProfileAdd } from "./profileAdd"
+import { profileStartBody, profileLoginCompleteBody, profileAddCompleteBody } from "./profileOAuthBody"
 import { filterBetasForProfile, getBetaPolicyFromEnv } from "./betas"
 import { createFileChangeHook, extractFileChangesFromMessages, formatFileChangeSummary, type FileChange } from "./fileChanges"
 import { detectTokenAnomalies, formatAnomalyAlerts, type TokenSnapshot } from "./tokenHealth"
@@ -8696,7 +8697,7 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
   app.post("/profiles/login/start", async (c) => {
     let body: { profile?: string }
     try {
-      body = await c.req.json() as { profile?: string }
+      body = profileStartBody.parse(await c.req.json())
     } catch {
       return c.json({ error: "Invalid JSON in request body" }, 400)
     }
@@ -8746,7 +8747,7 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
   app.post("/profiles/login/complete", async (c) => {
     let body: { loginId?: string; code?: string }
     try {
-      body = await c.req.json() as { loginId?: string; code?: string }
+      body = profileLoginCompleteBody.parse(await c.req.json())
     } catch {
       return c.json({ error: "Invalid JSON in request body" }, 400)
     }
@@ -8813,7 +8814,7 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
   app.post("/profiles/add/start", async (c) => {
     let body: { profile?: string }
     try {
-      body = await c.req.json() as { profile?: string }
+      body = profileStartBody.parse(await c.req.json())
     } catch {
       return c.json({ error: "Invalid JSON in request body" }, 400)
     }
@@ -8838,7 +8839,7 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
   app.post("/profiles/add/complete", async (c) => {
     let body: { addId?: string; code?: string }
     try {
-      body = await c.req.json() as { addId?: string; code?: string }
+      body = profileAddCompleteBody.parse(await c.req.json())
     } catch {
       return c.json({ error: "Invalid JSON in request body" }, 400)
     }
@@ -8855,6 +8856,7 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
         ...(result.retryable ? { retryable: true } : {}),
       }, result.status as 400)
     }
+    invalidateDiskProfileCache()
     // A profile that did not exist a moment ago has no cached auth answer, but
     // the list-wide cache does — drop it so the new card renders authenticated
     // on the UI's next poll rather than after the 60s TTL.

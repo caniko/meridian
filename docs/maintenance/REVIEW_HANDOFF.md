@@ -8,6 +8,10 @@ Live inventory: 12 Meridian PRs and two OpenCode scrub PRs, refreshed against
 disposition, correction and E2E gate. This supersedes historical ready/draft
 status for #792 (now ready); #1192 remains draft under author observation.
 
+Delivery [#1196](https://github.com/rynfar/meridian/pull/1196) is open.
+Local gates passed: 4,943 tests, 0 failures, 4 skips; typecheck/build and the
+retained browser probe passed. Required final-head CI remains tracked on the PR.
+
 #1191 is incorporated as authored commit `de0f00329ce0468e3b3bc274e197fbbd199fa407`
 in `/tmp/meridian-review-20260929`, branch `codex/pr-review-plan-20260929`.
 [Independent browser evidence](evidence/1191-settings-overflow.md) proves the

@@ -6815,3 +6815,59 @@ disk 1,400-resource / 800-pin / 24-registration test in
 The [sanitized #1152 Linux evidence](docs/maintenance/evidence/1152-opencode-admission.json)
 records the matching baseline, six-client pass, disk contention and four E41
 results without publishing credentials or raw transcripts.
+
+## Desktop Dock preference and account sign-in UX (2026-09-29)
+
+Baseline: `446a0f163` / Meridian Desktop 1.78.0 on macOS arm64. The released
+app had no Dock visibility preference; sign-in prepended a panel without moving
+the viewport, cancellation surfaced as failure, and completion removed the
+panel without a persistent result.
+
+The local `1.78.0-local.1` app was built with Electron 44.3.0, signed with the
+owner's Developer ID, signature-verified, and installed in Applications. It is
+not a notarized/public release. The original signed 1.78.0 app was retained as a
+local backup. No service package or credential format changed.
+
+Reproduce the native Dock gate (no model calls or credentials required):
+
+```sh
+npm ci --prefix apps/desktop
+npm run build --prefix apps/desktop
+env -u ELECTRON_RUN_AS_NODE apps/desktop/node_modules/.bin/electron scripts/e2e-desktop-dock.cjs
+env -u ELECTRON_RUN_AS_NODE E2E_HIDE_DOCK=0 apps/desktop/node_modules/.bin/electron scripts/e2e-desktop-dock.cjs
+```
+
+Both modes passed: native `app.dock.isVisible()` matches saved settings,
+dashboard and tray panel load, background launch keeps windows hidden,
+activation/second launch reopen the dashboard without changing Dock visibility,
+and closing the dashboard keeps the application alive. The harness uses
+disposable preferences and never starts a managed service.
+
+Actual packaged-app UI checks: enabled Hide Dock icon, retained Open at login,
+enabled managed-service autostart, relaunched, and observed the existing managed
+1.78.0 service healthy. The real installed 1.78.0 CLI prepared a Claude sign-in
+link for an existing account. The final two-step panel is visible immediately
+above account controls; its code field is masked. Cancelling produced the
+persistent neutral cancellation state and restored the account sign-in actions.
+Before/after native screenshots were inspected in the working session; they
+are not public artifacts. No authorization code or OAuth URL was exported.
+
+`desktop-manager.test.ts` passes all 16 tests, including real fixture-child
+link preparation, premature/duplicate-code rejection, persistent success,
+failure/retry, cancellation/retry, and Dock preference persistence. Full
+`npm test`, root typecheck/build, and desktop typecheck/build passed. Focused
+manager checks and desktop build were repeated after review corrections.
+
+Adversarial review found and corrected the off-screen sign-in panel, focus
+blocking asynchronous completion feedback, duplicate code submission, cancellation
+being treated as failure, and a potential repeated Dock-show retry on failure.
+Default Dock behavior and non-macOS presentation remain unchanged. The preference
+is applied only after the tray exists, and delayed hide handles Electron's
+one-second native hide limitation. External services retain ownership; their
+account actions only copy validated CLI commands.
+
+Remaining acceptance evidence: complete a successful browser OAuth sign-in in
+the final app with the intended account, then verify identity/usage refresh.
+Success/failure completion is covered by real fixture subprocesses, not a claim
+of live OAuth completion. The PR remains draft pending that check. No model call
+is implicated by this desktop-only change, and no release was published.

@@ -224,7 +224,8 @@ shows its next reset; each limit retains full reset detail in its tooltip and
 accessible name. Account lists scroll only when they exceed the available space.
 
 The macOS menu-bar icon uses a transparent monochrome Meridian template, tinted
-by the system. The Dock retains the full-color app icon. Committed 18-point
+by the system. The Dock retains the full-color app icon unless the macOS **Hide Dock icon**
+preference is enabled; the menu-bar icon and dashboard remain available. Committed 18-point
 assets include 1x, 2x and 3x representations; regenerate them with
 `swift scripts/render-tray-icon.swift`.
 

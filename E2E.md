@@ -6871,3 +6871,47 @@ the final app with the intended account, then verify identity/usage refresh.
 Success/failure completion is covered by real fixture subprocesses, not a claim
 of live OAuth completion. The PR remains draft pending that check. No model call
 is implicated by this desktop-only change, and no release was published.
+
+
+### Menu-bar readability follow-up (2026-09-29)
+
+The user's screenshot of `1.78.0-local.1` showed a clipped account name/action
+and horizontal scrolling because organization, plan and allowance badges all
+refused to shrink in the same flex row. The follow-up separates account identity,
+metadata and organization; primary limits remain side by side and secondary
+limits use an accessible disclosure. Activity numbers use equal visual weight
+and compact formatting, with exact counts in tooltips. Service controls remain
+outside the account scroll area. Colors come from the desktop theme tokens.
+
+A signed `1.78.0-local.2` app was installed and signature-verified on macOS arm64.
+Actual native screenshots confirmed both real accounts, organization lines,
+active/switch controls, primary limits, reset text, footer and service controls
+fit without horizontal or vertical scrolling in the default 420px panel. Opening
+additional limits leaves only the account list scrollable. Inspection caught and
+corrected nested outer/list scrollbars before the final local install. Native
+expand/collapse and service health checks passed; the selected account was not
+changed during live verification. Model calls are not implicated by this layout.
+
+Reproduce the overflow checks without credentials:
+
+```sh
+npm run build --prefix apps/desktop
+node scripts/preview-desktop-tray.mjs
+# Open http://127.0.0.1:4319/review (420 × 640 iframe).
+# In the review page console:
+# document.querySelector('iframe').contentWindow.assertTrayLayout()
+```
+
+The fixture uses the actual bundled tray renderer/styles and synthetic account
+metadata. Checks passed in dark/light appearances, with long organization/name
+strings, large counts, cached data, followed accounts, expanded limits and a
+420 × 400 viewport. Assertions detect horizontal overflow, identity/action
+overlap, clipped outer controls, and unnecessary default two-account scrolling.
+The extra-limit disclosure stayed open through refresh, and simulated switching
+updated the active account. Native macOS verification supplements these browser
+layout checks; it does not replace them with a different client's UI.
+
+The fixture and documented assertions are durable evidence. Screenshots were
+visually inspected in the session and kept free of OAuth URLs/codes; no public
+media upload or release was performed. Focused organization/follow rendering
+tests and desktop build passed; full validation results are recorded in the PR.

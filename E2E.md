@@ -6915,3 +6915,13 @@ The fixture and documented assertions are durable evidence. Screenshots were
 visually inspected in the session and kept free of OAuth URLs/codes; no public
 media upload or release was performed. Focused organization/follow rendering
 tests and desktop build passed; full validation results are recorded in the PR.
+
+### Release acceptance confirmation (2026-09-29)
+
+The owner confirmed successful account sign-in and subsequent identity/usage
+refresh in the updated installed desktop app. This is owner-observed live OAuth
+evidence, supplementing the agent-observed preparation/cancellation and native
+layout checks above; it closes the previously recorded OAuth acceptance gate.
+Final implementation `d244cc45` passed all required CI, including `test`, both
+desktop builds, Windows smoke and Docker smoke. Release publication is authorized
+by the owner and is tracked separately from local installation.

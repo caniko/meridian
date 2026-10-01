@@ -94,3 +94,13 @@ runs are rechecked and recorded in the delivery PR before acceptance.
 Temporary private client transcripts remain outside source; only these sanitized
 assertion outcomes are preserved. This is macOS evidence, not a Windows/Linux
 or multi-process-filesystem performance claim.
+
+## Full-suite process isolation correction
+
+The combined-process run measured 80.1 ms warm timer lag against a 33.2 ms
+baseline and failed its unchanged 75% bound. The same file alone measured
+9.8 ms against 37.7 ms (9 tests pass). A zero-delay timer also measures work
+from other asynchronous tests sharing the process, and this file changes the
+process-global store directory. Run it in a separate npm-test stage, matching
+the existing session-store isolation policy; preserve the assertion and all
+nine tests. Final full-suite results are recorded in the delivery PR.

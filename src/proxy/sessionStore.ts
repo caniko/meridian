@@ -989,10 +989,32 @@ function sameStoreFile(cached: StoreDocumentCache | undefined, path: string, inf
 // copy-on-write view, and entries are replaced rather than edited in place.
 let storeDocumentCache: StoreDocumentCache | undefined
 
+function freezeStoreValue(value: unknown): void {
+  if (value === null || typeof value !== "object" || Object.isFrozen(value)) return
+  // History has hundreds of thousands of small block-hash arrays. Iterate
+  // arrays directly instead of allocating another array for every row.
+  if (Array.isArray(value)) {
+    for (const child of value) freezeStoreValue(child)
+  } else {
+    for (const child of Object.values(value)) freezeStoreValue(child)
+  }
+  Object.freeze(value)
+}
+
+function freezeSessionForRead(session: StoredSession): StoredSession {
+  // Parsed arrays are privately owned until a lookup exposes the entry. Freeze
+  // them at that boundary, avoiding a full-store walk for a single cold lookup.
+  for (const child of Object.values(session)) freezeStoreValue(child)
+  return Object.freeze(session)
+}
+
 function cacheStoreDocument(path: string, info: StoreFileIdentity, document: SessionStoreDocument): void {
   // An in-place edit would reach disk through the serialization memo or be
   // lost on the next write; freezing turns that into an immediate error.
   for (const session of Object.values(document.sessions)) Object.freeze(session)
+  freezeStoreValue(document.meta)
+  Object.freeze(document.sessions)
+  Object.freeze(document)
   storeDocumentCache = {
     path,
     dev: info.dev,
@@ -1072,7 +1094,9 @@ function parseStoreDocument(data: string): SessionStoreDocument {
 }
 
 function readStoreStrict(path: string): Record<string, StoredSession> {
-  return readStoreDocumentCached(path).sessions
+  const sessions = readStoreDocumentCached(path).sessions
+  for (const session of Object.values(sessions)) freezeSessionForRead(session)
+  return sessions
 }
 
 /** Read a strict, coherent snapshot for maintenance tasks such as session GC.
@@ -1187,6 +1211,17 @@ function mutateStore(mutator: (document: SessionStoreDocument) => boolean): void
       meta: structuredClone(current.meta),
     }
     if (mutator(draft)) {
+      // A new entry may still reference caller-owned arrays or usage objects.
+      // Own and freeze those values before memoizing bytes; otherwise later
+      // caller/lookup edits make memory disagree with the durable serialization.
+      // Unchanged entries are already deeply frozen and retain their memo keys.
+      for (const [key, session] of Object.entries(draft.sessions)) {
+        if (!Object.isFrozen(session)) {
+          const owned = structuredClone(session)
+          freezeStoreValue(owned)
+          draft.sessions[key] = owned
+        }
+      }
       writeStore(path, draft)
       publishStoreCache(path, draft)
     }
@@ -1212,6 +1247,7 @@ export function lookupSharedSessionResult(key: string): SharedSessionLookupResul
     const session = document.sessions[key]
     const generation = keyGeneration(key, session, document.meta)
     if (!session) return { status: "missing", generation }
+    freezeSessionForRead(session)
     // Versions 1.61.0–1.62.3 stored a user/tool_result UUID even though the SDK's
     // resumeSessionAt accepts assistant UUIDs only. Replaying once is safer than
     // resuming that invalid tail and re-triggering full-history cache churn.
@@ -1273,7 +1309,7 @@ export function lookupSharedSessionByClaudeIdResult(claudeSessionId: string): Sh
       }
     }
     return newest && newestKey
-      ? { status: "found", session: newest, generation: getStoredSessionGeneration(newest, newestKey) }
+      ? { status: "found", session: freezeSessionForRead(newest), generation: getStoredSessionGeneration(newest, newestKey) }
       : { status: "missing" }
   } catch (error) {
     const normalized = error instanceof Error ? error : new Error(String(error))

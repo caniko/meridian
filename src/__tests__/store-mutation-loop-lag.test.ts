@@ -22,6 +22,7 @@ import { join } from "node:path"
 import {
   attachSharedTranscriptLocator,
   lookupSharedSession,
+  readSessionStoreSnapshot,
   setSessionStoreDir,
   storeSharedSession,
 } from "../proxy/sessionStore"
@@ -180,6 +181,45 @@ describe("copy-on-write store mutations", () => {
     expect(Object.keys(parsed)).toEqual([META_KEY, "a", "b"])
     expect(raw).toBe(JSON.stringify(parsed))
     expect((parsed.a as { messageCount: number }).messageCount).toBe(3)
+  })
+
+  it("owns nested caller data before memoizing serialized entries", () => {
+    const hashes = ["m1"]
+    const blockHashes = [["b1"]]
+    const uuids = ["sdk-1"]
+    storeSharedSession("a", "claude-a", 1, "h", hashes, uuids, undefined, blockHashes)
+    hashes[0] = "changed"
+    blockHashes[0]![0] = "changed"
+    uuids[0] = "changed"
+    const cached = lookupSharedSession("a")!
+    expect(cached.messageHashes).toEqual(["m1"])
+    expect(cached.messageBlockHashes).toEqual([["b1"]])
+    expect(cached.sdkMessageUuids).toEqual(["sdk-1"])
+    storeSharedSession("b", "claude-b", 1, "h", ["b"])
+    const disk = JSON.parse(readFileSync(join(dir, "sessions.json"), "utf8"))
+    expect(disk.a.messageHashes).toEqual(cached.messageHashes)
+    expect(disk.a.messageBlockHashes).toEqual(cached.messageBlockHashes)
+  })
+
+  it("prevents nested lookup edits from diverging from memoized disk bytes", () => {
+    storeSharedSession("a", "claude-a", 1, "h", ["m1"], undefined, undefined, [["b1"]])
+    const cached = lookupSharedSession("a")!
+    expect(() => { cached.messageHashes![0] = "changed" }).toThrow()
+    expect(() => { cached.messageBlockHashes![0]![0] = "changed" }).toThrow()
+    expect(cached.messageHashes).toEqual(["m1"])
+    const snapshot = readSessionStoreSnapshot()
+    expect(() => { delete snapshot.a }).toThrow()
+    expect(lookupSharedSession("a")).toBe(cached)
+  })
+
+  it("protects nested history parsed from a foreign writer before exposing it", () => {
+    publishForeign(dir, { [META_KEY]: { version: 1, slots: {} }, a: fixtureEntry(2, Date.now()) })
+    const cached = lookupSharedSession("a")!
+    const original = cached.messageBlockHashes![0]![0]
+    expect(() => { cached.messageBlockHashes![0]![0] = "changed" }).toThrow()
+    storeSharedSession("b", "claude-b", 1, "h", ["b"])
+    const disk = JSON.parse(readFileSync(join(dir, "sessions.json"), "utf8"))
+    expect(disk.a.messageBlockHashes[0][0]).toBe(original)
   })
 
   it("hands out frozen entries and leaves earlier reads untouched by later mutations", () => {

@@ -221,6 +221,30 @@ describe("cross-process turn activity", () => {
 })
 
 describe("mass prune through the transcript lifecycle", () => {
+  it("reserves half-budget capacity across competing sweeps before either GC reconciliation", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "profile-copy-competing-sweeps-"))
+    setSessionStoreDir(dir)
+    try {
+      writeStore(dir, Array.from({ length: 8 }, (_, n) => [
+        { key: `work:competing-${n}`, ageMs: GRACE + HOUR },
+        { key: `personal:competing-${n}`, ageMs: 1_000 },
+      ]).flat())
+      const pins = (): TranscriptLocator[] => Object.values(readSessionStoreSnapshot())
+        .flatMap(session => session.currentTranscript ? [session.currentTranscript] : [])
+      const options: SessionLifecycleOptions = { storeDir: dir, maxPending: 8, pinProvider: pins }
+      for (const locator of pins()) await registerLiveTranscript({ ...locator }, options)
+      const removed = await Promise.all([0, 1].map(() => releaseSupersededProfileCopies({
+        profileIds: PROFILES, graceMs: GRACE, isConversationActive: () => false,
+      }, options)))
+      expect(removed.reduce((sum, value) => sum + value, 0)).toBeLessThanOrEqual(4)
+      await reconcile(pins(), options)
+      const sidecar = JSON.parse(readFileSync(join(dir, "session-gc.json"), "utf8")) as { resources: Record<string, { state: string }> }
+      expect(Object.values(sidecar.resources).filter(resource => ["prepared", "retired", "deleting"].includes(resource.state)).length).toBeLessThanOrEqual(4)
+    } finally {
+      setSessionStoreDir(null)
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
   let dir: string
 
   beforeEach(() => {

@@ -646,7 +646,14 @@ export async function reconcile(
   // Validate caller pins before waiting for the lock. The authoritative pin
   // provider is refreshed again while the lifecycle lock is held.
   indexPins(pins)
-  return withSidecarLock(options, async (paths) => {
+  return withSidecarLock(options, paths => reconcileUnderLock(pins, options, paths))
+}
+
+async function reconcileUnderLock(
+  pins: readonly TranscriptLocator[],
+  options: SessionLifecycleOptions,
+  paths: SidecarPaths,
+): Promise<ReconcileResult> {
     const effectivePins = indexPins(options.pinProvider?.() ?? pins)
     const sidecar = await readSidecar(paths.sidecar)
     const pinKeys = new Set(Object.values(sidecar.resources)
@@ -749,7 +756,6 @@ export async function reconcile(
 
     if (changed) await writeSidecar(paths.sidecar, sidecar)
     return result
-  })
 }
 
 /**
@@ -761,19 +767,28 @@ export async function reconcile(
  * keep at least half of the budget free: a large first prune drains over
  * successive sweeps, as retired transcripts are deleted, instead of filling
  * the backlog at once.
- * Reconciliation performs the actual retirement. Returns mappings removed.
+ * Reconciliation reserves retirement capacity before releasing the same lock.
+ * An authoritative pin provider is required. Returns mappings removed.
  */
 export async function releaseSupersededProfileCopies(
   copies: Omit<ProfileCopyPruneOptions, "maxUnpinnedTranscripts">,
   options: SessionLifecycleOptions = {},
 ): Promise<number> {
   const maxPending = option(options.maxPending, DEFAULT_MAX_PENDING, "maxPending")
-  // Every sidecar write is an atomic rename, so an unlocked read is a coherent
-  // snapshot; the budget only needs to be conservative, not exact.
-  const sidecar = await readSidecar(join(getStoreDir(options), SIDECAR_NAME))
-  const budget = Math.floor(maxPending / 2) - pendingResourceCount(sidecar)
-  if (budget <= 0) return 0
-  return pruneSupersededProfileCopies({ ...copies, maxUnpinnedTranscripts: budget })
+  if (!options.pinProvider) throw new SessionLifecycleError("profile-copy pruning requires an authoritative pin provider")
+  return withSidecarLock(options, async paths => {
+    // Recover unrecorded retirements from an earlier failed publication before
+    // granting more capacity; a pin-provider/write failure must precede pruning.
+    await reconcileUnderLock([], options, paths)
+    const sidecar = await readSidecar(paths.sidecar)
+    const budget = Math.floor(maxPending / 2) - pendingResourceCount(sidecar)
+    if (budget <= 0) return 0
+    const removed = pruneSupersededProfileCopies({ ...copies, maxUnpinnedTranscripts: budget })
+    // A second sweeper must see the retirements, rather than reuse a snapshot
+    // whose mappings vanished but whose pending count has not advanced yet.
+    if (removed) await reconcileUnderLock([], options, paths)
+    return removed
+  })
 }
 
 /**

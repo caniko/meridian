@@ -109,6 +109,35 @@ token snapshot differed from current host credentials, and the identical code
 passed after updating only the disposable read-only snapshot. 5014 tests,
 typecheck/build pass. Source remains open until exact-head delivery.
 
+**#1192 delivered as #1208, merged.** Source `4e55f7de` unchanged at
+closure. Authored cherry `b636e878` and maintainer harnesses preserve credit.
+Merge `b4d23428ea6b7dd9d7f4878e3fd59ad92bcb4e9f`, tree
+`152e52dac326451533d7e8636111ebc75d4352b5`, equals validated head
+`72a82eaabe32a52b52d7fb05d47d06ee4dc5f208`. All six executed CI checks pass,
+including [test](https://github.com/rynfar/meridian/actions/runs/36829379659/job/110262244694).
+5014 local tests / zero failures / four skips, typecheck/build and actual
+macOS/Linux headless OpenCode controlled rejection plus live Opus 5.5 receipts
+and continuations pass. Nowaker co-author verified. Detailed proof in
+[evidence](evidence/1192-deferred-tool-recovery.md) after rebasing this checkpoint.
+
+**#1177 critical idle regression advanced ahead of remaining feature proposals.**
+Reason: ping-only SDK events can indefinitely postpone a stalled client's error.
+Fresh issue/discussion confirms reported macOS arm64, SDK 0.2.141, Claude Code
+2.1.283 and Pi; exact Pi/model version omitted. Fork checkpoint `b004b952` is
+only packaging; actual authored fix is `f261fc9e0259f6ac92157051e1bec38a19eeac77`
+by Nate Berkopec, cherry-picked as `34484115` with Author/AuthorDate retained.
+Resolve conflicting fork version metadata by retaining main 1.79.0; separate
+maintainer commit `073ebb3a` removes fork-only packaging workflow. Current main
+and published 1.76.5 share guard blob `b93ea333e1263b903dac074baf30942a480f5607`.
+Authored reproduction exits 1 before (120 seconds of ping-only events), 0 after
+(timeout at 90 seconds); focused controls pass 8 tests. Full suite and actual
+client/model evidence remain gates; do not infer proof from a unit replay.
+A disposable real SDK / CLI 2.1.284 local API probe filters transport pings
+before message_start and ends with no_events, rather than reproducing the nested
+SDK event. A 2.1.283 probe is in progress. Initial probe used a nonexistent
+cli.js and then misclassified /messages?beta=true; corrected pathname/binary
+selection, no product defect claimed for those setup errors.
+
 **#1201 pending actual-client proof.** Source `30e01969`. Public implicated
 client is `XInTheDark/meowbert-ai-agent`. Its own commit `08e771a9` (2026-10-01
 01:07:50 UTC) identifies Opus and fixes interleaving by recording all response

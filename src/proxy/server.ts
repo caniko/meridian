@@ -81,7 +81,7 @@ import {
   DESIGN_UPSTREAM_ORIGIN,
 } from "./design"
 import { checkPluginConfigured, isPluginlessOpenCodeRequest, notePluginlessOpenCodeRequest } from "./setup"
-import { describeBuildDrift, getBuildInfo } from "./buildInfo"
+import { describeBuildDrift } from "./buildInfo"
 import { buildRuntime } from "./buildRuntime"
 import { getLatestVersion, isUpdateCheckEnabled, startUpdateCheck, stopUpdateCheck } from "./updateCheck"
 import { mapModelToClaudeModel, resolveClaudeExecutableAsync, resolveClaudeExecutableSync, resolveSdkModelDefaults, explicitModelPin, CANONICAL_SONNET_MODEL, isClosedControllerError, getClaudeAuthStatusAsync, getAuthCacheInfo, getResolvedClaudeExecutableInfo, hasExtendedContext, stripExtendedContext, recordExtendedContextUnavailable, recordExtendedContextRateLimited, subscriptionIncludesExtendedContext } from "./models"
@@ -645,11 +645,7 @@ function beginUpdateCheck(config: { silent?: boolean; version?: string }): Promi
   return startUpdateCheck({
     onResolved: (latest) => {
       if (config.silent) return
-      const build = getBuildInfo({
-        version: config.version ?? "unknown",
-        modulePath: import.meta.url,
-        latest,
-      })
+      const build = buildRuntime.info(config.version ?? "unknown", latest)
       if (!build.updateAvailable) return
       console.log(`\n[meridian] Update available: ${build.version} → ${latest}`)
       // A checkout cannot follow "npm install -g"; it pulls and rebuilds instead.
@@ -8168,8 +8164,12 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
 
   app.get("/settings/api/updates", (c) => c.json(updateSettingsState()))
   app.put("/settings/api/updates", async (c) => {
-    let body: { checkForUpdates?: unknown }
-    try { body = await c.req.json() } catch { return c.json({ error: "Invalid JSON" }, 400) }
+    let input: unknown
+    try { input = await c.req.json() } catch { return c.json({ error: "Invalid JSON" }, 400) }
+    if (typeof input !== "object" || input === null || Array.isArray(input)) {
+      return c.json({ error: "Settings must be a JSON object" }, 400)
+    }
+    const body = input as Record<string, unknown>
 
     if (body.checkForUpdates !== undefined) {
       if (body.checkForUpdates !== null && typeof body.checkForUpdates !== "boolean") {

@@ -138,12 +138,6 @@ export const profileBarCss = `
     cursor: default;
   }
   .meridian-header .mh-build.visible { display: inline-flex; }
-  .meridian-header .mh-build.update {
-    color: var(--accent, #58a6ff);
-    background: rgba(88,166,255,0.12);
-    border: 1px solid rgba(88,166,255,0.35);
-  }
-  .meridian-header .mh-build.update:hover { background: rgba(88,166,255,0.18); }
   /* Local/dev build identity: a violet meta pill whose branch and commit
      pieces become blue links only when the backend supplied a safe URL.
      Drift sits beside it as its own chip, because it is refreshed from a

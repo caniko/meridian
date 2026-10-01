@@ -72,7 +72,7 @@ describe("shared site header", () => {
       return profileBarCss.slice(start, profileBarCss.indexOf("}", start))
     }
 
-    const updateRule = rule(".mh-build.update")
+    const updateRule = rule(".mh-update")
     expect(updateRule).toContain("var(--accent, #58a6ff)")
     expect(updateRule).not.toContain("--accent2")
 

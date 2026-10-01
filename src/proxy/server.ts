@@ -8156,8 +8156,8 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
     })
   })
 
-  // Would restarting this process now cut a client off? Counts only, for a
-  // supervisor on the same host that restarts when `total` is 0. Open like
+  // Observed client HTTP requests only, not an atomic restart/drain barrier.
+  // Background jobs and pending backend continuations are outside this scope. Open like
   // /health (no API key), but answered only to a loopback peer: the counts say
   // when this machine is being used, which nobody off the host needs to know.
   app.get("/inflight", (c) => {

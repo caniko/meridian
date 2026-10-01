@@ -107,7 +107,7 @@ claiming those historical gates completed in this review pass.
 After all behavior merges: Meridian has eight reviewed deferred contributor PRs
 (#1201/#1193/#1190/#1187/#1176/#1175/#1171/#792), dedicated draft #1050, and
 Release Please #1202; nine issues above remain open. OpenCode scrub retains #18;
-Pi Release Please #15 and any subsequent OpenCode release PR remain excluded
+Pi Release Please #15 and newly generated OpenCode Release Please #20 remain excluded
 because release authorization is separate. Hermes/OpenClaw/hudscrub queues are
 empty. A documentation delivery PR for this disposition record is tracked
 separately from the source queue.

@@ -86,3 +86,11 @@ one queued. The test now waits for the same expected queue state and retains all
 count assertions; twelve focused Linux tests pass. No production behavior or
 assertion was weakened. Final integration must be checked again on the updated
 main containing #1171's independently validated build changes.
+
+
+After #1171 landed as `bd00c164d198a368956c79658897a6360a0cd5ea`, the
+integration rebased onto that base. Source `be7ad199` now maps to authored
+cherry `6605d8ad`, retaining the same Author/AuthorDate. Both E2E sections were
+kept when resolving their documentation append conflict. Combined final-tree
+local, actual client and exact-head CI gates are repeated before merge and
+recorded in the integration PR; earlier results remain historical evidence.

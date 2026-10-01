@@ -78,9 +78,9 @@ function messages(sessionId: string, stream: boolean): Request {
   })
 }
 
-async function waitFor(predicate: () => boolean, what: string, timeoutMs = 5000): Promise<void> {
+async function waitFor(predicate: () => boolean | Promise<boolean>, what: string, timeoutMs = 5000): Promise<void> {
   const deadline = Date.now() + timeoutMs
-  while (!predicate()) {
+  while (!(await predicate())) {
     if (Date.now() > deadline) throw new Error(`timed out waiting for ${what}`)
     await Bun.sleep(2)
   }
@@ -226,6 +226,9 @@ describe("GET /inflight", () => {
     await streamed.text()
     await waitFor(() => controls.length === 2, "the next request to reach the SDK")
     await controls[1]!.started
+    // Another request can briefly leave its turn queue before entering the SDK
+    // queue. Reaching the SDK in one request does not synchronize that transition.
+    await waitFor(async () => (await snapshot()).upstreams.claude!.queued === 1, "the remaining SDK waiter")
     seen = await snapshot()
     expect(seen.total).toBe(2)
     expect(seen.upstreams.claude).toEqual({ streams: 0, requests: 1, queued: 1 })

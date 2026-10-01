@@ -77,3 +77,12 @@ account already proven by #792's actual client gate, with no host credential
 writes or refresh-token export. The same final code/assertions then passed.
 The access snapshot is removed after this gate. Required CI must pass on the
 updated integration head; earlier green CI does not certify this correction.
+
+
+Final-head CI exposed a test synchronization defect: after one request reached
+its SDK, another could temporarily leave its turn queue before entering the SDK
+queue. The immediate snapshot saw two active requests instead of one active and
+one queued. The test now waits for the same expected queue state and retains all
+count assertions; twelve focused Linux tests pass. No production behavior or
+assertion was weakened. Final integration must be checked again on the updated
+main containing #1171's independently validated build changes.

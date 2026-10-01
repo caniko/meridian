@@ -37,8 +37,10 @@ import {
   getMaxStoredSessionsLimit,
   getSessionStoreDir,
   pruneSupersededProfileCopies,
+  listSupersededProfileConversations,
   type ProfileCopyPruneOptions,
 } from "./sessionStore"
+import { CrossProcessTurnCoordinator, type CrossProcessTurnLease } from "./session/crossProcessTurnCoordinator"
 import {
   directoryRenameWasBlocked,
   syncDirectoryDurably,
@@ -773,6 +775,7 @@ async function reconcileUnderLock(
 export async function releaseSupersededProfileCopies(
   copies: Omit<ProfileCopyPruneOptions, "maxUnpinnedTranscripts">,
   options: SessionLifecycleOptions = {},
+  turnCoordinator = new CrossProcessTurnCoordinator(join(options.storeDir ?? getSessionStoreDir(), "turn-locks")),
 ): Promise<number> {
   const maxPending = option(options.maxPending, DEFAULT_MAX_PENDING, "maxPending")
   if (!options.pinProvider) throw new SessionLifecycleError("profile-copy pruning requires an authoritative pin provider")
@@ -783,11 +786,29 @@ export async function releaseSupersededProfileCopies(
     const sidecar = await readSidecar(paths.sidecar)
     const budget = Math.floor(maxPending / 2) - pendingResourceCount(sidecar)
     if (budget <= 0) return 0
-    const removed = pruneSupersededProfileCopies({ ...copies, maxUnpinnedTranscripts: budget })
-    // A second sweeper must see the retirements, rather than reuse a snapshot
-    // whose mappings vanished but whose pending count has not advanced yet.
-    if (removed) await reconcileUnderLock([], options, paths)
-    return removed
+    const selection = { ...copies, maxUnpinnedTranscripts: budget }
+    const conversations = listSupersededProfileConversations(selection).slice(0, 64)
+    const leases: CrossProcessTurnLease[] = []
+    const fenced = new Set<string>()
+    try {
+      // Never wait while holding the sidecar lock: a request holding a turn
+      // may itself need lifecycle metadata. Busy conversations wait for a later sweep.
+      for (const conversation of conversations) {
+        const lease = await turnCoordinator.tryAcquireIdle(`session:${conversation}`)
+        if (!lease) continue
+        leases.push(lease)
+        fenced.add(conversation)
+      }
+      const removed = pruneSupersededProfileCopies({ ...selection,
+        isConversationActive: id => !fenced.has(id) || copies.isConversationActive(id),
+      })
+      if (removed) await reconcileUnderLock([], options, paths)
+      return removed
+    } finally {
+      const releases = await Promise.allSettled(leases.map(lease => lease.release()))
+      const failed = releases.find(result => result.status === "rejected")
+      if (failed?.status === "rejected") throw failed.reason
+    }
   })
 }
 

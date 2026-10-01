@@ -813,12 +813,12 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
         // In this process, a request snapshots every profile's mapping
         // generation and registers its turn in one synchronous step, so no
         // local request can see a copy vanish under it. Another process sharing
-        // the store is covered for the length of its held turn lock.
+        // the store is fenced by maintenance leases acquired by the lifecycle.
         isConversationActive: (conversationId) => {
           const turnKey = `session:${conversationId}`
-          return processSessionTurns.isActive(turnKey) || crossProcessSessionTurns.isHeld(turnKey)
+          return processSessionTurns.isActive(turnKey)
         },
-      }, sessionGcOptions)
+      }, sessionGcOptions, crossProcessSessionTurns)
       if (pruned > 0) claudeLog("session.profile_copies_pruned", { pruned })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)

@@ -5,8 +5,10 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
+import { spawn } from "node:child_process"
+import { pathToFileURL } from "node:url"
 import { createHash, randomUUID } from "node:crypto"
-import { closeSync, fsyncSync, mkdtempSync, openSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, closeSync, fsyncSync, mkdtempSync, openSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { CrossProcessTurnCoordinator } from "../proxy/session/crossProcessTurnCoordinator"
@@ -221,6 +223,50 @@ describe("cross-process turn activity", () => {
 })
 
 describe("mass prune through the transcript lifecycle", () => {
+  it("retains copies when a foreign turn acquires after an idle observation", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "profile-copy-arriving-turn-"))
+    const root = join(dir, "turns"), held = join(dir, "held"), go = join(dir, "go")
+    const moduleUrl = pathToFileURL(join(import.meta.dir, "../proxy/session/crossProcessTurnCoordinator.ts")).href
+    const worker = spawn(process.execPath, ["--eval", `
+      import { existsSync, writeFileSync } from 'node:fs';
+      const { CrossProcessTurnCoordinator } = await import(${JSON.stringify(moduleUrl)});
+      while(!existsSync(${JSON.stringify(go)})) await new Promise(r=>setTimeout(r,5));
+      const lease = await new CrossProcessTurnCoordinator(${JSON.stringify(root)}).acquire('session:arrival');
+      writeFileSync(${JSON.stringify(held)},'held');
+      const timer=setInterval(()=>{},1000);
+      process.on('SIGTERM',async()=>{await lease.release();clearInterval(timer);process.exit(0)});
+    `], { stdio: ["ignore", "ignore", "pipe"] })
+    const exited = new Promise<void>(resolve => worker.once("exit", () => resolve()))
+    try {
+      setSessionStoreDir(dir)
+      writeStore(dir, [{ key: "work:arrival", ageMs: GRACE + HOUR }, { key: "personal:arrival", ageMs: 1_000 }])
+      const coordinator = new CrossProcessTurnCoordinator(root)
+      let observed = false
+      const removed = await releaseSupersededProfileCopies({ profileIds: PROFILES, graceMs: GRACE,
+        isConversationActive: () => {
+          // Snapshot idle, then force another OS process to publish its lease.
+          // A boolean observation alone must not authorize mapping deletion.
+          if (!observed) {
+            observed = true
+            expect(coordinator.isHeld("session:arrival")).toBe(false)
+            writeFileSync(go, "go")
+            const deadline = Date.now() + 5_000
+            while (!existsSync(held) && Date.now() < deadline) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5)
+            expect(existsSync(held)).toBe(true)
+          }
+          return false
+        },
+      }, { storeDir: dir, pinProvider: () => Object.values(readSessionStoreSnapshot()).flatMap(x => x.currentTranscript ? [x.currentTranscript] : []) }, coordinator)
+      expect(removed).toBe(0)
+      expect(storedKeys()).toEqual(["personal:arrival", "work:arrival"])
+    } finally {
+      worker.kill("SIGTERM")
+      await exited
+      setSessionStoreDir(null)
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   it("reserves half-budget capacity across competing sweeps before either GC reconciliation", async () => {
     const dir = mkdtempSync(join(tmpdir(), "profile-copy-competing-sweeps-"))
     setSessionStoreDir(dir)

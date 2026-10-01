@@ -2164,6 +2164,18 @@ function selectSupersededProfileCopies(
   return victims
 }
 
+/** Candidate conversations only; callers must fence turns before deleting their mappings. */
+export function listSupersededProfileConversations(options: ProfileCopyPruneOptions): string[] {
+  const profileIds = new Set(options.profileIds)
+  const candidates = selectSupersededProfileCopies(readStoreDocumentCached(getStorePath()),
+    { ...options, profileIds }, Date.now())
+  return [...new Set(candidates.map(key => {
+    const separator = key.indexOf(":")
+    return separator > 0 && key.slice(0, separator) !== "default" && profileIds.has(key.slice(0, separator))
+      ? key.slice(separator + 1) : key
+  }))]
+}
+
 /**
  * Remove mappings superseded by a newer copy of the same conversation under
  * another profile, oldest first. Past the grace window a copy is rarely

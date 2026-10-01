@@ -22,12 +22,11 @@ export const profilePageHtml = `<!DOCTYPE html>
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
          color: var(--text); padding: 0; line-height: 1.5; }
   .container { max-width: 800px; margin: 0 auto; padding: 24px; }
-  /* Page title as on /providers, section headings as on /settings: the
-     uppercase micro-label read as a caption beside those pages' headings. */
-  h1 { font-size: 28px; font-weight: 600; margin-bottom: 4px; }
-  .subtitle { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
   .section { margin-bottom: 32px; }
-  .section-title { font-size: 20px; font-weight: 600; color: var(--text); margin-bottom: 12px; }
+  .section-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase;
+                   letter-spacing: 0.5px; margin-bottom: 12px; }
 
   .profile-search { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
   .profile-search[hidden] { display: none; }
@@ -57,8 +56,11 @@ export const profilePageHtml = `<!DOCTYPE html>
   .profile-card.anchor-flash { animation: profile-anchor-flash 0.5s ease-out; }
   @keyframes profile-anchor-flash {
     0% { box-shadow: 0 0 0 0 rgba(88,166,255,0); background: var(--surface); }
-    35% { box-shadow: 0 0 0 4px rgba(88,166,255,0.55); background: rgba(88,166,255,0.12); }
+    35% { box-shadow: 0 0 0 4px rgba(88,166,255,0.35); background: rgba(88,166,255,0.12); }
     100% { box-shadow: 0 0 0 0 rgba(88,166,255,0); background: var(--surface); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .profile-card.anchor-flash { animation: none; }
   }
   /* The name links to its own card. */
   a.profile-name { color: inherit; text-decoration: none; }
@@ -726,7 +728,7 @@ function writeProfilesUrl(hashId) {
 
 function applyProfileFilter() {
   var profiles = profilesForFind();
-  var byId = {};
+  var byId = Object.create(null);
   for (var i = 0; i < profiles.length; i++) byId[profiles[i].id] = profiles[i];
   var cards = document.querySelectorAll('#content .profile-card[data-id]');
   var shown = 0;

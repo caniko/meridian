@@ -171,10 +171,10 @@ export const landingHtml = `<!DOCTYPE html>
 
   /* Tabs rather than a dropdown: the current order stays legible without
      opening anything, which is the whole job of this page. */
-  .section-head { display: flex; align-items: baseline; justify-content: space-between;
+  .section-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between;
     gap: 12px; margin-bottom: 12px; }
   .section-head .section-title { margin-bottom: 0; }
-  .sort-tabs { display: flex; gap: 2px; flex-shrink: 0; }
+  .sort-tabs { display: flex; flex-wrap: wrap; gap: 2px; min-width: 0; max-width: 100%; }
   .sort-tab { background: none; border: none; border-bottom: 2px solid transparent;
     color: var(--muted); font-family: inherit; font-size: 11px; font-weight: 500;
     letter-spacing: 0.3px; padding: 2px 8px 3px; cursor: pointer; }

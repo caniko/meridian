@@ -167,6 +167,7 @@ try {
     opencode: clientVersion.stdout.trim(), model, plugin: scrub ? { version: scrub.version, onRequest: scrubStats } : null,
     clients, before, after }
   writeFileSync(join(root, 'summary.json'), JSON.stringify(summary, null, 2))
+  try {
   if (deferRoster) assert(before.some(entry => entry.toolCount > 80), 'Actual OpenCode did not declare deferred roster')
   assert(before.length >= concurrency && before.every(entry => entry.adapter === 'opencode'),
     `The OpenCode client plugin did not identify requests; see ${root}/summary.json`)
@@ -195,6 +196,10 @@ try {
       `The metering fingerprint remained after scrubbing; see ${root}/summary.json`)
     assert(after.some(entry => entry.hasWorkingDirectory),
       `The scrub plugin removed OpenCode's working-directory context; see ${root}/summary.json`)
+  }
+  } catch (error) {
+    console.log(JSON.stringify({ ...summary, result: 'FAIL' }))
+    throw error
   }
   summary.result = 'PASS'
   writeFileSync(join(root, 'summary.json'), JSON.stringify(summary, null, 2))

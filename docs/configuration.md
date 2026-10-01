@@ -1055,3 +1055,11 @@ $env:ANTHROPIC_API_KEY = "x" # Use your Meridian API key if protection is enable
 
 Then follow the [setup instructions for your client](agents.md). The desktop app
 is currently a Mac preview; it is not required for Windows headless use.
+
+Local provenance verification accepts complete fingerprints only. Source and
+artifact scans allow at most 64 MiB per file, 256 MiB total, 10,000 entries,
+and two seconds of scan work; artifact traversal additionally caps depth at 32.
+Git output is capped at 2 MiB, metadata at 4 MiB (package metadata 1 MiB).
+Oversized or unavailable inputs report unavailable/invalid provenance rather
+than certifying a partial hash. A local certified build refuses such inputs;
+Git-less archives retain their uncertified build path.

@@ -7041,3 +7041,14 @@ Use the live companion with the same client/CLI and installed Pi scrub entry:
 `E2E_MERIDIAN_ROOT=<built checkout> E2E_PI_CLI=<cli.js> E2E_CLAUDE_BIN=<2.1.283> E2E_PLUGIN_PATH=<entrypoint> node scripts/e2e-pi-live-idle-control.mjs`.
 The controlled upstream is not a live model; the companion uses actual Opus 5.5
 and proves a real read receipt and Pi session continuation.
+
+For synthetic build-header state inspection, run
+`bun scripts/e2e-build-header-fixture.ts` and open loopback port 42213 with
+`?state=current`, `behind`, `rollback`, `source-changed`, `invalid`, `unknown`,
+`failure` or `npm`. Inspect identity, drift, health, safe links and focus after
+a repeated poll. `/fixture-observations` counts drift requests; the npm state
+must stay at zero. This fixture uses the actual shared header but supplies
+synthetic API states; it does not prove real artifact certification, which
+requires `node scripts/e2e-build-provenance.mjs` separately. It uses no model or
+credentials. [Incorporation evidence](docs/maintenance/evidence/1171-build-provenance.md)
+records the platform and measured preview viewport.

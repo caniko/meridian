@@ -198,6 +198,8 @@ src/
 │   ├── localBuildInfo.ts      ← Local build comparisons and public forge links (PURE)
 │   ├── buildRuntime.ts        ← Immutable runtime identity and independent disk status
 │   ├── buildSnapshot.ts       ← Git/source snapshot boundary
+│   ├── buildFingerprint.ts    ← Streaming file hashing and bounded metadata reads
+│   ├── buildProvenanceError.ts ← Shared provenance boundary errors
 │   ├── buildArtifacts.ts      ← Serialized build certification and artifact validation
 │   ├── buildLock.ts           ← Local builder owner claims and dead-owner recovery
 │   ├── buildObserver.ts       ← Single-flight bounded disk observation cache

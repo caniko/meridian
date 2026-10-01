@@ -7691,6 +7691,19 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
     let leaseWatchdog: ReturnType<typeof setTimeout> | undefined
     inFlightRequests++
     const inflightEntry = inflight.begin("claude", queueEnteredAt)
+    const finishHttpEntry = () => {
+      inflightEntry.end()
+      c.req.raw.signal.removeEventListener("abort", finishHttpEntry)
+    }
+    if (c.req.raw.signal.aborted) finishHttpEntry()
+    else c.req.raw.signal.addEventListener("abort", finishHttpEntry, { once: true })
+    const trackedResponse = (response: Response) => {
+      const tracked = onResponseDone(response, finishHttpEntry)
+      // Internal OpenAI/priority relays still await the SDK publication promise.
+      const completion = responseCompletions.get(response)
+      if (completion) responseCompletions.set(tracked, completion)
+      return tracked
+    }
     // Releasing the lease is deliberately separate from finishing the request:
     // the watchdog must be able to unblock the session without also corrupting
     // the in-flight count that the shutdown drain reads.
@@ -7738,7 +7751,6 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
       activeRequestAborts.delete(turnWatchdogAbort)
       activeShutdownLabels.delete(turnWatchdogAbort)
       inFlightRequests--
-      inflightEntry.end()
     }
 
     let body: any
@@ -7750,16 +7762,16 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
       } catch (error) {
         if (c.req.raw.signal.aborted || (error instanceof Error && error.name === "AbortError")) {
           finishRequest()
-          return new Response(JSON.stringify({
+          return trackedResponse(new Response(JSON.stringify({
             type: "error",
             error: { type: "request_cancelled", message: "The request was cancelled" },
-          }), { status: 499, headers: { "Content-Type": "application/json" } })
+          }), { status: 499, headers: { "Content-Type": "application/json" } }))
         }
         finishRequest()
-        return new Response(JSON.stringify({
+        return trackedResponse(new Response(JSON.stringify({
           type: "error",
           error: { type: "invalid_request_error", message: "Request body must be valid JSON" },
-        }), { status: 400, headers: { "Content-Type": "application/json" } })
+        }), { status: 400, headers: { "Content-Type": "application/json" } }))
       }
       inflightEntry.setStream(body?.stream === true)
 
@@ -7866,23 +7878,23 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
                 error: "request_cancelled",
               })
               finishRequest()
-              return new Response(JSON.stringify({
+              return trackedResponse(new Response(JSON.stringify({
                 type: "error",
                 error: { type: "request_cancelled", message: "The request was cancelled" },
-              }), { status: 499, headers: { "Content-Type": "application/json" } })
+              }), { status: 499, headers: { "Content-Type": "application/json" } }))
             }
             // The local lease may already be held when the cross-process
             // acquisition fails. Never leave it wedged until the watchdog.
             releaseSessionTurn(false)
             if (error instanceof CrossProcessTurnAcquireTimeoutError) {
               finishRequest()
-              return new Response(JSON.stringify({
+              return trackedResponse(new Response(JSON.stringify({
                 type: "error",
                 error: {
                   type: "overloaded_error",
                   message: "Timed out waiting for another process to finish this session turn",
                 },
-              }), { status: 529, headers: { "Content-Type": "application/json", ...TRANSIENT_RETRY_AFTER_HEADERS } })
+              }), { status: 529, headers: { "Content-Type": "application/json", ...TRANSIENT_RETRY_AFTER_HEADERS } }))
             }
             throw error
           }
@@ -7917,9 +7929,10 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
       } else {
         finishRequest()
       }
-      return response
+      return trackedResponse(response)
     } catch (error) {
       finishRequest()
+      finishHttpEntry()
       throw error
     }
   }

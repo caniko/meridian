@@ -5,7 +5,7 @@
  * This is an observation of admitted client HTTP requests, not a restart
  * authorization or atomic drain barrier. Background Responses jobs and pending
  * client-tool continuations can outlive their HTTP request. An entry lives from the moment a request is admitted until its
- * response, streamed or not, has been fully delivered or abandoned. Each entry
+ * application response body, streamed or not, is consumed, cancelled or failed. Each entry
  * is counted exactly once: `queued` while it waits for its session's turn or
  * for an SDK slot, otherwise `streams` or `requests` by what the client asked
  * for. Meridian's own background work (token refresh, usage polling, session

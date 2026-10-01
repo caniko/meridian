@@ -503,12 +503,14 @@ HTTP requests before requesting a graceful shutdown:
 }
 ```
 
-- `scope` is `"client-http"`. `total` counts the observed HTTP requests; zero
+- `scope` is `"client-http"`. `total` counts admitted Claude Messages requests
+  (including internal OpenAI translations) and combined Antigravity POSTs; zero
   means that none of those requests is currently admitted. It does not mean
   that restarting will interrupt no work. Each request counts once: in `queued`
   while it waits for its session's turn or a free SDK slot, otherwise in
   `streams` or `requests` by whether the client asked for a stream. A request
-  stays counted until its response has been fully delivered or abandoned.
+  stays counted until its application response body is consumed by the HTTP
+  adapter, cancelled or failed. This is not an acknowledgement of remote receipt.
 - `oldestStartedAt` is when the longest-running of them arrived, or `null`.
 - `antigravity` appears only with `MERIDIAN_BACKEND=combined` and counts
   `POST /antigravity/*` requests. Background Responses jobs that keep running

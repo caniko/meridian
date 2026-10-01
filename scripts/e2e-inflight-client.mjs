@@ -11,6 +11,7 @@ import { spawn, spawnSync } from 'node:child_process'
 import { once } from 'node:events'
 import { spyOn } from 'bun:test'
 import * as sdk from '@anthropic-ai/claude-agent-sdk'
+import { observeSdkModels } from './lib/observe-sdk-models.mjs'
 const auth = JSON.parse(readFileSync(process.env.E2E_AUTH_FILE,'utf8'))
 assert(typeof auth.accessToken==='string'&&auth.accessToken.length>0&&auth.expiresAt>Date.now(),'Missing current private access snapshot')
 assert(!('refreshToken' in auth),'Use an access-only snapshot')
@@ -21,8 +22,8 @@ for(const dir of ['proxy','plugins'])mkdirSync(join(root,dir),{mode:0o700})
 for(const key of Object.keys(process.env))if(/^(MERIDIAN_|CLAUDE_PROXY_|CLAUDE_|ANTHROPIC_|OPENAI_|OPENCODE_CLAUDE_PROVIDER_)/.test(key))delete process.env[key]
 Object.assign(process.env,{MERIDIAN_CONFIG_DIR:join(root,'proxy'),MERIDIAN_SESSION_DIR:join(root,'sessions'),MERIDIAN_TELEMETRY_PERSIST:'0',
  MERIDIAN_CREDENTIALS_READONLY:'1',MERIDIAN_PASSTHROUGH:'1',MERIDIAN_NO_UPDATE_CHECK:'1'})
-const queries=[],realQuery=sdk.query
-const observer=spyOn(sdk,'query').mockImplementation(input=>{queries.push({profileMatched:input.options?.env?.CLAUDE_CODE_OAUTH_TOKEN===auth.accessToken,resume:!!input.options?.resume});return realQuery(input)})
+const queries=[],servedModels=new Set(),realQuery=sdk.query
+const observer=spyOn(sdk,'query').mockImplementation(input=>{queries.push({profileMatched:input.options?.env?.CLAUDE_CODE_OAUTH_TOKEN===auth.accessToken,resume:!!input.options?.resume});return observeSdkModels(realQuery(input),servedModels)})
 const pluginConfigPath=join(root,'plugins.json');writeFileSync(pluginConfigPath,JSON.stringify({plugins:[{path:scrub,enabled:true}]}),{mode:0o600})
 const {startProxyServer}=await import('../dist/server.js')
 let proxy,polling,children=[]
@@ -69,9 +70,10 @@ try{
  claudeCode:JSON.parse(readFileSync(new URL('../node_modules/@anthropic-ai/claude-code/package.json',import.meta.url),'utf8')).version,
  maximumTotal:Math.max(...snapshots.map(value=>value.total)),sawStream:snapshots.some(value=>value.upstreams.claude.streams>0),sawQueued:snapshots.some(value=>value.upstreams.claude.queued>0),
  finalTotal:final.total,observations:snapshots.length,forwardedRejected:forwarded.status===403,allQueriesUseReadOnlyProfile:queries.length>0&&queries.every(query=>query.profileMatched),
- realSdkQueries:queries.length,resumed:queries.some(query=>query.resume),clients:first.map(result=>({exit:result.exit,hasSession:!!result.session})),continuedExit:continued.exit,privateArtifacts:root}
+ servedModels:[...servedModels],realSdkQueries:queries.length,resumed:queries.some(query=>query.resume),clients:first.map(result=>({exit:result.exit,hasSession:!!result.session})),continuedExit:continued.exit,privateArtifacts:root}
  writeFileSync(join(root,'summary.json'),JSON.stringify(summary,null,2),{mode:0o600})
  assert(summary.maximumTotal>=2&&summary.sawStream&&summary.sawQueued&&summary.finalTotal===0,'Missing actual overlapping active/queued/idle transitions: '+root)
  assert(summary.allQueriesUseReadOnlyProfile&&summary.resumed,'Actual SDK profile or continuation mismatch')
+ assert(servedModels.size>0&&[...servedModels].every(value=>value===model||value.startsWith(model+'-')),'Upstream response did not confirm the implicated model')
  summary.result='PASS';writeFileSync(join(root,'summary.json'),JSON.stringify(summary,null,2),{mode:0o600});console.log(JSON.stringify(summary))
 }finally{if(polling)clearInterval(polling);for(const child of children)if(child.exitCode===null)child.kill('SIGTERM');await proxy?.close();observer.mockRestore()}

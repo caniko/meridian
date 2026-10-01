@@ -16,8 +16,18 @@ Meaningful negative control: an actual combined HTTP application creates a
 background Responses job against the existing deterministic CLI fixture. After
 its POST is consumed, `/inflight` reports HTTP zero while retrieval still reports
 queued/in-progress work. The test cancels that job and verifies cancelled status.
-This is protocol-fixture evidence, not a live Antigravity model claim. Ten focused
-request/response/peer/queue tests pass, including live-body delivery and cancellation.
+This is protocol-fixture evidence, not a live Antigravity model claim. Twelve focused
+request/response/peer/queue tests pass, including response-body consumption and cancellation.
+
+Further adversarial finding: Claude ended its registry entry when SDK work settled,
+before a buffered or streamed response body was consumed. Both direct HTTP
+integration controls fail before the fix (expected one, got zero). HTTP tracking
+now has its own terminal callback, while existing SDK/session cleanup still runs
+at SDK settlement. Both controls pass after consuming the body; they explicitly
+verify SDK work is already finished. Aborts/errors/cancellation retire the HTTP
+entry. The wrapper preserves the SDK publication-promise mapping required by
+internal OpenAI/priority relays; 25 focused HTTP/Responses tests pass.
+Application body consumption is not a remote receipt acknowledgement.
 
 Actual headless gate: maintained `scripts/e2e-inflight-client.mjs`, two independent
 OpenCode 1.18.32 clients, real Opus 5.5, SDK 0.2.141, Claude Code 2.1.284,
@@ -48,3 +58,22 @@ the integration PR before merge. No account tracking or Antigravity restart safe
 is inferred from the HTTP count. The standalone Antigravity backend does not serve
 this endpoint; combined mode counts its POST responses only. Windows receives the
 required smoke CI; no separate live Windows model test is claimed.
+
+After the body-lifecycle correction, the actual Linux gate passed again: 1,442
+observations, maximum total four, streams/queue observed, final zero, both
+clients and continuation exit zero, five real SDK queries and resume. Final
+regression checks after publication-promise preservation pass: `npm test`
+5,029 pass / zero failures / four platform skips; standalone typecheck/build
+pass. The final actual Linux gate records 1,095 observations, maximum total
+four, streams and queue observed, exact bucket sums, final zero, forwarding
+403, both clients and continuation exit zero, five real SDK calls and resume.
+Actual upstream assistant messages confirm `claude-opus-5-5`.
+
+The first final-model run failed because the previously saved access token
+was invalid: both client errors reported expired/invalid Claude authentication.
+A diagnostic run retained private artifacts and confirmed that cause. The
+replacement access-only snapshot came from the isolated browser-created
+account already proven by #792's actual client gate, with no host credential
+writes or refresh-token export. The same final code/assertions then passed.
+The access snapshot is removed after this gate. Required CI must pass on the
+updated integration head; earlier green CI does not certify this correction.

@@ -236,11 +236,28 @@ describe("GET /inflight", () => {
       for (const control of controls) control.release()
       await Bun.sleep(5)
     }
-    await both
+    const buffered = await both
+    expect((await snapshot()).total).toBe(2)
+    await Promise.all(buffered.map(response => response.text()))
     seen = await snapshot()
     expect(seen.total).toBe(0)
     expect(seen.upstreams.claude).toEqual({ streams: 0, requests: 0, queued: 0 })
   }, 20_000)
+
+  for (const stream of [false, true]) {
+    it(`retains a ${stream ? "streamed" : "buffered"} HTTP response after SDK work settles until its body is consumed`, async () => {
+      const backend = createProxyServer({ silent: true })
+      const pending = backend.app.fetch(messages("retained-body", stream))
+      await waitFor(() => controls.length === 1, "the SDK request")
+      controls[0]!.release()
+      const response = await pending
+      await waitFor(() => backend.getInFlightCount?.() === 0, "SDK work settlement")
+      const snapshot = async () => (await (await backend.app.fetch(new Request("http://localhost/inflight"), LOOPBACK)).json()) as { total: number }
+      expect((await snapshot()).total).toBe(1)
+      await response.text()
+      expect((await snapshot()).total).toBe(0)
+    })
+  }
 
   it.skipIf(process.platform === "win32")("reports HTTP idle while an explicitly out-of-scope background response still runs", async () => {
     const backend = createProxyServer({ backend: "combined", silent: true,

@@ -49,7 +49,21 @@ const before = []
 const after = []
 globalThis.__opencodeAdmissionBefore = before
 globalThis.__opencodeAdmissionAfter = after
-const probe = (name, target) => `export default { name: ${JSON.stringify(name)}, onRequest(ctx) { globalThis.${target}.push({ adapter: ctx.adapter, hasPowered: (ctx.systemContext || '').includes('You are powered by the model named'), hasEnvPreamble: (ctx.systemContext || '').includes('Here is some useful information about the environment you are running in:'), hasWorkingDirectory: (ctx.systemContext || '').includes('Working directory:'), hasClientReadResult: (ctx.messages || []).some(m => m.role === 'user' && Array.isArray(m.content) && m.content.some(b => b.type === 'tool_result' && ${JSON.stringify(receipt ?? '__unused_receipt__')} && JSON.stringify(b.content ?? '').includes(${JSON.stringify(receipt ?? '__unused_receipt__')}))) }); return ctx } }`
+const probe = (name, target) => `export default {
+  name: ${JSON.stringify(name)},
+  onRequest(ctx) {
+    const results = (ctx.messages || []).filter(m => m.role === 'user' && Array.isArray(m.content))
+      .flatMap(m => m.content.filter(b => b?.type === 'tool_result'));
+    const receiptClients = Array.from({length: ${concurrency}}, (_, index) => index).filter(index =>
+      results.some(b => JSON.stringify(b.content ?? '').includes(${JSON.stringify(receipt ?? '__unused_receipt__')} + '-' + index)));
+    globalThis.${target}.push({ adapter: ctx.adapter,
+      hasPowered: (ctx.systemContext || '').includes('You are powered by the model named'),
+      hasEnvPreamble: (ctx.systemContext || '').includes('Here is some useful information about the environment you are running in:'),
+      hasWorkingDirectory: (ctx.systemContext || '').includes('Working directory:'),
+      hasClientReadResult: receiptClients.length > 0, receiptClients });
+    return ctx;
+  }
+}`
 const beforePath = join(root, 'before.js')
 const afterPath = join(root, 'after.js')
 writeFileSync(beforePath, probe('before-opencode-admission', '__opencodeAdmissionBefore'))
@@ -68,7 +82,7 @@ async function runClient(index, url) {
   const project = join(clientRoot, 'project')
   const config = join(clientRoot, 'config')
   for (const path of [clientRoot, project, config]) mkdirSync(path)
-  if (exerciseRead) writeFileSync(join(project, 'receipt.txt'), receipt + '\n')
+  if (exerciseRead) writeFileSync(join(project, 'receipt.txt'), receipt + '-' + index + '\n')
   writeFileSync(join(config, 'opencode.json'), JSON.stringify({
     $schema: 'https://opencode.ai/config.json',
     plugin: [join(meridianRoot, 'dist', 'meridian')],
@@ -158,7 +172,8 @@ try {
   } else {
     if (exerciseRead) {
       assert(clients.every(client => client.toolEvents > 0), 'Actual OpenCode did not execute a tool')
-      assert(before.some(entry => entry.hasClientReadResult), 'Random client-only read receipt never reached the SDK request')
+      assert(clients.every(client => before.some(entry => entry.receiptClients.includes(client.index))),
+        'A random client-only read receipt never reached the SDK request')
     }
     assert(clients.every(client => client.exit === 0 && client.textEvents > 0 && client.errorEvents === 0
       && client.sessionCaptured && client.continuationSameSession && client.continuation?.exit === 0

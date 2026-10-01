@@ -179,6 +179,19 @@ describe("guardUpstreamIdle", () => {
     }
   })
 
+  it("passes nested pings through when disabled and preserves other event shapes", async () => {
+    const ping = { type: "stream_event", event: { type: "ping" } }
+    const ordinary = [null, { type: "ping" }, { type: "keep_alive" },
+      { type: "stream_event", event: null }, { type: "stream_event", event: { type: "message_start" } }]
+    async function* source(values: unknown[]) { yield* values }
+    const disabled: unknown[] = []
+    for await (const event of guardUpstreamIdle(source([ping, ...ordinary]), 0)) disabled.push(event)
+    expect(disabled).toEqual([ping, ...ordinary])
+    const enabled: unknown[] = []
+    for await (const event of guardUpstreamIdle(source([ping, ...ordinary]), 500)) enabled.push(event)
+    expect(enabled).toEqual(ordinary)
+  })
+
   it("idleMs<=0 disables the guard (pure pass-through)", async () => {
     const src = makeSource<number>()
     const out: number[] = []

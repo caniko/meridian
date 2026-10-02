@@ -44,7 +44,8 @@ await new Promise(accept => blocker.listen(0,'127.0.0.1',accept))
 let trigger, freezeScheduled = false
 const queries = [], servedModels = new Set(), realQuery = sdk.query
 const observer = spyOn(sdk, 'query').mockImplementation(input => {
-  queries.push({credentialDirectoryMatched:input.options?.env?.CLAUDE_CONFIG_DIR === credentialDir, resume:!!input.options?.resume})
+  const trace={credentialDirectoryMatched:input.options?.env?.CLAUDE_CONFIG_DIR === credentialDir,resume:!!input.options?.resume,allowedTools:input.options?.allowedTools?.length??0,textChunks:0}
+  queries.push(trace)
   const inner = realQuery(input)
   return new Proxy(inner,{get(target,key){
     if(key===Symbol.asyncIterator)return async function*(){
@@ -52,15 +53,15 @@ const observer = spyOn(sdk, 'query').mockImplementation(input => {
       for await(const message of inner){
         const model=message.type==='assistant'?message.message?.model:message.type==='stream_event'&&message.event?.type==='message_start'?message.event.message?.model:undefined
         if(typeof model==='string')servedModels.add(model)
-        if(message.type==='stream_event'&&message.event?.type==='content_block_delta'&&message.event.delta?.type==='text_delta')textChunks++
+        if(message.type==='stream_event'&&message.event?.type==='content_block_delta'&&message.event.delta?.type==='text_delta'){textChunks++;trace.textChunks=textChunks}
         // Select the sustained answer after the real tool-result resume,
         // rather than a title request or a short pre-tool preamble whose
         // consumer may be waiting in its tool hook instead of pulling data.
-        if(!freezeScheduled&&input.options?.resume&&(input.options?.allowedTools?.length??0)>0&&textChunks===5){
+        if(!freezeScheduled&&input.options?.resume&&(input.options?.allowedTools?.length??0)>0&&textChunks===1){
           freezeScheduled=true
           // The socket's data handler freezes the main thread after this
           // chunk is delivered and the guard arms its next pending pull.
-          trigger=net.connect(blocker.address().port,'127.0.0.1');trigger.end('freeze')
+          setTimeout(()=>{trigger=net.connect(blocker.address().port,'127.0.0.1');trigger.end('freeze')},100)
         }
         yield message
       }
@@ -114,7 +115,7 @@ try {
   const summary={result:'FAIL',expectBaseline,freezes,idleMs,freezeMs,lateDeadlines:late.length,lateResumed:late.some(row=>row.resumed),lateVerdicts:late,stalls:stalls.length,stallTimings:stalls,platform:`${process.platform}/${process.arch}`,bun:Bun.version,opencode:version.stdout.trim(),sdk:sdkVersion,claudeCode:cliVersion,model,
     firstExit:first.exit,continuedExit:continued?.exit,firstHasSession:!!first.session,
     toolCalls:first.events.filter(event=>event.type==='tool_use').length,firstReceipt:firstText.includes(receipt),continuedReceipt:continuedText.includes(receipt),
-    allQueriesUseNewAccount:queries.length>0&&queries.every(query=>query.credentialDirectoryMatched),servedModels:[...servedModels],realSdkQueries:queries.length,
+    allQueriesUseNewAccount:queries.length>0&&queries.every(query=>query.credentialDirectoryMatched),servedModels:[...servedModels],realSdkQueries:queries.length,queryObservations:queries,
     resumed:queries.some(query=>query.resume),scrub:plugins.plugins.find(plugin=>plugin.name==='opencode-scrub')?.version,privateArtifacts:root}
   writeFileSync(join(root,'summary.json'),JSON.stringify(summary,null,2),{mode:0o600})
   assert.equal(freezes,1,'No actual SDK text stream was frozen')

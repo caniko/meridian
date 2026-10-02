@@ -109,7 +109,8 @@ async function send(messages) {
     headers: { "Content-Type": "application/json", "x-api-key": "dummy",
       ...(PI ? { "x-meridian-agent": "pi", "x-session-affinity": sessionId, "user-agent": "pi/0.85.0" }
         : { "x-opencode-session": sessionId, "user-agent": "opencode/1.0.0" }) },
-    body: JSON.stringify({ model: MODEL, max_tokens: 2048, stream: STREAM, tools: [READ_TOOL], messages }),
+    body: JSON.stringify({ model: MODEL, max_tokens: 2048, stream: STREAM, tools: [READ_TOOL], messages,
+      ...(process.env.PROBE_THINKING_BUDGET ? { thinking: { type: "enabled", budget_tokens: Number(process.env.PROBE_THINKING_BUDGET) } } : {}) }),
   })
 }
 

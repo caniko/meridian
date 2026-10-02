@@ -1,5 +1,6 @@
 # Asynchronous session-store writes (#1220)
 
+Integration: [draft #1245](https://github.com/rynfar/meridian/pull/1245).
 Disposition: draft integration with maintainer corrections. Owner contract
 decision [#1244](https://github.com/rynfar/meridian/issues/1244), unexplained
 E41 cache-prefix evidence and final-head CI remain acceptance gates. Source
@@ -87,9 +88,23 @@ publication renames. Earlier turns must join before arming this fault: client
 exit alone does not prove proxy cleanup completion. An initial macOS probe
 omitted that barrier and counted two renames; its failed log is retained. The
 initial join probe also used a nonexistent `/inflight` field; the maintained
-probe now uses the documented `total` and asserts the join. These probe fixes
-do not establish that the earlier real-client failure is resolved without a
-passing corrected run.
+probe now uses the documented `total` and asserts the join. The joined macOS Bun 1.3.14 probe still failed: zero HTTP/socket close events
+and zero SDK aborts arrived during the disk wait, followed by two renames. The
+failure was not dismissed as a probe-barrier issue.
+
+A minimal independent `scripts/e2e-http-disconnect-control.mjs` reproduces that
+runtime behavior without Meridian or the SDK: kill a real Node HTTP client
+while a plain handler awaits a gate. Bun 1.3.14 reports zero response/socket
+close events during the 600 ms wait. Node 22.22.3 and Bun 1.4.2 each report one
+premature response close and one socket close. Run the old-runtime control with
+`--expect-missed-close`; ordinary controls must observe premature close.
+The same actual macOS OpenCode/Opus probe passes on independently installed
+Bun 1.4.2, the contributor's reported runtime: two actual HTTP/socket closes,
+two SDK aborts during the hold, zero canceled renames, 256 liveness probes,
+real receipt/continuation exits 0. Linux Bun 1.4.2 passes with zero canceled
+renames and 251 probes. **Old Bun 1.3.14 disconnect delivery remains a known
+runtime limitation; this PR does not claim to fix it or update the owner's
+installed runtime.** No HTTP disconnect was fabricated to make the test pass.
 
 ## Session-history and remaining cache evidence
 
@@ -110,7 +125,12 @@ next turn read 3,132 versus a required 6,263.35. Its tool batching, receipts,
 fork chain and active history passed. Two unchanged-main sequential controls
 passed, and later source/corrected runs passed, but this does not explain the
 failure. **Keep this acceptance gate open.** No weakened assertion, nearby
-model substitution or green-rerun resolution is claimed.
+model substitution or green-rerun resolution is claimed. An additional
+`PROBE_THINKING_BUDGET=1024` source/main control passed; the source's native
+assistant/result usage trace showed identical counters and no thinking blocks,
+so that run did not reproduce the failed thinking case. Optional
+`E2E_USAGE_TRACE=1` now emits only native message type/content types/token counts
+for future causality work; it contains no generated text or credentials.
 
 ```sh
 E2E_PROFILE_CLAUDE_DIR=/owned/native-credential-directory \
@@ -120,9 +140,10 @@ PROBE_PORT=3531 bun scripts/e2e-session-store-turns.mjs
 
 Sanitized before/after facts: [verdicts](1220-session-store-verdicts.json).
 Private raw logs are retained under the owned persistent verification fixture
-`session-store-1220`; they supplement this committed record. Full local gate
-results and exact-head CI are recorded in the draft integration/handoff once
-complete. The initial full suite passed 5,132 tests with 0 failures/4 skips;
-typecheck/build passed. A final full suite is required after the publication
-correction. Linux focused locking/pruning/input/cancellation checks passed
-42 tests, 0 failures.
+`session-store-1220`; they supplement this committed record. Final local gates after the publication correction: `npm test` 5,134 pass /
+0 fail / 4 skip; standalone typecheck and build pass. Linux focused
+locking/pruning/input/cancellation checks passed 42 tests, 0 failures.
+All six executed checks passed on proof head `b5dc3fb0`, including
+[test](https://github.com/rynfar/meridian/actions/runs/37065486456/job/111032146330),
+Windows smoke, both desktop builds and Docker smoke/build-push. Any later proof
+commit still requires final-head CI; no merge gate is waived.

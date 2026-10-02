@@ -36,10 +36,18 @@ prototype.sync = async function () {
   return realSync.call(this)
 }
 const realQuery = sdk.query
+const usageTrace = []
 const queryObserver = spyOn(sdk, 'query').mockImplementation(input => {
   queries++
+  const query = queries
   if (input.options?.env?.CLAUDE_CONFIG_DIR === credentials) credentialMatches++
-  return observeSdkModels(realQuery(input), servedModels)
+  return observeSdkModels(realQuery(input), servedModels, message => {
+    const usage = message.type === 'assistant' ? message.message?.usage
+      : message.type === 'result' ? message.usage : undefined
+    if (usage) usageTrace.push({ query, type: message.type,
+      contentTypes: message.type === 'assistant' ? message.message?.content?.map(block => block.type) : undefined,
+      input: usage.input_tokens, cacheRead: usage.cache_read_input_tokens, cacheCreation: usage.cache_creation_input_tokens })
+  })
 })
 const timer = setInterval(() => { if (waiting) ticksDuringWrites++ }, 10)
 try {
@@ -52,6 +60,7 @@ try {
     allQueriesUseOwnedAccount: true, servedModels: [...servedModels], platform: `${process.platform}/${process.arch}`, bun: Bun.version,
     stream: process.argv.includes('--stream'), parallel: process.env.PROBE_PARALLEL === '1' }))
 } finally {
+  if (process.env.E2E_USAGE_TRACE === '1') console.info(JSON.stringify({ phase: 'sdk-usage', usageTrace }))
   clearInterval(timer)
   prototype.sync = realSync
   openObserver.mockRestore()

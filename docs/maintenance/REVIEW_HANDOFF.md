@@ -1,5 +1,40 @@
 # Upstream review handoff
 
+## Active Nowaker integration — #1220 (2026-10-02)
+
+Owner said to keep going. Refreshed source is now `c159bf9be`, based on current
+main `d57388724`; the old `edf29520` pruning integration concern is superseded
+by the contributor's rebase. Preserved Author/AuthorDate through cherry
+`2278ddb88`; separate correction `a58e9871` captures inputs before yielding
+and fences cancellation/shutdown immediately before publication rename.
+[Draft integration #1245](https://github.com/rynfar/meridian/pull/1245) and
+[durable proof](evidence/1220-async-session-store.md). Worktree
+`/Users/rynfar/repos/meridian-session-store-1220`, branch
+`codex/nowaker-session-store-1220-20261002`; owner checkout remains untouched.
+
+Final local code gates pass: 5,134 tests / 0 failures / 4 skips, standalone
+typecheck/build; Linux focused checks 42 pass. Actual OpenCode 1.18.34 /
+Opus 5.5 / SDK 0.2.141 / CLI 2.1.284 / installed scrub 0.2.3 proves controlled
+store-disk wait responsiveness and receipt/resume on macOS/Linux. Four E41 modes
+pass under disk waits after correction. Actual kill-during-write control passes
+on both platforms with Bun 1.4.2. macOS Bun 1.3.14 does not observe premature
+HTTP/socket closure during the held write; a plain server without Meridian
+reproduces it, while Node 22 and Bun 1.4.2 observe close. Keep that older-runtime
+limitation explicit; do not claim to have fixed it or upgraded the owner's Bun.
+
+Acceptance gates remain: owner approval for the exported asynchronous
+`clearSessionCache(): Promise<void>` completion contract, tracked in
+[#1244](https://github.com/rynfar/meridian/issues/1244); unexplained cache-prefix
+failure from an earlier sequential E41 thinking/tool turn; exact final-head CI.
+The reviewable contract question was sent to the owner; elapsed time is not
+approval. Two ordinary main controls passed, which does not resolve the cache
+failure. Native usage tracing and an explicit-thinking-budget main/source control passed,
+but produced no thinking block and did not reproduce the cache failure. Retain
+those limits and do not waive or weaken the cache check.
+All six executed checks passed on proof head `b5dc3fb0`; later proof/handoff
+commits require their own final-head CI. #1220 remains open, #1245 stays draft.
+No merge, source closure, release or community comments in this ticket.
+
 ## Additional Nowaker work (2026-10-02)
 
 Owner authorized continuing more Nowaker work. #1222 source `1bffa43fe` is

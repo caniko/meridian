@@ -134,6 +134,101 @@
     "toolHistory": "exactly one real answer per delivered call",
     "laterFourModes": "PASS",
     "unchangedMainControls": "two PASS; failed-before cache case not reproduced on main",
-    "disposition": "unexplained; acceptance gate remains open"
+    "disposition": "unexplained; acceptance gate remains open",
+    "thinkingBudgetControl": {
+      "budget": 1024,
+      "main": "PASS",
+      "source": "PASS",
+      "nativeThinkingBlocks": 0,
+      "causality": "not reproduced; original failure remains unresolved"
+    }
+  },
+  "finalRealClientCancellation": [
+    {
+      "result": "PASS",
+      "testCancellation": true,
+      "cancellationTriggered": true,
+      "canceledRenames": 0,
+      "canceledExit": null,
+      "canceledSdkAborts": 2,
+      "closedDuringWait": 2,
+      "socketClosedDuringWait": 2,
+      "closeFinishedDuringWait": 0,
+      "expectResponsive": true,
+      "delayMs": 400,
+      "worstTimerLagMs": 0,
+      "heldPublications": 7,
+      "responsiveProbes": 256,
+      "failedProbes": 0,
+      "platform": "darwin/arm64",
+      "bun": "1.4.2",
+      "opencode": "1.18.34",
+      "sdk": "0.2.141",
+      "claudeCode": "2.1.284",
+      "model": "claude-opus-5-5",
+      "firstExit": 0,
+      "continuedExit": 0,
+      "firstHasSession": true,
+      "toolCalls": 1,
+      "firstReceipt": true,
+      "continuedReceipt": true,
+      "allQueriesUseNewAccount": true,
+      "servedModels": [
+        "claude-opus-5-5"
+      ],
+      "realSdkQueries": 6,
+      "resumed": true,
+      "scrub": "0.2.3",
+      "case": "mac-bun142-client"
+    },
+    {
+      "result": "PASS",
+      "testCancellation": true,
+      "cancellationTriggered": true,
+      "canceledRenames": 0,
+      "canceledExit": null,
+      "expectResponsive": true,
+      "delayMs": 400,
+      "worstTimerLagMs": 0,
+      "heldPublications": 7,
+      "responsiveProbes": 251,
+      "failedProbes": 0,
+      "platform": "linux/arm64",
+      "bun": "1.4.2",
+      "opencode": "1.18.34",
+      "sdk": "0.2.141",
+      "claudeCode": "2.1.284",
+      "model": "claude-opus-5-5",
+      "firstExit": 0,
+      "continuedExit": 0,
+      "firstHasSession": true,
+      "toolCalls": 1,
+      "firstReceipt": true,
+      "continuedReceipt": true,
+      "allQueriesUseNewAccount": true,
+      "servedModels": [
+        "claude-opus-5-5"
+      ],
+      "realSdkQueries": 6,
+      "resumed": true,
+      "scrub": "0.2.3",
+      "case": "linux-fixed-final-client-joined"
+    }
+  ],
+  "macBun1314Failure": {
+    "canceledRenames": 2,
+    "sdkAbortsDuringHold": 0,
+    "httpCloseEventsDuringHold": 0,
+    "socketCloseEventsDuringHold": 0,
+    "plainHttpControl": "also misses disconnect; Node 22 and Bun 1.4.2 observe it",
+    "disposition": "runtime limitation retained; original implicated Bun 1.4.2 passes"
+  },
+  "finalLocal": {
+    "pass": 5134,
+    "fail": 0,
+    "skip": 4,
+    "typecheck": "PASS",
+    "build": "PASS",
+    "linuxFocusedPass": 42
   }
 }

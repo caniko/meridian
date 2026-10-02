@@ -35,14 +35,17 @@ Object.assign(process.env, { MERIDIAN_CONFIG_DIR: join(root, 'proxy-config'), ME
   MERIDIAN_WORKDIR: project, MERIDIAN_TELEMETRY_PERSIST: '0', MERIDIAN_NO_UPDATE_CHECK: '1',
   ...(process.env.E2E_CLAUDE_BIN ? { MERIDIAN_CLAUDE_PATH: realpathSync(process.env.E2E_CLAUDE_BIN) } : {}),
   MERIDIAN_CREDENTIALS_READONLY: '1', MERIDIAN_PASSTHROUGH: '1' })
+let canceledSdkAborts = 0
 const queries = [], servedModels = new Set(), realQuery = sdk.query
 const observer = spyOn(sdk, 'query').mockImplementation(input => {
+  input.options?.abortController?.signal.addEventListener('abort', () => { if (cancellationTriggered) canceledSdkAborts++ }, {once:true})
   queries.push({credentialDirectoryMatched:input.options?.env?.CLAUDE_CONFIG_DIR === credentialDir, resume:!!input.options?.resume})
   return observeSdkModels(realQuery(input), servedModels)
 })
 const pluginConfigPath = join(root, 'plugins.json')
 writeFileSync(pluginConfigPath, JSON.stringify({plugins:[{path:scrub,enabled:true}]}), {mode:0o600})
 let proxy, probeUrl, heldPublications = 0, responsiveProbes = 0, pendingDiskWaits = 0, failedProbes = 0, worstTimerLagMs = 0
+let closedDuringWait = 0, socketClosedDuringWait = 0, closeFinishedDuringWait = 0
 let activeClient, cancelArmed = false, cancellationTriggered = false, canceledRenames = 0
 const originalRename = filePromises.rename
 const renameObserver = spyOn(filePromises, 'rename').mockImplementation(async (...args) => {
@@ -114,6 +117,11 @@ try {
   proxy = await startProxyServer({port:0,host:'127.0.0.1',silent:true,pluginConfigPath,pluginDir:join(root,'plugins'),
     profiles:[{id:'browser-created',claudeConfigDir:credentialDir}], defaultProfile:'browser-created'})
   if (!proxy.server.listening) await once(proxy.server,'listening')
+  proxy.server.on('request', (request, response) => {
+    if (request.method !== 'POST' || !request.url?.includes('/messages')) return
+    response.once('close', () => { if (cancellationTriggered && pendingDiskWaits) { closedDuringWait++; if (response.writableFinished) closeFinishedDuringWait++ } })
+    request.socket.once('close', () => { if (cancellationTriggered && pendingDiskWaits) socketClosedDuringWait++ })
+  })
   const url = `http://127.0.0.1:${proxy.server.address().port}`; probeUrl = url
   const plugins = await (await fetch(url+'/plugins/list')).json()
   assert(plugins.plugins.some(plugin=>plugin.name==='opencode-scrub'&&plugin.status==='active'),'Scrub plugin inactive')
@@ -154,9 +162,10 @@ try {
     }
     assert(joined, 'Canceled request cleanup did not join')
     assert(cancellationTriggered && canceled.exit === null, 'Client was not killed during the store write')
+    console.info(JSON.stringify({phase:'cancellation-observation',canceledRenames,canceledSdkAborts,closedDuringWait,socketClosedDuringWait,closeFinishedDuringWait}))
     assert.equal(canceledRenames, 0, 'Canceled client mapping was published before eviction')
   }
-  const summary={result:'FAIL',testCancellation,cancellationTriggered,canceledRenames,canceledExit,expectResponsive,delayMs,worstTimerLagMs,heldPublications,responsiveProbes,failedProbes,platform:`${process.platform}/${process.arch}`,bun:Bun.version,opencode:version.stdout.trim(),sdk:sdkVersion,claudeCode:cliVersion,model,
+  const summary={result:'FAIL',testCancellation,cancellationTriggered,canceledRenames,canceledExit,canceledSdkAborts,closedDuringWait,socketClosedDuringWait,closeFinishedDuringWait,expectResponsive,delayMs,worstTimerLagMs,heldPublications,responsiveProbes,failedProbes,platform:`${process.platform}/${process.arch}`,bun:Bun.version,opencode:version.stdout.trim(),sdk:sdkVersion,claudeCode:cliVersion,model,
     firstExit:first.exit,continuedExit:continued?.exit,firstHasSession:!!first.session,
     toolCalls:first.events.filter(event=>event.type==='tool_use').length,firstReceipt:firstText.includes(receipt),continuedReceipt:continuedText.includes(receipt),
     allQueriesUseNewAccount:queries.length>0&&queries.every(query=>query.credentialDirectoryMatched),servedModels:[...servedModels],realSdkQueries:queries.length,

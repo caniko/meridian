@@ -8,7 +8,9 @@ merge `c0af34eaa`, verified exact tree/CI/Nowaker credit and source closure.
 #1221 correction and actual macOS/Linux proof merged as #1236, `e1f8bc473`;
 exact tested tree/CI/Nowaker credit and source closure verified. #1217 rebased head `eb0c2b9e` has all executed
 CI passing, but remains draft pending real existing-account re-authentication.
-#1176 is deferred until a supported OpenAI-serving backend exists. #1175 already
+#1234 exact plugin pins and a reproduced `/inflight` queue-fixture correction
+are in #1237; final-head checks remain required before merge. General CI flake
+issues remain open. #1176 is deferred until a supported OpenAI-serving backend exists. #1175 already
 merged as #1227 (`3cb65df0c`). No release or external community messages.
 
 ## Prior active authorized backlog (2026-10-01)

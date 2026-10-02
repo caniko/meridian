@@ -66,6 +66,30 @@ of an unaccepted architecture/contract. Source branches remain available.
 was checked October 2 for #1212/#1213. Model context is a separate factual
 question from actual V2 adoption and acceptance of the draft change.
 
+## Checkpoint CI correction (#1237)
+
+The first exact-head test job on `4de343242c445915dd44671db271459d5588ac98`
+[failed](https://github.com/rynfar/meridian/actions/runs/36975696547/job/110738930838)
+waiting for “the remaining SDK waiter” in `inflight.test.ts`. No application or
+unit-test code differed from main at that head. The same Linux arm64/Bun 1.3.11
+fixture failed in an isolated 30-file-repetition run: 359 tests passed, one
+failed. Diagnostic runs captured the same-session request already completed
+with HTTP 400 and a snapshot of two requests, zero queued, after two SDK calls.
+
+The fixture sent an undeclared duplicate of the original user turn. Once the
+first turn published, the existing `session_turn_conflict` guard correctly
+refused its stale history instead of starting an SDK waiter. This is an invalid
+fixture for a test that expects three successfully admitted queries. The
+correction declares `x-meridian-source: fork-inflight-test` for that concurrent
+request, retaining its shared turn key, and requires both buffered responses to
+return 200. The application's guard, admission and public contracts are
+unchanged. The corrected Linux arm64 fixture passes 100 repetitions / 1,200
+tests, zero failures. All 17 existing concurrency controls pass, including
+refusal of an undeclared plugin-equipped loser and acceptance of a declared
+concurrent flow. Full final-head checks remain merge gates; a green rerun of
+the original fixture is not the claimed fix. General #933/#917
+flake reports remain open.
+
 ## Reproduce the torn-owner finding
 
 The maintained harness creates and deletes its own synthetic lease fixture;
@@ -97,7 +121,7 @@ original process resumes, not a demonstrated private-SDK transcript corruption.
 | #1073 | Existing authorized dedicated Antigravity lane. |
 | #1068 | Append-only snapshot guidance exists; defer new advisory/removal contract pending explicit retention semantics and actual Pydantic AI flow/rollback/tool controls. |
 | #1011 | Respect owner hold on capped-stream recovery; abort diagnostics already delivered. Require explicit parity/failure-contract decision and both-mode live cap proof. |
-| #933, #917 | General CI flake reports remain unresolved. Multiple successful final suites do not establish cause or general resolution; preserve same-platform failing order/error capture and deterministic regression trigger. |
+| #933, #917 | One `/inflight` fixture failure is reproduced and corrected in #1237 as documented above; general CI flake reports remain unresolved. Multiple successful final suites do not establish general resolution; preserve same-platform failing order/error capture and deterministic regression trigger. |
 | #769 | Existing OpenClaw plugin present; new fingerprint requires sanitized affected fragment, versions/auth/model and still-failing same-window off/on/off control. |
 | #650 | Dispatch workflows exist but scoped sender credential remains missing; owner credential provisioning then sender→receiver dispatch proof. No secret generated or value printed. |
 

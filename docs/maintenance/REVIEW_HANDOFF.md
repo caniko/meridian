@@ -7,8 +7,9 @@ cherry-picked on fresh main `f443faee0` as `66d6d2cc`, with separate ping-report
 and independent-process probe corrections. [Evidence](evidence/1222-late-idle-deadline.md).
 Actual macOS/Linux OpenCode/Opus baseline false stalls and corrected
 receipts/resume pass, as do independent Node/Bun socket controls, all four E41
-modes and final local tests/typecheck/build. Final-head CI and integration
-remain gates; no merge claimed. #792 existing-account re-authentication now completed and its native
+modes and final local tests/typecheck/build. Integration is [#1241](https://github.com/rynfar/meridian/pull/1241); its live
+state and final-head check links are the authority for CI/merge disposition.
+Required final-head CI remains a merge gate. #792 existing-account re-authentication now completed and its native
 grant changed with the same profile mapping. The preview blanked at its
 localhost callback; replaying that original callback privately to the same
 server via 127.0.0.1 completed exchange. This is assisted callback evidence,

@@ -1,7 +1,9 @@
 # Frozen-proxy idle deadlines (#1222)
 
-Status: local and affected-flow validation pass; final-head CI and integration
-remain gates. No merge claimed.
+Disposition: accept with correction; local and affected-flow validation pass.
+Integration: [#1241](https://github.com/rynfar/meridian/pull/1241). Check its live
+state and final-head check links for the CI/merge disposition; this record
+escrows the reproducible behavior proof.
 Base: `f443faee0b135c5d4bfe1e6fe771c6a262ae5f33`.
 Source: `1bffa43fe95037df7ac3c32fb818d01a6c3877d5` by Nowaker
 (`spam@nowaker.net`), authored 2026-09-30T11:39:59Z, cherry-picked as

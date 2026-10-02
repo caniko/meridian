@@ -1,6 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import net from "node:net"
-import { createInterface } from "node:readline"
+import { resolve } from "node:path"
 
 const { guardUpstreamIdle, UpstreamIdleError, IDLE_DEADLINE_LATE_MS } = await import("../proxy/streamIdleGuard")
 import type { IdleGuardClock, LateIdleDeadline } from "../proxy/streamIdleGuard"
@@ -239,6 +238,25 @@ describe("guardUpstreamIdle", () => {
     expect(run.lates).toEqual([{ lateMs: 15_131, sinceLastMs: 105_131, resumed: false }])
   })
 
+  it("a late deadline permits queued completion even when its observer throws", async () => {
+    const src = makeSource<number>()
+    const clock = makeFakeClock()
+    const stalls: number[] = []
+    let observed = false
+    const done = (async () => {
+      for await (const _ of guardUpstreamIdle(src.iterable, 90_000, ms => stalls.push(ms), clock.clock, late => {
+        observed = late.resumed
+        throw new Error("late observer failed")
+      })) { throw new Error("completion must not produce a value") }
+    })()
+    await clock.waitForScheduled(1)
+    setImmediate(() => src.finish())
+    clock.advance(105_131)
+    await done
+    expect(observed).toBe(true)
+    expect(stalls).toEqual([])
+  })
+
   it("an on-time deadline stalls at once, without yielding for queued data", async () => {
     const src = makeSource<number>()
     const clock = makeFakeClock()
@@ -255,44 +273,28 @@ describe("guardUpstreamIdle", () => {
     expect(run.lates).toEqual([])
   })
 
-  it("a live socket stream survives the loop blocking inside another connection's handler", async () => {
-    const streamer = net.createServer((s) => {
-      let i = 0
-      const t = setInterval(() => s.write(`${i++}\n`), 50)
-      s.on("close", () => clearInterval(t))
-      s.on("error", () => {})
+  it("independent upstream progress survives a frozen consumer on real sockets", async () => {
+    const child = Bun.spawn([process.execPath, resolve(import.meta.dir, "../../scripts/e2e-late-idle-sockets.mjs")], {
+      cwd: resolve(import.meta.dir, "../.."),
+      env: { ...process.env, E2E_IDLE_GUARD_MODULE: resolve(import.meta.dir, "../proxy/streamIdleGuard.ts") },
+      stdout: "pipe", stderr: "pipe",
     })
-    const blockMs = IDLE_DEADLINE_LATE_MS + 500
-    const blocker = net.createServer((s) => {
-      s.on("data", () => {
-        const end = Date.now() + blockMs
-        while (Date.now() < end) { /* a synchronous fsync holding the loop */ }
-        s.end()
-      })
-    })
-    await new Promise<void>((r) => streamer.listen(0, "127.0.0.1", r))
-    await new Promise<void>((r) => blocker.listen(0, "127.0.0.1", r))
-    const port = (s: net.Server) => (s.address() as net.AddressInfo).port
-    const sock = net.connect(port(streamer), "127.0.0.1")
-    const lines = async function* () { for await (const l of createInterface({ input: sock })) yield l }
-
-    let got = 0
-    const lates: LateIdleDeadline[] = []
+    const timeout = setTimeout(() => child.kill(), 20_000)
     try {
-      for await (const _ of guardUpstreamIdle(lines(), 200, undefined, undefined, (late) => lates.push(late))) {
-        if (++got === 3) net.connect(port(blocker), "127.0.0.1").end("go")
-        if (got === 10) break
-      }
-    } finally {
-      sock.destroy()
-      streamer.close()
-      blocker.close()
-    }
-    expect(got).toBe(10)
-    expect(lates).toHaveLength(1)
-    expect(lates[0]!.resumed).toBe(true)
-    expect(lates[0]!.lateMs).toBeGreaterThan(IDLE_DEADLINE_LATE_MS)
-  }, 15_000)
+      const [stdout, stderr, code] = await Promise.all([
+        new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited,
+      ])
+      expect({ code, stderr }).toEqual({ code: 0, stderr: "" })
+      const rows = stdout.trim().split("\n").map(line => JSON.parse(line))
+      expect(rows.at(-1).result).toBe("PASS")
+      expect(rows.at(-1).independentUpstream).toBe(true)
+      expect(rows[0].count).toBe(12)
+      expect(rows[0].late[0].resumed).toBe(true)
+      expect(rows[2].mode).toBe("ping")
+      expect(rows[2].errorName).toBe("UpstreamIdleError")
+      expect(rows[2].late[0].resumed).toBe(false)
+    } finally { clearTimeout(timeout) }
+  }, 25_000)
 
   it("idleMs<=0 disables the guard (pure pass-through)", async () => {
     const src = makeSource<number>()

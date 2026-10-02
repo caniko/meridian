@@ -553,7 +553,7 @@ function plog(message: string): void {
 
 function logLateIdleDeadline(mode: string): (late: LateIdleDeadline) => void {
   return ({ lateMs, sinceLastMs, resumed }) => {
-    plog(`[PROXY] upstream idle deadline fired ${lateMs}ms late (sinceLastMs=${sinceLastMs}, limit=${UPSTREAM_IDLE_MS}ms): ${resumed ? "upstream data was waiting, stream continues" : "still silent, stalling"}`)
+    plog(`[PROXY] upstream idle deadline fired ${lateMs}ms late (sinceLastMs=${sinceLastMs}, limit=${UPSTREAM_IDLE_MS}ms): ${resumed ? "upstream progress or completion was waiting" : "no model progress observed after yielding"}`)
     claudeLog("upstream.idle_deadline_late", { mode, lateMs, sinceLastMs, resumed })
   }
 }

@@ -1772,7 +1772,7 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
         if (requestAbort.controller.signal.aborted || durableWritesRevoked) {
           throw new Error("Durable priority attempt was revoked before terminal finalization")
         }
-        if (!(await finalizePrioritySessionPublication(publication))) {
+        if (!(await finalizePrioritySessionPublication(publication, assertDurableWritesAllowed))) {
           // Publication is not terminal authority until its exact attempt claim
           // and rollback marker are removed together. Withhold terminal bytes.
           throw new Error("Durable priority attempt changed before terminal finalization")
@@ -3168,6 +3168,7 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
                 sourceSessionId,
                 managedForkSource!,
                 mappingExpectedGeneration ?? undefined,
+                assertDurableWritesAllowed,
               )
             }),
             admissionLifecycleOptions,
@@ -4771,25 +4772,26 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
                       () => inDurableOrder(async () => {
                         assertDurableWritesAllowed()
                         const stored = await storeSession(
-                    profileSessionId,
-                    lineageMessages,
-                    currentSessionId!,
-                    profileScopedCwd,
-                    reconcileReturnedSessionUuids(
-                      sdkUuidMap,
-                      allMessages.length,
-                      currentClientAssistantUuid,
-                      resumeSessionId,
-                      currentSessionId,
-                    ),
-                    lastUsage,
-                    earlyStopFired ? nextPassthroughToolCallAssistantUuid : null,
-                    earlyStopFired ? nextPassthroughToolCallIds : null,
-                    publicationTranscriptLocator(currentSessionId!),
-                    managedForkTarget?.sessionId === currentSessionId ? managedForkSource : undefined,
-                    mappingExpectedGeneration,
-                    options.priorityPublication,
-                      )
+                          profileSessionId,
+                          lineageMessages,
+                          currentSessionId!,
+                          profileScopedCwd,
+                          reconcileReturnedSessionUuids(
+                            sdkUuidMap,
+                            allMessages.length,
+                            currentClientAssistantUuid,
+                            resumeSessionId,
+                            currentSessionId,
+                          ),
+                          lastUsage,
+                          earlyStopFired ? nextPassthroughToolCallAssistantUuid : null,
+                          earlyStopFired ? nextPassthroughToolCallIds : null,
+                          publicationTranscriptLocator(currentSessionId!),
+                          managedForkTarget?.sessionId === currentSessionId ? managedForkSource : undefined,
+                          mappingExpectedGeneration,
+                          options.priorityPublication,
+                          assertDurableWritesAllowed,
+                        )
                         if (stored) {
                           mappingExpectedGeneration = stored
                           if (managedForkTarget?.sessionId === currentSessionId) managedForkPublished = true
@@ -5991,24 +5993,25 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
                     () => inDurableOrder(async () => {
                       assertDurableWritesAllowed()
                       const stored = await storeSession(
-                    profileSessionId,
-                    lineageMessages,
-                    currentSessionId!,
-                    profileScopedCwd,
-                    reconcileReturnedSessionUuids(
-                      sdkUuidMap,
-                      allMessages.length,
-                      currentClientAssistantUuid,
-                      resumeSessionId,
-                      currentSessionId,
-                    ),
-                    lastUsage,
-                    earlyStopFired ? nextPassthroughToolCallAssistantUuid : null,
-                    earlyStopFired ? nextPassthroughToolCallIds : null,
-                    publicationTranscriptLocator(currentSessionId!),
-                    managedForkTarget?.sessionId === currentSessionId ? managedForkSource : undefined,
-                    mappingExpectedGeneration,
-                    options.priorityPublication,
+                        profileSessionId,
+                        lineageMessages,
+                        currentSessionId!,
+                        profileScopedCwd,
+                        reconcileReturnedSessionUuids(
+                          sdkUuidMap,
+                          allMessages.length,
+                          currentClientAssistantUuid,
+                          resumeSessionId,
+                          currentSessionId,
+                        ),
+                        lastUsage,
+                        earlyStopFired ? nextPassthroughToolCallAssistantUuid : null,
+                        earlyStopFired ? nextPassthroughToolCallIds : null,
+                        publicationTranscriptLocator(currentSessionId!),
+                        managedForkTarget?.sessionId === currentSessionId ? managedForkSource : undefined,
+                        mappingExpectedGeneration,
+                        options.priorityPublication,
+                        assertDurableWritesAllowed,
                       )
                       if (stored) {
                         mappingExpectedGeneration = stored
@@ -6325,18 +6328,19 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
                     () => inDurableOrder(async () => {
                       assertDurableWritesAllowed()
                       const stored = await storeSession(
-                    profileSessionId,
-                    lineageMessages,
-                    recoverySessionId!,
-                    profileScopedCwd,
-                    recoverySdkUuidMap,
-                    lastUsage,
-                    recoveryToolCallAssistantUuid ?? null,
-                    recoveryToolCallAssistantUuid ? [...recoveryEarlyStop.expected] : null,
-                    recoveryForkTarget,
-                    recoveryForkSource,
-                    mappingExpectedGeneration,
-                    options.priorityPublication,
+                        profileSessionId,
+                        lineageMessages,
+                        recoverySessionId!,
+                        profileScopedCwd,
+                        recoverySdkUuidMap,
+                        lastUsage,
+                        recoveryToolCallAssistantUuid ?? null,
+                        recoveryToolCallAssistantUuid ? [...recoveryEarlyStop.expected] : null,
+                        recoveryForkTarget,
+                        recoveryForkSource,
+                        mappingExpectedGeneration,
+                        options.priorityPublication,
+                        assertDurableWritesAllowed,
                       )
                       if (stored) {
                         mappingExpectedGeneration = stored
@@ -7062,24 +7066,25 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
                     () => inDurableOrder(async () => {
                       assertDurableWritesAllowed()
                       const stored = await storeSession(
-                    profileSessionId,
-                    lineageMessages,
-                    currentSessionId!,
-                    profileScopedCwd,
-                    reconcileReturnedSessionUuids(
-                      sdkUuidMap,
-                      allMessages.length,
-                      currentClientAssistantUuid,
-                      resumeSessionId,
-                      currentSessionId,
-                    ),
-                    lastUsage,
-                    nextPassthroughToolCallAssistantUuid!,
-                    nextPassthroughToolCallIds!,
-                    publicationTranscriptLocator(currentSessionId!),
-                    managedForkTarget?.sessionId === currentSessionId ? managedForkSource : undefined,
-                    mappingExpectedGeneration,
-                    options.priorityPublication,
+                        profileSessionId,
+                        lineageMessages,
+                        currentSessionId!,
+                        profileScopedCwd,
+                        reconcileReturnedSessionUuids(
+                          sdkUuidMap,
+                          allMessages.length,
+                          currentClientAssistantUuid,
+                          resumeSessionId,
+                          currentSessionId,
+                        ),
+                        lastUsage,
+                        nextPassthroughToolCallAssistantUuid!,
+                        nextPassthroughToolCallIds!,
+                        publicationTranscriptLocator(currentSessionId!),
+                        managedForkTarget?.sessionId === currentSessionId ? managedForkSource : undefined,
+                        mappingExpectedGeneration,
+                        options.priorityPublication,
+                        assertDurableWritesAllowed,
                       )
                       if (stored) {
                         mappingExpectedGeneration = stored

@@ -184,6 +184,7 @@ function stateFromSharedSession(
 /** Drop rollback authority only after the response terminal is irrevocable. */
 export async function finalizePrioritySessionPublication(
   publication: PrioritySessionPublication,
+  beforePublish?: () => void,
 ): Promise<boolean> {
   const rollback = publication.rollback
   if (!rollback) return true
@@ -196,7 +197,7 @@ export async function finalizePrioritySessionPublication(
       ? undefined
       : rollback.previousAssignment?.mappingKey,
     attemptOwnerToken: publication.attemptOwnerToken,
-  })
+  }, beforePublish)
   if (!finalized) return false
   publication.rollback = undefined
   return true
@@ -450,6 +451,7 @@ export async function storeSession(
   sourceTranscript?: { sessionId: string; configDir: string; projectDir?: string },
   expectedGeneration?: StoredSessionGeneration | null,
   priorityPublication?: PrioritySessionPublication,
+  beforePublish?: () => void,
 ): Promise<StoredSessionGeneration | false> {
   if (!claudeSessionId) return false
   const lineageHash = computeLineageHash(messages)
@@ -504,7 +506,7 @@ export async function storeSession(
         lastHumanTurnIssuedAt: priorityPublication.lastHumanTurnIssuedAt,
         expectedAssignmentGeneration: priorityPublication.expectedAssignmentGeneration,
       },
-    })
+    }, beforePublish)
     if (!published) return false
     priorityPublication.rollback = {
       key,
@@ -531,6 +533,7 @@ export async function storeSession(
       currentTranscript,
       sourceTranscript,
       expectedGeneration,
+      beforePublish,
     )
   }
   if (!storedGeneration) return false

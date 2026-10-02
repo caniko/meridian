@@ -804,6 +804,7 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
   }
   sessionGcOptions.pinProvider = collectSessionGcPins
 
+  const profileCopyPruningEnabled = envBool("SESSION_PROFILE_COPY_PRUNE")
   const profileCopyGraceMs = Math.max(0, envInt("SESSION_PROFILE_COPY_GRACE_MS", DEFAULT_PROFILE_COPY_GRACE_MS))
   const pruneSupersededProfileCopies = async (): Promise<void> => {
     try {
@@ -829,7 +830,7 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
   const sweepSessionGc = (): Promise<void> => {
     if (sessionGcRunning) return sessionGcRunning
     sessionGcRunning = (async () => {
-      await pruneSupersededProfileCopies()
+      if (profileCopyPruningEnabled) await pruneSupersededProfileCopies()
       const result = await runSessionGc(collectSessionGcPins(), sessionGcOptions)
       if (result.deleted || result.notFound || result.failed) {
         claudeLog("session.gc", { ...result })

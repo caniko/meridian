@@ -63,7 +63,7 @@ const polling = setInterval(async () => {
   if (!probeUrl || !pendingDiskWaits) return
   try {
     const response = await fetch(probeUrl + '/livez', {signal: AbortSignal.timeout(1000)})
-    if (response.status === 200 && await response.text() === 'ok') { if (pendingDiskWaits) responsiveProbes++ }
+    if (response.status === 200 && (await response.text()).trim() === 'ok') { if (pendingDiskWaits) responsiveProbes++ }
   } catch (error) { failedProbes++ }
 }, 10)
 const { startProxyServer } = await import('../dist/server.js')

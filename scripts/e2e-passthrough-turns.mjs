@@ -238,7 +238,7 @@ say(`  active fork ${activeSessionId ?? "missing"}: ${activeHistoryVerdict}`)
 say(`  prompt cache: ${cacheMisses.length ? cacheMisses.join("; ") + "   <-- PREFIX LOST" : "every continuation read the prior cached prefix"}`)
 if (!activeSessionId) say("  no published session was found — inconclusive")
 if (activeMessages.length === 0) say("  supported getSessionMessages() returned no active history")
-const pass = quotes.length === 3 &&
+export const pass = quotes.length === 3 &&
   !claimsUnanswered &&
   delivered.size === 3 &&
   toolShapeOk &&
@@ -254,4 +254,4 @@ if (!pass) {
 }
 
 await inst.close()
-process.exit(pass ? 0 : 1)
+if (import.meta.main) process.exit(pass ? 0 : 1)

@@ -1,0 +1,139 @@
+{
+  "controlledDiskWaits": [
+    {
+      "result": "PASS",
+      "expectResponsive": false,
+      "delayMs": 400,
+      "worstTimerLagMs": 406.0776250000017,
+      "heldPublications": 6,
+      "responsiveProbes": 0,
+      "failedProbes": 0,
+      "platform": "darwin/arm64",
+      "bun": "1.3.14",
+      "opencode": "1.18.34",
+      "sdk": "0.2.141",
+      "claudeCode": "2.1.284",
+      "model": "claude-opus-5-5",
+      "firstExit": 0,
+      "continuedExit": 0,
+      "firstHasSession": true,
+      "toolCalls": 1,
+      "firstReceipt": true,
+      "continuedReceipt": true,
+      "allQueriesUseNewAccount": true,
+      "servedModels": [
+        "claude-opus-5-5"
+      ],
+      "realSdkQueries": 4,
+      "resumed": true,
+      "scrub": "0.2.3",
+      "case": "mac-baseline-client"
+    },
+    {
+      "result": "PASS",
+      "expectResponsive": true,
+      "delayMs": 400,
+      "worstTimerLagMs": 0,
+      "heldPublications": 6,
+      "responsiveProbes": 213,
+      "failedProbes": 0,
+      "platform": "darwin/arm64",
+      "bun": "1.3.14",
+      "opencode": "1.18.34",
+      "sdk": "0.2.141",
+      "claudeCode": "2.1.284",
+      "model": "claude-opus-5-5",
+      "firstExit": 0,
+      "continuedExit": 0,
+      "firstHasSession": true,
+      "toolCalls": 1,
+      "firstReceipt": true,
+      "continuedReceipt": true,
+      "allQueriesUseNewAccount": true,
+      "servedModels": [
+        "claude-opus-5-5"
+      ],
+      "realSdkQueries": 4,
+      "resumed": true,
+      "scrub": "0.2.3",
+      "case": "mac-fixed-client"
+    },
+    {
+      "result": "PASS",
+      "expectResponsive": false,
+      "delayMs": 400,
+      "worstTimerLagMs": 409.31590100000176,
+      "heldPublications": 6,
+      "responsiveProbes": 0,
+      "failedProbes": 0,
+      "platform": "linux/arm64",
+      "bun": "1.4.2",
+      "opencode": "1.18.34",
+      "sdk": "0.2.141",
+      "claudeCode": "2.1.284",
+      "model": "claude-opus-5-5",
+      "firstExit": 0,
+      "continuedExit": 0,
+      "firstHasSession": true,
+      "toolCalls": 1,
+      "firstReceipt": true,
+      "continuedReceipt": true,
+      "allQueriesUseNewAccount": true,
+      "servedModels": [
+        "claude-opus-5-5"
+      ],
+      "realSdkQueries": 4,
+      "resumed": true,
+      "scrub": "0.2.3",
+      "case": "linux-baseline-client"
+    },
+    {
+      "result": "PASS",
+      "expectResponsive": true,
+      "delayMs": 400,
+      "worstTimerLagMs": 0,
+      "heldPublications": 6,
+      "responsiveProbes": 208,
+      "failedProbes": 0,
+      "platform": "linux/arm64",
+      "bun": "1.4.2",
+      "opencode": "1.18.34",
+      "sdk": "0.2.141",
+      "claudeCode": "2.1.284",
+      "model": "claude-opus-5-5",
+      "firstExit": 0,
+      "continuedExit": 0,
+      "firstHasSession": true,
+      "toolCalls": 1,
+      "firstReceipt": true,
+      "continuedReceipt": true,
+      "allQueriesUseNewAccount": true,
+      "servedModels": [
+        "claude-opus-5-5"
+      ],
+      "realSdkQueries": 4,
+      "resumed": true,
+      "scrub": "0.2.3",
+      "case": "linux-fixed-client"
+    }
+  ],
+  "inputCaptureRegression": {
+    "source": "9 pass / 1 fail; modified caller values were written",
+    "corrected": "10 pass / 0 fail"
+  },
+  "revokedPublicationRegression": {
+    "source": "canceled mapping renamed, then compensating eviction: 2 publications",
+    "corrected": "request-cancel and forced-shutdown: 0 publications"
+  },
+  "unresolvedE41": {
+    "mode": "chain/nonstream",
+    "previousCacheRead": 3132,
+    "previousCacheCreate": 3461,
+    "nextCacheRead": 3132,
+    "minimumRead": 6263.35,
+    "toolHistory": "exactly one real answer per delivered call",
+    "laterFourModes": "PASS",
+    "unchangedMainControls": "two PASS; failed-before cache case not reproduced on main",
+    "disposition": "unexplained; acceptance gate remains open"
+  }
+}

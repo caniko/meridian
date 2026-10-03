@@ -1,10 +1,11 @@
 # OpenCode transient prefill recovery — #1242
 
 Source [#1242](https://github.com/rynfar/meridian/pull/1242) at
-`a2408b82ca4c05e8ed1c770b1ac72615ef1bdd85` is incorporated from main
-`d57388724a242116f123ff75b88fd2be2846abe3` as `6912ec9f`, preserving
+`a2408b82ca4c05e8ed1c770b1ac72615ef1bdd85` was initially incorporated from main
+`d57388724a242116f123ff75b88fd2be2846abe3` as `6912ec9f`, then rebased
+onto main `802d9398f609eb49b4c93fe34c306b872ebeb647` as `37ade6ab`, preserving
 Nowaker <spam@nowaker.net> and AuthorDate 2026-10-01T19:43:01Z.
-Maintainer correction `f11c355b` narrows recognition to the actual trailing
+Maintainer correction `f11c355b` (rebased as `a42c696e`) narrows recognition to the actual trailing
 shape: one exact recovery text block after only tool-result blocks, after
 recognized transient hooks are removed.
 
@@ -71,3 +72,22 @@ Standalone typecheck/build pass. All four maintained E41 chain/parallel ×
 JSON/SSE gates, final-head checks and CI results are recorded in the integration
 PR before acceptance. The E41 assertions remain unchanged, including cache
 continuity and supported SDK active-history inspection.
+
+
+## Broader controls and base refresh
+
+All four unchanged E41 modes pass on native Sonnet 4.6 with the same owned
+account: chain JSON, chain SSE, parallel JSON and parallel SSE. They verify
+exact tool batches, distinct durable forks, exactly one real result per
+delivered call in supported SDK history, and full prior-prefix cache reuse.
+The final maintained client harness run, including joined child cleanup,
+passes with four actual recovery rounds, zero replays, six native queries and
+four resumes. The number of model-driven rounds is observed rather than fixed;
+the tool receipt, activation, actual wire shape and absence of replays are
+asserted.
+
+After test-only integration #1247 merged, this branch rebased onto `802d9398f`.
+The adapter and product code are identical to the live-tested tree; the base
+adds test isolation and its executor-ready fixture correction. Author/AuthorDate
+are still preserved. Fresh full local gates and final-head CI must pass on the
+rebased integration before landing.

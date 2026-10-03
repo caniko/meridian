@@ -28,13 +28,16 @@ large-replay evidence gate remains and draft status is no longer a blocker.
   300 ms delayed real gate fsync; worker-ready preceded asynchronous publication.
   Maintainer commit `c1a345e2` adds actual-executor startup and controlled-release
   handshakes. Delayed control and all five lifecycle process tests pass.
-  Corrected full local gates and final-head CI are pending. Do not close source
-  #1240/#1239 until delivery, exact source head and human credit are verified.
+  Corrected full local gates pass 5,125 / 0 fail / 4 skips across 17 stages,
+  typecheck/build pass, and all ten executed final CI checks pass. Merged as
+  `802d9398f609eb49b4c93fe34c306b872ebeb647`; merged tree exactly equals the
+  validated head and its human co-author trailer is verified. Unchanged source
+  #1240 is closed; #1239 closed through the validated integration.
   [Durable evidence](evidence/1240-replay-budget-isolation.md).
 - **#1242:** accept with narrowing correction, pending remaining gates.
   Source `a2408b82ca4c05e8ed1c770b1ac72615ef1bdd85` → authored cherry
-  `6912ec9f` (Nowaker / original authored date retained). Maintainer correction
-  `f11c355b` preserves recovery wording before a tool result or beside meaningful
+  `6912ec9f`, now rebased as `37ade6ab` (Nowaker / original authored date
+  retained). Maintainer correction `f11c355b`, now `a42c696e`, preserves recovery wording before a tool result or beside meaningful
   user text; recognize only the actual synthetic tail. Source regression control
   16 pass / 1 fail → corrected 18/18. Draft integration
   [#1248](https://github.com/rynfar/meridian/pull/1248), worktree
@@ -45,9 +48,11 @@ large-replay evidence gate remains and draft status is no longer a blocker.
   three actual tool recovery rounds caused two replays on unchanged `d57388724`
   and zero replays after the fix; both return the tool receipt and join cleanup.
   Source + correction full local npm test 5,130 pass / 0 fail / 4 skips,
-  typecheck/build pass. E41 chain JSON/SSE and parallel JSON pass unchanged
-  cache/history assertions; parallel SSE/final CI pending. If #1247 lands first,
-  rebase onto fresh main and rerun appropriate final gates before landing.
+  typecheck/build pass. All four E41 chain/parallel JSON/SSE modes pass
+  unchanged cache/history assertions. Final client harness also passes joined
+  cleanup with four observed recovery rounds / zero replays. Rebased onto
+  test-only main `802d9398f`; product code equals the live-tested tree. Fresh
+  full local gates and exact final-head CI remain pending before landing.
   [Durable evidence and maintained harness](evidence/1242-opencode-prefill-lineage.md).
 - **#1243 `6558c209f8bddf8e59b554d16c9834381c7817c2`:** queued, not yet fully
   reviewed; contributor explicitly stacks its SQLite store/journal migration

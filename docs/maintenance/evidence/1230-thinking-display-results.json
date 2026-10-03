@@ -866,5 +866,75 @@
         "receiptDelivered": true
       }
     }
+  ],
+  "framingFailureControls": [
+    {
+      "case": "mac-baseline-summarized-framing-control",
+      "result": "FAILED_RECEIPT_ASSERTION",
+      "observation": {
+        "wire": [
+          {
+            "thinking": {
+              "type": "disabled"
+            },
+            "model": "claude-sonnet-5",
+            "client": "claude-cli/2.1.287 (external, cli)",
+            "stream": true,
+            "messageRoles": [
+              "user"
+            ],
+            "status": 200,
+            "errorEvent": false,
+            "receipt": false,
+            "unsupportedDisplay": false,
+            "aborted": false
+          },
+          {
+            "thinking": {
+              "type": "adaptive",
+              "display": "summarized"
+            },
+            "model": "claude-sonnet-5",
+            "client": "claude-cli/2.1.287 (external, cli)",
+            "stream": true,
+            "messageRoles": [
+              "user",
+              "system"
+            ],
+            "status": 200,
+            "errorEvent": false,
+            "receipt": false,
+            "unsupportedDisplay": false,
+            "aborted": false
+          }
+        ],
+        "queries": [
+          {
+            "thinking": {
+              "type": "disabled"
+            },
+            "credentialDirectoryMatched": true,
+            "promptReceiptInsideHistory": false,
+            "models": [
+              "claude-sonnet-5"
+            ]
+          },
+          {
+            "thinking": {
+              "type": "adaptive",
+              "display": "summarized"
+            },
+            "credentialDirectoryMatched": true,
+            "promptReceiptInsideHistory": true,
+            "models": [
+              "claude-sonnet-5"
+            ]
+          }
+        ],
+        "nativeModels": [
+          "claude-sonnet-5"
+        ]
+      }
+    }
   ]
 }

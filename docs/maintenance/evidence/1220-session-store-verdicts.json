@@ -141,6 +141,22 @@
       "source": "PASS",
       "nativeThinkingBlocks": 0,
       "causality": "not reproduced; original failure remains unresolved"
+    },
+    "publishedThinkingMessage": {
+      "cacheRead": 0,
+      "cacheCreation": 3332,
+      "nextCacheRead": 3132,
+      "difference": 200,
+      "minimumReadAtUnchanged95PercentFloor": 3165.4
+    },
+    "accountingFinding": "HTTP aggregate prefix 6593 exceeds published assistant prefix 3332; aggregation explains the large overstatement but not the remaining 200-token difference",
+    "maxEffortControls": {
+      "budget": 8192,
+      "effort": "max",
+      "main": "PASS, native thinking present",
+      "source": "PASS, native thinking present",
+      "lateThinkingSource": "PASS, native thinking on third read",
+      "causality": "no retry/usage inflation reproduced; acceptance remains open"
     }
   },
   "finalRealClientCancellation": [
@@ -230,5 +246,19 @@
     "typecheck": "PASS",
     "build": "PASS",
     "linuxFocusedPass": 42
+  },
+  "ownerContractApproval": {
+    "issue": 1244,
+    "date": "2026-10-02",
+    "decision": "Approve asynchronous cleanup",
+    "signature": "clearSessionCache(): Promise<void>"
+  },
+  "desktopTimeoutFinding": {
+    "ciRun": 37066762917,
+    "failure": "first lifecycle test killed by default 5000ms test deadline",
+    "slowRealChildMs": 6000,
+    "before": "FAIL: 5000ms timeout",
+    "after": "PASS: 12312.73ms with explicit 20000ms deadline",
+    "desktopSuite": "21 pass / 0 fail"
   }
 }

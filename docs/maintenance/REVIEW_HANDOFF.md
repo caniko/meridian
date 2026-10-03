@@ -22,15 +22,26 @@ HTTP/socket closure during the held write; a plain server without Meridian
 reproduces it, while Node 22 and Bun 1.4.2 observe close. Keep that older-runtime
 limitation explicit; do not claim to have fixed it or upgraded the owner's Bun.
 
-Acceptance gates remain: owner approval for the exported asynchronous
-`clearSessionCache(): Promise<void>` completion contract, tracked in
-[#1244](https://github.com/rynfar/meridian/issues/1244); unexplained cache-prefix
-failure from an earlier sequential E41 thinking/tool turn; exact final-head CI.
-The reviewable contract question was sent to the owner; elapsed time is not
-approval. Two ordinary main controls passed, which does not resolve the cache
+Owner explicitly approved the exported asynchronous
+`clearSessionCache(): Promise<void>` completion contract on 2026-10-02:
+“Approve asynchronous cleanup”, tracked in
+[#1244](https://github.com/rynfar/meridian/issues/1244). Acceptance gates remain:
+unexplained cache-prefix failure from an earlier sequential E41 thinking/tool
+turn and exact final-head CI. Two ordinary main controls passed, which does not resolve the cache
 failure. Native usage tracing and an explicit-thinking-budget main/source control passed,
 but produced no thinking block and did not reproduce the cache failure. Retain
 those limits and do not waive or weaken the cache check.
+Recovered the original published thinking message through supported SDK history:
+cache read 0 / creation 3,332 versus HTTP aggregate read 3,132 / creation 3,461.
+This explains the large accounting overstatement, but the next read 3,132 still
+falls 200 tokens below the published prefix and below its unchanged 95% floor.
+Max-effort main/source and late-third-read thinking controls passed with native
+thinking; inflated accounting was not reproduced. New maintained history-usage
+probe and retry/message-start tracing preserve the causal investigation.
+Final-head Ubuntu desktop CI hit a five-second real-child test timeout; a
+six-second child control reproduces it. Explicit 20-second budget (matching
+neighboring lifecycle tests) passes the same two-start control in 12.3 seconds,
+and the normal desktop suite passes 21/0. No product startup deadline changed.
 All six executed checks passed on proof head `b5dc3fb0`; later proof/handoff
 commits require their own final-head CI. #1220 remains open, #1245 stays draft.
 No merge, source closure, release or community comments in this ticket.

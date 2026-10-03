@@ -110,6 +110,7 @@ async function send(messages) {
       ...(PI ? { "x-meridian-agent": "pi", "x-session-affinity": sessionId, "user-agent": "pi/0.85.0" }
         : { "x-opencode-session": sessionId, "user-agent": "opencode/1.0.0" }) },
     body: JSON.stringify({ model: MODEL, max_tokens: 2048, stream: STREAM, tools: [READ_TOOL], messages,
+      ...(process.env.PROBE_EFFORT ? { output_config: { effort: process.env.PROBE_EFFORT } } : {}),
       ...(process.env.PROBE_THINKING_BUDGET ? { thinking: { type: "enabled", budget_tokens: Number(process.env.PROBE_THINKING_BUDGET) } } : {}) }),
   })
 }
@@ -131,6 +132,8 @@ const messages = [{
       `Make exactly one read call per step, never in parallel, and once you have all three ` +
       `reply with the three contents on one line and nothing else.`,
 }]
+if (process.env.PROBE_LATE_THINKING === "1") messages[0].content +=
+  " Do not analyze anything before the first two reads. After the second result, privately work out 29 times 37 before reading the third file."
 
 const delivered = new Set()
 const continuationPrefixes = []

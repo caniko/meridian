@@ -1,9 +1,9 @@
 # Asynchronous session-store writes (#1220)
 
 Integration: [draft #1245](https://github.com/rynfar/meridian/pull/1245).
-Disposition: draft integration with maintainer corrections. Owner contract
-decision [#1244](https://github.com/rynfar/meridian/issues/1244), unexplained
-E41 cache-prefix evidence and final-head CI remain acceptance gates. Source
+Disposition: draft integration with maintainer corrections. The owner approved asynchronous
+cleanup in [#1244](https://github.com/rynfar/meridian/issues/1244) on 2026-10-02.
+Unexplained E41 cache-prefix evidence and final-head CI remain acceptance gates. Source
 #1220 stays open. No merge, release or production outage-rate claim.
 
 Base `d57388724a242116f123ff75b88fd2be2846abe3`; refreshed source
@@ -22,10 +22,9 @@ the store. Arrival snapshots wait for already-started same-process mutations.
 Synchronous reads, parsing/serialization and exceptional dead-owner recovery
 remain; this does not remove every possible event-loop stall.
 
-The package exports `clearSessionCache()`. Its proposed signature changes from
+The package exports `clearSessionCache()`. Its approved signature changes from
 synchronous completion to `Promise<void>`, requiring callers to await cleanup.
-No fire-and-forget compatibility shim is claimed. #1244 records the concrete
-choice; creating that issue does not supply owner approval. All in-repository
+No fire-and-forget compatibility shim is claimed. #1244 records the owner's explicit 2026-10-02 approval: “Approve asynchronous cleanup”. All in-repository
 callers are migrated. HTTP shapes, profile/session headers and file format are
 unchanged.
 
@@ -132,6 +131,27 @@ so that run did not reproduce the failed thinking case. Optional
 `E2E_USAGE_TRACE=1` now emits only native message type/content types/token counts
 for future causality work; it contains no generated text or credentials.
 
+The original failed fixture was recovered using its recorded Meridian store
+locator and supported `getSessionMessages()` calls, without reading private
+SDK files. The published thinking/tool message records cache read 0 / creation
+3,332; its HTTP response records aggregate read 3,132 / creation 3,461 (6,593
+combined). Thus the aggregate response overstates the published prompt prefix.
+The next turn reads 3,132: a remaining 200-token difference from the published
+3,332, still below the unchanged 95% floor (3,165.4). This explains the large
+accounting discrepancy, **not the entire failure**; acceptance remains open.
+A retry or altered transient prompt is a hypothesis, not a proven cause.
+
+`scripts/e2e-session-store-history-usage.mjs` escrows recovery through the
+supported API; provide the fixture's recorded `CLAUDE_CONFIG_DIR`,
+`E2E_HISTORY_DIR` and comma-separated `E2E_HISTORY_SESSIONS`. It asserts history
+exists and emits only message IDs, content types and token counts. Empty history
+from the wrong config scope is inconclusive. The live wrapper additionally
+observes native message-start counters and API retry metadata. Max-effort /
+8,192-budget source and unchanged-main controls emitted real thinking and
+passed; a source `PROBE_LATE_THINKING=1` control also emitted thinking on the
+third read and passed. None reproduced the inflated accounting. Keep the 95%
+assertion and the unresolved gate.
+
 ```sh
 E2E_PROFILE_CLAUDE_DIR=/owned/native-credential-directory \
 PROBE_PORT=3531 bun scripts/e2e-session-store-turns.mjs
@@ -147,3 +167,18 @@ All six executed checks passed on proof head `b5dc3fb0`, including
 [test](https://github.com/rynfar/meridian/actions/runs/37065486456/job/111032146330),
 Windows smoke, both desktop builds and Docker smoke/build-push. Any later proof
 commit still requires final-head CI; no merge gate is waived.
+
+## Final-head desktop CI correction
+
+[Ubuntu desktop run 37066762917](https://github.com/rynfar/meridian/actions/runs/37066762917/job/111036471608)
+failed because the first real-child lifecycle test used Bun's default five-second
+deadline. The runner killed its child at 5,108 ms during startup; the reported
+initialization error followed that kill. It did not execute session-store code:
+the child serves a temporary fixture CLI. This test starts two children and
+checks an intentional unsupported-provider refusal. Give it the same explicit
+20-second test budget as neighboring multi-start lifecycle tests, without
+changing application startup/health deadlines or assertions. A real six-second
+child-start control fails at 5,000 ms with the old deadline and passes in
+12,312.73 ms with the corrected deadline. The ordinary desktop suite passes
+21 tests / 0 failures. The failed CI run and control evidence remain recorded;
+no unexplained rerun or check bypass is used.

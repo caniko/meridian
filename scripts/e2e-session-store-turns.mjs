@@ -36,17 +36,24 @@ prototype.sync = async function () {
   return realSync.call(this)
 }
 const realQuery = sdk.query
-const usageTrace = []
+const usageTrace = [], completedSessions = []
 const queryObserver = spyOn(sdk, 'query').mockImplementation(input => {
   queries++
   const query = queries
+  if (process.env.E2E_USAGE_TRACE === '1') usageTrace.push({ query, type: 'options', thinking: input.options?.thinking, effort: input.options?.effort })
   if (input.options?.env?.CLAUDE_CONFIG_DIR === credentials) credentialMatches++
   return observeSdkModels(realQuery(input), servedModels, message => {
+    if (message.type === 'system' && message.subtype === 'api_retry') usageTrace.push({ query, type: 'api_retry', attempt: message.attempt, delayMs: message.retry_delay_ms, status: message.error_status })
     const usage = message.type === 'assistant' ? message.message?.usage
-      : message.type === 'result' ? message.usage : undefined
+      : message.type === 'result' ? message.usage
+      : message.type === 'stream_event' && message.event?.type === 'message_start' ? message.event.message?.usage : undefined
+    if (message.type === 'result' && message.session_id) completedSessions.push({ query, id: message.session_id, directory: input.options?.cwd })
     if (usage) usageTrace.push({ query, type: message.type,
       contentTypes: message.type === 'assistant' ? message.message?.content?.map(block => block.type) : undefined,
-      input: usage.input_tokens, cacheRead: usage.cache_read_input_tokens, cacheCreation: usage.cache_creation_input_tokens })
+      input: usage.input_tokens, cacheRead: usage.cache_read_input_tokens, cacheCreation: usage.cache_creation_input_tokens, output: usage.output_tokens,
+      subtype: message.type === 'result' ? message.subtype : undefined,
+      messageId: message.type === 'assistant' ? message.message?.id : undefined,
+      iterations: usage.iterations })
   })
 })
 const timer = setInterval(() => { if (waiting) ticksDuringWrites++ }, 10)
@@ -60,9 +67,20 @@ try {
     allQueriesUseOwnedAccount: true, servedModels: [...servedModels], platform: `${process.platform}/${process.arch}`, bun: Bun.version,
     stream: process.argv.includes('--stream'), parallel: process.env.PROBE_PARALLEL === '1' }))
 } finally {
-  if (process.env.E2E_USAGE_TRACE === '1') console.info(JSON.stringify({ phase: 'sdk-usage', usageTrace }))
   clearInterval(timer)
   prototype.sync = realSync
   openObserver.mockRestore()
   queryObserver.mockRestore()
+  if (process.env.E2E_USAGE_TRACE === '1') {
+    console.info(JSON.stringify({ phase: 'sdk-usage', usageTrace }))
+    // Supported SDK history only; emit metadata/counters, never model text.
+    for (const session of completedSessions) {
+      const history = await sdk.getSessionMessages(session.id, { dir: session.directory })
+      const assistants = history.filter(row => row.type === 'assistant').map(row => ({
+        messageId: row.message?.id, contentTypes: row.message?.content?.map(block => block.type),
+        input: row.message?.usage?.input_tokens, cacheRead: row.message?.usage?.cache_read_input_tokens,
+        cacheCreation: row.message?.usage?.cache_creation_input_tokens, output: row.message?.usage?.output_tokens }))
+      console.info(JSON.stringify({ phase: 'supported-history-usage', query: session.query, assistants }))
+    }
+  }
 }

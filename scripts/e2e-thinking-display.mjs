@@ -8,9 +8,9 @@
 // only summarized/omitted/highlights and exited 1 before the turn started, so
 // every such request failed with `sdk_termination reason=process_exit exit=1`.
 //
-// The interactive client cannot be driven headlessly (`claude -p` sends
-// `display: "omitted"`), so this gate posts that client's request shape
-// directly: Claude Code User-Agent and `metadata.user_id`, streamed, with the
+// Print mode (`claude -p`) sends `display: "omitted"`, so this gate posts
+// the interactive request shape directly. e2e-thinking-display-interactive.mjs
+// drives the actual interactive client in a PTY. This HTTP gate uses: Claude Code User-Agent and `metadata.user_id`, streamed, with the
 // offending thinking config. Everything after the HTTP boundary is real.
 //
 //   bun scripts/e2e-thinking-display.mjs

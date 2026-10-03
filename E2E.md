@@ -1018,7 +1018,7 @@ curl -s -X PUT -H 'Content-Type: application/json' -d '{"checkForUpdates":false}
 | E66 | [Interrupted turn after a settled checkpoint](#e66-interrupted-turn-after-a-settled-checkpoint) | **Automated, real proxy + SDK + Claude Max**: `bun scripts/e2e-checkpoint-interrupted-turn.mjs`. An OpenCode-keyed tool round whose complete result is followed by a partial assistant turn (what a dropped stream leaves) must resume the stored session; a result for an unknown call is the negative control and must still take the fresh replay. **Run before releases touching the passthrough early-stop checkpoint or checkpoint replay** | 2026-09-26 |
 | E67 | [OpenCode V2 interrupted tool turn](#e67-opencode-v2-interrupted-tool-turn) | **Actual OpenCode 2.0.16 client and Meridian V2 plugin, real SDK/model**: `E2E_OPENCODE_BIN=/path/to/opencode E2E_PLUGIN_PATH=/path/to/opencode-scrub/dist/index.js bun scripts/e2e-opencode-checkpoint-fault.mjs`. Inject one partial SSE failure after the real client tool call; require the client's exact retry shape and SDK resume, plus a same-session recovery. **Run before releases touching keyed checkpoint recovery** | 2026-09-26 |
 | E68 | [OpenCode V2 user-invoked skill](#e68-opencode-v2-user-invoked-skill) | **Actual OpenCode V2 server, real SDK/model**: `E2E_OPENCODE_BIN=/path/to/opencode E2E_PLUGIN_PATH=/path/to/opencode-scrub/dist/index.js bun scripts/e2e-opencode-skill-content.mjs`. A skill invoked with no typed text must reach the SDK prompt inside `<skill_content>` and drive the reply. **Run before releases touching user-text sanitization** | 2026-09-27 |
-| E73 | [Unknown thinking display values](#e73-unknown-thinking-display-values) | **Automated**: `bun scripts/e2e-thinking-display.mjs` — real proxy + SDK + bundled subprocess. Asserts a Claude Code request with `thinking.display: "updates"` answers instead of the subprocess exiting on `--thinking-display`, and a supported display still answers. **Run before releases touching thinking passthrough or the SDK/CLI version** | 2026-10-01 |
+| E73 | [Unknown thinking display values](#e73-unknown-thinking-display-values) | **Automated**: `bun scripts/e2e-thinking-display-interactive.mjs` — actual Claude Code 2.1.287 TUI in a PTY, real proxy/SDK/bundled subprocess. Requires an answer rendered in the client, live-prompt framing, supported-display controls and joined cleanup. The separate HTTP-shaped gate remains a backend smoke test. **Run before releases touching thinking passthrough or the SDK/CLI version** | 2026-10-01 |
 
 | P1 | [Profile: List & Auth Status](#p1-profile-list--auth-status) | `/profiles/list` returns profiles with emails, login status, auth timestamps | - |
 | P2 | [Profile: Switch via API](#p2-profile-switch-via-api) | `POST /profiles/active` switches profile; health endpoint reflects new email | - |
@@ -5913,13 +5913,41 @@ it (`summarized`, `omitted`, `highlights`) and drops anything else, logging
 bun scripts/e2e-thinking-display.mjs
 ```
 
-Real proxy, Agent SDK and bundled subprocess; model `sonnet` (`PROBE_MODEL`).
-The interactive client cannot be driven headlessly (`claude -p` sends
-`display: "omitted"`), so the gate posts that client's request shape directly:
-Claude Code User-Agent, `metadata.user_id`, streamed. The gate clears
-`MERIDIAN_*` settings and uses its own config directory, because a per-adapter
-`thinking: disabled` feature or a thinking-stripping beta policy would keep
-`display` from reaching the subprocess and pass the gate vacuously.
+The HTTP-shaped smoke test above uses the real proxy, Agent SDK and bundled
+subprocess; model `sonnet` (`PROBE_MODEL`). It clears `MERIDIAN_*` settings and
+uses its own config directory so disabled-thinking settings cannot mask the
+subprocess failure. It does not establish actual interactive-client behavior.
+
+The actual-client gate drives Claude Code 2.1.287 in a POSIX PTY, types the
+request after the TUI is ready, and reconstructs its terminal screen with
+Python 3, `pyte==0.8.2` and `wcwidth==0.2.13`. Build first; use an isolated native
+credential directory and the explicitly pinned client executable:
+
+```sh
+npm run build
+E2E_CLAUDE_CLIENT=/absolute/path/to/claude-2.1.287 \
+E2E_PROFILE_CLAUDE_DIR=/absolute/path/to/owned-native-credentials \
+bun scripts/e2e-thinking-display-interactive.mjs
+```
+
+Run that same command against a built unchanged checkout with
+`E2E_MERIDIAN_ROOT=/absolute/path/to/baseline` and
+`E2E_EXPECT_DISPLAY_FAILURE=1`: it requires the native `updates` rejection,
+not any arbitrary failure. On the fixed checkout, repeat with
+`E2E_DISPLAY_MODE=summarized`, `highlights`, and `disabled`. For the actual
+print-mode `omitted` control use `E2E_CLIENT_MODE=print E2E_DISPLAY_MODE=omitted`.
+Interactive 2.1.287 sends `updates` even for the `omitted` flag; do not label
+that run evidence that the SDK retained `omitted`.
+
+The harness isolates client settings, project, proxy config and session storage,
+uses the real SDK without replacing its result, observes the actual client HTTP
+body and native served model, requires the random receipt in both the completed
+HTTP turn and client output, and joins cleanup. It also requires the current
+request to be outside the replay-history envelope: this caught a second bug
+where trailing client `system` metadata made the current request historical.
+Only the replay copy now combines that metadata with the current user turn;
+lineage and budgets retain the original request. Preserved results and causal
+controls are in [the integration evidence](docs/maintenance/evidence/1230-interactive-thinking-display.md).
 
 **Pass criteria** (asserted, non-zero exit on any):
 

@@ -51,6 +51,17 @@ unchanged.
   tests exercise real child processes, rather than treating a PID-shaped mock
   as a cross-process proof.
 
+- Awaited cleanup could still retain an earlier queued write in local fallback:
+  `clearSessionCache()` cleared memory immediately, then the preceding async
+  `storeSession()` finished and repopulated it. After durable cleanup completed,
+  a genuine store read error resumed that cleared session from memory. Direct
+  regression on `9805a769`: 4 pass / 1 fail. Correction `6ca53629` increments a
+  local cache epoch at cleanup invocation; old normal/priority publication and
+  rollback completions cannot alter cleared fallback. Later writes retain the
+  new epoch and remain available. Keyed/fingerprint pre-clear and post-clear
+  controls plus coherence checks: 8 pass / 0 fail. The store transaction order
+  and best-effort cleanup error policy remain unchanged.
+
 ## Maintained real-client proof
 
 `scripts/e2e-session-store-client.mjs` runs actual OpenCode 1.18.34, Opus 5.5,
@@ -182,3 +193,20 @@ child-start control fails at 5,000 ms with the old deadline and passes in
 12,312.73 ms with the corrected deadline. The ordinary desktop suite passes
 21 tests / 0 failures. The failed CI run and control evidence remain recorded;
 no unexplained rerun or check bypass is used.
+
+After the cache-epoch correction, final local gates pass: `npm test` 5,138 pass /
+0 fail / 4 skip; standalone typecheck/build pass. Actual macOS and Linux
+OpenCode/Opus receipt, resume and real kill-during-write checks pass again on
+Bun 1.4.2: 259/241 liveness answers, seven disk holds, six native queries,
+zero canceled publication renames, two SDK aborts and premature closes.
+The first Linux run failed before exercising a write because its owned copied
+grant required refresh. Its failed log is retained; replacing that mirror with
+the existing profile's still-valid native grant resolved authentication without
+a new login or a code change. The client probe now verifies receipt and
+continuation success before arming cancellation, so early authentication failures
+cannot be masked by a later cancellation assertion. No credential value is logged.
+
+After `6ca53629`, all four E41 sequential/parallel × JSON/stream modes pass
+again on macOS Bun 1.4.2 / actual Opus 5.5: 9/9/5/5 held writes,
+5/5/3/3 native queries, owned-account affinity and active history. This does not
+resolve the original accounting discrepancy. Final proof head needs its own CI.

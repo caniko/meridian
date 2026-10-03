@@ -134,8 +134,12 @@ try {
   for(const key of Object.keys(env)) if(/^(MERIDIAN_|CLAUDE_PROXY_|CLAUDE_|ANTHROPIC_|OPENAI_|OPENCODE_CLAUDE_PROVIDER_)/.test(key)) delete env[key]
   const first=await run('first',['run','--format','json',`Use read to read ${join(project,'receipt.txt')} and repeat its exact contents.`],env)
   const firstText=first.events.filter(event=>event.type==='text').map(event=>event.part?.text??'').join('')
+  assert.equal(first.exit,0,`First client failed; private artifacts: ${root}`)
+  assert(first.session && firstText.includes(receipt), 'First real client did not return its tool receipt')
   const continued=first.session?await run('continued',['run','--format','json','--session',first.session,'Without tools, repeat the exact account receipt from the previous turn.'],env):null
   const continuedText=continued?.events.filter(event=>event.type==='text').map(event=>event.part?.text??'').join('')??''
+  assert.equal(continued?.exit,0,`Continuation failed; private artifacts: ${root}`)
+  assert(continuedText.includes(receipt), 'Real client continuation lost the tool receipt')
   let canceledExit
   if (testCancellation) {
     assert(expectResponsive, 'Cancellation probe requires the asynchronous writer')
@@ -174,8 +178,6 @@ try {
   assert(heldPublications >= 2, 'Actual session-store disk waits missing')
   if (expectResponsive) assert(responsiveProbes > 0 && worstTimerLagMs === 0, 'HTTP did not run during session-store disk waits')
   else assert(responsiveProbes === 0 && worstTimerLagMs >= delayMs - 10, 'Unchanged synchronous baseline did not reproduce the freeze')
-  assert.equal(first.exit,0,`First client failed; private artifacts: ${root}`)
-  assert.equal(continued?.exit,0,`Continuation failed; private artifacts: ${root}`)
   assert(summary.toolCalls>0&&summary.firstReceipt&&summary.continuedReceipt,'Actual tool receipt or continuation missing')
   assert(summary.allQueriesUseNewAccount&&summary.resumed,'The new account was not used for all real SDK queries and resume')
   assert(servedModels.size>0&&[...servedModels].every(value=>value===model||value.startsWith(model+'-')),'Upstream response did not confirm the implicated model')

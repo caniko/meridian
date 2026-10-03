@@ -336,6 +336,35 @@ describe("resolveClaudeExecutable: legacy SDK cli.js (bun only)", () => {
 })
 
 describe("resolveClaudeExecutable: priority ordering", () => {
+  it("keeps the packaged fallback when the PATH entry cannot run Claude", async () => {
+    const bundledPkg = "/m/cc/package.json"
+    const deps = makeDeps({
+      existsSync: () => true,
+      statSync: () => ({ size: 200_000_000 }),
+      resolvePackage: () => bundledPkg,
+      exec: async () => ({ stdout: "/mise/shims/claude\n" }),
+      execLookupSync: () => "/mise/shims/claude\n",
+      probeClaude: async candidate => { expect(candidate).toBe("/mise/shims/claude"); return false },
+      probeClaudeSync: candidate => { expect(candidate).toBe("/mise/shims/claude"); return false },
+    })
+    const expected = { path: BIN(bundledPkg, "bin", "claude.exe"), source: "bundled" as const }
+    expect(await resolveClaudeExecutableWithSource(deps)).toEqual(expected)
+    expect(resolveClaudeExecutableSync(deps)).toEqual(expected)
+  })
+
+  it("tries the next Windows PATH candidate after a broken launcher", async () => {
+    const output = "C:\\Broken\\claude.cmd\r\nC:\\Native\\claude.exe\r\n"
+    const deps = makeDeps({
+      platform: "win32", existsSync: () => true,
+      exec: async () => ({ stdout: output }), execLookupSync: () => output,
+      probeClaude: async candidate => candidate.endsWith(".exe"),
+      probeClaudeSync: candidate => candidate.endsWith(".exe"),
+    })
+    const expected = { path: "C:\\Native\\claude.exe", source: "path-lookup" as const }
+    expect(await resolveClaudeExecutableWithSource(deps)).toEqual(expected)
+    expect(resolveClaudeExecutableSync(deps)).toEqual(expected)
+  })
+
   it("env override beats every other source", async () => {
     const deps = makeDeps({
       envGet: (n) => (n === "MERIDIAN_CLAUDE_PATH" ? "/explicit/claude" : undefined),
@@ -509,14 +538,14 @@ describe("resolveClaudeExecutableSync", () => {
         return "/mise/shims/claude\n"
       },
     })
-    const expected = { path: "/mise/shims/claude", source: "path-lookup" }
+    const expected = { path: "/mise/shims/claude", source: "path-lookup" as const }
     expect(await resolveClaudeExecutableWithSource(deps)).toEqual(expected)
     expect(resolveClaudeExecutableSync(deps)).toEqual(expected)
   })
 
   it("retains packaged fallback after either PATH lookup throws", async () => {
     const pkgJson = "/m/cc/package.json"
-    const expected = { path: BIN(pkgJson, "bin", "claude.exe"), source: "bundled" }
+    const expected = { path: BIN(pkgJson, "bin", "claude.exe"), source: "bundled" as const }
     const deps = makeDeps({
       existsSync: p => p === expected.path,
       statSync: () => ({ size: 200_000_000 }),

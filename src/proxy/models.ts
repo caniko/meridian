@@ -691,7 +691,7 @@ let cachedClaudePathPromise: Promise<string> | null = null
  * Uses a three-tier cache:
  * 1. cachedClaudePath — resolved path, returned immediately on subsequent calls
  * 2. cachedClaudePathPromise — deduplicates concurrent calls during resolution
- * 3. Falls through to resolution logic (SDK cli.js → system `which claude`)
+ * 3. Falls through to env → usable PATH → packaged CLI → legacy SDK resolution
  *
  * The promise is cleared in `finally` to allow retry on failure while
  * cachedClaudePath prevents re-resolution on success.
@@ -706,6 +706,8 @@ type ResolverDeps = {
   statSync: (p: string) => { size: number }
   exec: (cmd: string) => Promise<{ stdout: string }>
   execLookupSync?: (command: string, args: string[]) => string
+  probeClaude?: (candidate: string) => Promise<boolean>
+  probeClaudeSync?: (candidate: string) => boolean
   resolvePackage: (specifier: string) => string
   envGet: (name: string) => string | undefined
   platform: NodeJS.Platform
@@ -721,6 +723,24 @@ const DEFAULT_DEPS: ResolverDeps = {
     encoding: "utf8", windowsHide: true, timeout: 2000, maxBuffer: 64 * 1024,
     stdio: ["ignore", "pipe", "pipe"],
   }),
+  probeClaude: async candidate => {
+    try {
+      const { stdout } = await execFile(candidate, ["--version"], { encoding: "utf8", windowsHide: true, timeout: 2000, maxBuffer: 16 * 1024 })
+      return isClaudeVersionOutput(stdout)
+    } catch {
+      return false
+    }
+  },
+  probeClaudeSync: candidate => {
+    try {
+      return isClaudeVersionOutput(execFileSync(candidate, ["--version"], {
+        encoding: "utf8", windowsHide: true, timeout: 2000, maxBuffer: 16 * 1024,
+        stdio: ["ignore", "pipe", "pipe"],
+      }))
+    } catch {
+      return false
+    }
+  },
   resolvePackage: (specifier) => fileURLToPath(import.meta.resolve(specifier)),
   envGet: (name) => process.env[name],
   platform: process.platform,
@@ -797,7 +817,7 @@ function tryPlatformPackage(deps: ResolverDeps): string | null {
  *
  * Windows nuances handled here:
  *   - `where` returns multiple newline-separated paths when multiple
- *     binaries match — pick the first one that exists.
+ *     binaries match — pick the first existing one that can run Claude.
  *   - On systems with Git for Windows installed, plain `which claude`
  *     would invoke `which.exe` from `usr/bin/` which emits mingw-style
  *     paths like `/c/nvm4w/nodejs/claude` that `existsSync` rejects.
@@ -812,28 +832,34 @@ async function tryPathLookup(deps: ResolverDeps): Promise<string | null> {
   const cmd = deps.platform === "win32" ? "where claude" : "which claude"
   try {
     const { stdout } = await deps.exec(cmd)
-    return firstExistingPathCandidate(stdout, deps)
+    for (const candidate of existingPathCandidates(stdout, deps)) {
+      if (!deps.probeClaude || await deps.probeClaude(candidate)) return candidate
+    }
   } catch {
     // No `claude` on PATH (or `where`/`which` not available).
   }
   return null
 }
 
+/** A broken installation or unrelated shim must not outrank the package. */
+function isClaudeVersionOutput(stdout: string): boolean {
+  return /^\d+\.\d+\.\d+(?:[-+][\w.-]+)? \(Claude Code\)$/.test(stdout.trim())
+}
+
 /** Share candidate filtering between startup/query resolution and CLI auth. */
-function firstExistingPathCandidate(stdout: string, deps: ResolverDeps): string | null {
-  const candidates = stdout.split(/\r?\n/).map(s => s.trim()).filter(Boolean)
-  for (const candidate of candidates) {
-    if (deps.platform === "win32" && candidate.startsWith("/")) continue
-    if (deps.existsSync(candidate)) return candidate
-  }
-  return null
+function existingPathCandidates(stdout: string, deps: ResolverDeps): string[] {
+  return stdout.split(/\r?\n/).map(s => s.trim()).filter(candidate =>
+    candidate.length > 0 && !(deps.platform === "win32" && candidate.startsWith("/")) && deps.existsSync(candidate))
 }
 
 function tryPathLookupSync(deps: ResolverDeps): string | null {
   if (!deps.execLookupSync) return null
   try {
     const stdout = deps.execLookupSync(deps.platform === "win32" ? "where" : "which", ["claude"])
-    return firstExistingPathCandidate(stdout, deps)
+    for (const candidate of existingPathCandidates(stdout, deps)) {
+      if (!deps.probeClaudeSync || deps.probeClaudeSync(candidate)) return candidate
+    }
+    return null
   } catch {
     // A missing/failed lookup must still allow the packaged fallback.
     return null

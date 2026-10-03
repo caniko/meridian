@@ -102,10 +102,13 @@ function createFingerprintCache(maxSize: number) {
 let activeMaxSessions = getMaxSessionsLimit()
 let sessionCache = createSessionCache(activeMaxSessions)
 let fingerprintCache = createFingerprintCache(activeMaxSessions)
+let sessionCacheEpoch = 0
 
 /** Clear all session caches (used in tests).
  *  Re-reads MERIDIAN_MAX_SESSIONS / CLAUDE_PROXY_MAX_SESSIONS so tests can override the limit. */
 export async function clearSessionCache(): Promise<void> {
+  // Earlier queued publications must not repopulate cleared local fallback.
+  sessionCacheEpoch++
   const configuredLimit = getMaxSessionsLimit()
   if (configuredLimit !== activeMaxSessions) {
     activeMaxSessions = configuredLimit
@@ -212,6 +215,7 @@ export async function rollbackPrioritySessionPublication(
 ): Promise<StoredSessionGeneration | false> {
   const rollback = publication.rollback
   if (!rollback) return false
+  const cacheEpoch = sessionCacheEpoch
   const restored = await rollbackSharedSessionAndPriorityAssignment({
     key: rollback.key,
     routeKey: publication.routeKey,
@@ -225,6 +229,7 @@ export async function rollbackPrioritySessionPublication(
 
   publication.expectedAssignmentGeneration = restored.assignmentGeneration
   publication.rollback = undefined
+  if (cacheEpoch !== sessionCacheEpoch) return restored.mappingGeneration
   if (sessionId) {
     if (restored.restoredMapping) sessionCache.set(sessionId, stateFromSharedSession(restored.restoredMapping))
     else sessionCache.delete(sessionId)
@@ -454,6 +459,7 @@ export async function storeSession(
   beforePublish?: () => void,
 ): Promise<StoredSessionGeneration | false> {
   if (!claudeSessionId) return false
+  const cacheEpoch = sessionCacheEpoch
   const lineageHash = computeLineageHash(messages)
   const messageHashes = computeMessageHashes(messages)
   const messageBlockHashes = computeMessageBlockHashes(messages)
@@ -538,7 +544,8 @@ export async function storeSession(
   }
   if (!storedGeneration) return false
 
-  // Publish to memory only after the durable CAS succeeds.
+  // Publish to memory only after durable CAS, unless cleanup superseded it.
+  if (cacheEpoch !== sessionCacheEpoch) return storedGeneration
   if (sessionId) sessionCache.set(sessionId, state)
   if (fp && !sessionId) fingerprintCache.set(fp, state)
   return storedGeneration

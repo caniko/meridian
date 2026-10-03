@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
-import { mkdtempSync, rmSync } from "node:fs"
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { clearSessionCache, evictSession, getSessionByClaudeId, lookupSession, storeSession } from "../proxy/session/cache"
@@ -19,6 +19,39 @@ describe("cross-process session cache coherence", () => {
     await clearSessionCache()
     setSessionStoreDir(null)
     rmSync(dir, { recursive: true, force: true })
+  })
+
+  it.each([true, false])("awaited cleanup cannot revive an earlier queued write (keyed=%s)", async keyed => {
+    const messages = [{ role: "user", content: "hello" }]
+    const cwd = "/tmp/cleanup-ordering"
+    const sessionId = keyed ? "client-session" : undefined
+    const key = sessionId ?? getConversationFingerprint(messages, cwd)
+    const pending = storeSession(sessionId, messages, "before-cleanup", cwd)
+    const cleanup = clearSessionCache()
+    await Promise.all([pending, cleanup])
+    expect(lookupSharedSession(key)).toBeUndefined()
+    // A genuine durable read error uses local fallback. No successful lookup
+    // may first mask stale memory by observing authoritative absence.
+    writeFileSync(join(dir, "sessions.json"), "corrupt fixture")
+    expect(lookupSession(sessionId, [...messages, { role: "user", content: "next" }], cwd))
+      .toEqual({ type: "diverged", reason: "not-found" })
+  })
+
+  it.each([true, false])("cleanup preserves a write started after it (keyed=%s)", async keyed => {
+    const messages = [{ role: "user", content: "hello" }]
+    const cwd = "/tmp/cleanup-ordering"
+    const sessionId = keyed ? "client-session" : undefined
+    const key = sessionId ?? getConversationFingerprint(messages, cwd)
+    const old = storeSession(sessionId, messages, "before-cleanup", cwd)
+    const cleanup = clearSessionCache()
+    const later = storeSession(sessionId, messages, "after-cleanup", cwd)
+    await Promise.all([old, cleanup, later])
+    expect(lookupSharedSession(key)?.claudeSessionId).toBe("after-cleanup")
+    writeFileSync(join(dir, "sessions.json"), "corrupt fixture")
+    const found = lookupSession(sessionId, [...messages, { role: "user", content: "next" }], cwd)
+    expect(found.type).toBe("continuation")
+    if (found.type !== "continuation") throw new Error("expected continuation")
+    expect(found.session.claudeSessionId).toBe("after-cleanup")
   })
 
   it("refreshes a stale in-memory generation from the shared mapping", async () => {

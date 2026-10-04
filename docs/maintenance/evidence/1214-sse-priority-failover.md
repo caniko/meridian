@@ -21,6 +21,8 @@ current [API contract](../../../.agents/references/api-contract.md),
 Worktree: `/Users/rynfar/repos/meridian-sse-priority-incorporation-1214-20261004`.
 Branch: `codex/sse-priority-incorporation-1214-20261004`.
 Fresh fetched base: `3afca1f5a0d51d74f8c7437b90f43d5686cf4163`.
+Rebased before final gates onto documentation-only main
+`0369441786b082aadeb31689dcbce41d7e8574d9`; no conflicts or product changes.
 The user's dirty checkout was preserved. Root owns the queue, PR and integration.
 
 ## Authorship
@@ -31,11 +33,13 @@ maintainer correction. Author remains Aleksey Proshutinskiy
 
 | Source | Incorporation | AuthorDate |
 | --- | --- | --- |
-| `d4e36fa90a3ecfbcb48c91c8c4023224b1386f32` | `7d9dce174edd9db684212e7d1fbc3dcb737b96a8` | `2026-10-01T20:46:35+04:00` |
-| `1c8f17099ad62dbd2a511f69c12e5b4e15d9da7f` | `512f89907b8fec191e611cea6700a37e09de1f85` | `2026-10-02T03:06:02+04:00` |
+| `d4e36fa90a3ecfbcb48c91c8c4023224b1386f32` | `4c4abdbd8ba649a69f4aaf5b01ffacc522a6b0d8` | `2026-10-01T20:46:35+04:00` |
+| `1c8f17099ad62dbd2a511f69c12e5b4e15d9da7f` | `928c9f319a59469ecc5210f126fe6d55f2745fd7` | `2026-10-02T03:06:02+04:00` |
 
-The following maintainer commit(s) contain only corrections, additional controls
-and this evidence. Squash credit must retain the verified human contributor
+Initial pre-rebase cherry identities were `7d9dce174edd9db684212e7d1fbc3dcb737b96a8`
+and `512f89907b8fec191e611cea6700a37e09de1f85`. Maintainer correction
+`0419bc73` rebased as `dcd2833da8c928a669bceebd332b04f0586d7348`, containing
+only corrections, additional controls and evidence. Squash credit must retain the verified human contributor
 identity above. No source branch was pushed or rewritten.
 
 ## Findings and final behavior

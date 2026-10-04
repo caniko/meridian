@@ -2,7 +2,8 @@
 
 **Prepared, not accepted:** local code proof is complete; actual Linux /
 OpenCode 2.0.16 / Sonnet 5.5 before-and-after generation remains a gate. No
-model call has been made for this review. Required final-head CI and
+valid native Sonnet completion has been observed: two SDK query attempts
+across the retained rounds ended in synthetic provider refusals. Final-head CI and
 affected-flow acceptance remain open.
 
 Source head: `553fd5c386de5e18e531a1d0101d64ef3a3b1792`. Contributor
@@ -203,6 +204,91 @@ copies, this round's fixture/session directories, the specifically owned
 container and its exclusive temporary image were removed. The controller's
 private snapshot remained unchanged and available for its subsequent gates.
 
+### Bounded WORK entitlement control (round 3)
+
+This new round was explicitly authorized to distinguish OAuth readiness
+from inference entitlement. The controller selected its configured `work`
+profile and supplied a new immutable snapshot, reporting a different access
+grant from `personal`. This agent read only that exact snapshot. The grant
+was present, future-dated and included `user:inference`; read-only Linux OAuth
+usage readiness returned **200**, and native health reported logged in.
+The source mount was read-only. One isolated mode-0700/mode-0600 scoped copy
+had an empty refresh token; read-only mode was set before imports/proxy.
+
+The new control uses `E2E_ENTITLEMENT_ONLY=1 E2E_MAX_GENERATIONS=1` on the
+committed live harness. It creates a fresh disposable session through the
+actual OpenCode V2 API, imports no history, and sends a **105-character SDK
+coding prompt**. Success requires the actual `claude-sonnet-5-5` model,
+correct credential directory/native executable, a completed stream and
+successful result with `is_error=false`, one native turn without tool calls,
+an assistant-only coding receipt and exactly one SDK query.
+
+```sh
+docker exec -w /owned/fixed-install \
+  -e MERIDIAN_CREDENTIALS_READONLY=1 -e TMPDIR=/owned/tmp \
+  -e E2E_MERIDIAN_ROOT=/owned/fixed-install/node_modules/@rynfar/meridian \
+  -e E2E_OPENCODE_BIN=/opt/e2e/node_modules/.bin/opencode \
+  -e E2E_PROFILE_CLAUDE_DIR=/owned/work-native-source \
+  -e E2E_ENTITLEMENT_ONLY=1 -e E2E_MAX_GENERATIONS=1 \
+  -e E2E_PROOF_DIR=/owned/proof/round3-entitlement \
+  meridian-sonnet-round3-1267-20261004 \
+  bun /harness/e2e-sonnet-context-v2-live.mjs
+```
+
+**Control: FAIL / exit 1 / exactly one SDK query.** The signed primary V2
+request reached the selected installed SDK/account path, but its assistant
+model was **`<synthetic>`**, error classification `unknown`, input tokens **0**,
+tool-use blocks **0** and coding receipt absent. The result subtype was
+`success` while **`is_error=true`**; the iterator propagated the refusal before
+normal completion. OpenCode's assistant finished with an error normalized
+to `billing_error` and status **200**. Neither that status nor the SDK subtype
+establishes a successful native generation.
+
+The harness now preserves original provider facts **before normalization**.
+The original synthetic assistant text was 128 characters; the fixed diagnostic
+allowlist retained **“API Error”**, **400**, and **“extra usage”** from it and
+the error result/propagated iterator error. No arbitrary provider wording,
+identity, token or URL was retained. These facts establish an upstream refusal
+mentioning extra usage; **the precise entitlement restriction remains
+unproven**. They do not retroactively explain round 2's unretained original
+provider detail or round 1's invalid/expired-token 401 failures.
+
+The control stopped this round. **Baseline, fixed large-history generation
+and resumed turn: NOT RUN**, zero queries each. No fallback, refresh, login,
+other-store search or unexplained rerun followed. Across the retained rounds
+there are two SDK query attempts and zero valid required-model completions;
+the original large-history before/after gate remains **OPEN**.
+
+Preparation reused both exact exported Linux tarballs in a new owned container
+on pinned amd64 image
+`sha256:94a3ec562dee261c739fc724f0bd866aafe11ab59ea4b8d6406ecae6ad650301`.
+Each arm was independently installed with SDK **0.2.141** / native CLI
+**2.1.284** and the actual OpenCode **2.0.16**. All 409 installed distribution
+files equal the exact previously built tarball; the SDK, executable and client
+hashes also match the prior independent installations. All 534 frozen source
+files match exact main `03694417` or candidate `cabc390f`, whose production
+source/dependencies equal previously tested `dac34820`. The unchanged fixture
+hash remains `2f3be87d311acda8dfc559fb8db035a8707aea8c7a92dec1f799fada3d9706b9`.
+The current real-client credentialless rehearsal retains 15 messages and
+931,634 serialized characters with zero model queries. It proves prerequisites,
+not native capacity or fix acceptance.
+
+The durable JSON `liveRounds.round3` contains commands, both tarball/source/
+dependency/tool hashes, exact source verification, control assertions/errors/
+exit/query count, prior failure provenance, privacy validation and cleanup.
+Syntax, diagnostic privacy checks and diff validation pass. Prior 286 focused
+tests/typecheck/build proofs apply to unchanged production sources; this agent
+did not take the controller's full-suite slot. Independent review of the new
+harness mode and final-head CI remain controller gates.
+
+Cleanup joined proxy/client/native children with **zero owned residuals**,
+removed runtime auth, the scoped copy, all fixture runtimes and only the owned
+round-3 container. The shared pinned image was preserved. Before/after digest
+comparison proves the controller's immutable WORK copy unchanged; it remains
+available to its owner. The user's root checkout and other worktrees were not
+written. No push, PR
+mutation, merge, issue/source closure, external comment or release occurred.
+
 Preparatory adversarial findings strengthened the escrowed gate: it now
 observes retention of every fixture message, compares public native session
 IDs without storing them, requires the resumed credential/executable and a
@@ -223,14 +309,16 @@ and builds on both platforms. The root controller coordinates the remaining
 full suite, independent final review and final-head CI; this agent did not
 push, mutate the PR, merge, close #1212/#1213 or publish a release.
 
-Independent adversarial review has no material production or harness findings
-remaining. It corrected receipt checks that could match user prompts, SDK
+Prior independent adversarial review left no material production or harness
+findings at its reviewed head. It corrected receipt checks that could match user prompts, SDK
 observation from the wrong dependency tree, inherited HOME/global plugin
 loading, unbounded/private-copy cleanup and lost descendant ownership after
 reparenting. The final harness uses assistant-only receipts, the selected
 tree's exact SDK 0.2.141, isolated parent/client HOME/XDG/plugin paths,
 bounded shutdown and tracked Linux PID/start-time identities with zero owned
 residuals. Native generation is fenced in rehearsal and bounded to at most
-two queries per live arm. Exact final-head CI and the real affected-flow
+two queries per history arm or one entitlement-control query. The round-3
+harness additions still require the controller's independent final review.
+Exact final-head CI and the real affected-flow
 before/after remain required before acceptance; no merge, closure or release
 is authorized by these local results.

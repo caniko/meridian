@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "date": "2026-10-04",
   "testedHead": "dac34820653253da8a69fe81cad5cb2d7e5dc0ab",
   "unchangedBase": "0369441786b082aadeb31689dcbce41d7e8574d9",
@@ -165,19 +165,19 @@
   },
   "actualAffectedFlow": {
     "status": "OPEN",
-    "generationCalls": 1,
-    "generationCallMeaning": "One SDK query attempt; no observed valid required-model completion",
+    "generationCalls": 2,
+    "generationCallMeaning": "Across retained rounds: round1 zero SDK queries, round2 one refused/synthetic baseline attempt, round3 one refused/synthetic tiny entitlement control; zero valid required-model completions",
     "requiredModel": "claude-sonnet-5-5",
     "requiredClient": "OpenCode 2.0.16 installed V2 plugin",
     "requiredSdk": "0.2.141",
     "requiredNativeCli": "2.1.284",
     "requiredPlatform": "linux/x64",
-    "reason": "Personal readiness 200, then baseline SDK synthetic response/client subscription-billing error; fixed and resume not run",
+    "reason": "WORK tiny control usage readiness 200 then original SDK is_error=true refusal mentioning extra usage/400; no giant baseline/fixed/resume run. Earlier default-native 401 and personal billing failures retained separately.",
     "baselineNoTrim": "NOT_ESTABLISHED_ON_REAL_MODEL: request argument ancient/no-trim fact false, but native model/completion assertion failed first",
     "fixedAllHistory": "NOT_RUN",
     "actualNativeInputOver200k": "NOT_RUN",
-    "nativeModelAndAccount": "NOT_ESTABLISHED",
-    "codingReceipt": "NOT_DELIVERED_ON_BASELINE",
+    "nativeModelAndAccount": "NOT_ESTABLISHED: exact account options matched, observed native assistant model only <synthetic>",
+    "codingReceipt": "NOT_DELIVERED_ON_BASELINE_OR_TINY_CONTROL",
     "sameSessionMinimalResume": "NOT_RUN"
   },
   "preparatoryReviewCorrections": [
@@ -525,7 +525,422 @@
         "ownedTemporaryImageRemoved": true,
         "ownedTemporaryImageId": "sha256:139a67dbcf271b0e5d4b62f85706e991ac7004b56ab102f35fd31686bf10131a"
       }
+    },
+    "round3": {
+      "selectedProfile": "work",
+      "authorization": "New control authorized after controller selected a different configured owner profile under pick whatever works; no agent fallback or additional store search",
+      "candidateHead": "cabc390fa9cf599225e505e9a8fcef3580db995d",
+      "candidateTree": "34d9df1bdfb0216d961d8d57031291f74d998774",
+      "productionSourceAndPackageUnchangedFromTestedHead": "dac34820653253da8a69fe81cad5cb2d7e5dc0ab",
+      "controllerReportedAccessGrantDiffersFromPersonal": true,
+      "controllerReadiness": {
+        "usageStatus": 200,
+        "credentialPresent": true,
+        "futureExpiry": true,
+        "scopePresent": true,
+        "sourceStoreUnchanged": true
+      },
+      "credentialProvenance": {
+        "profile": "work",
+        "credentialPresent": true,
+        "futureExpiry": true,
+        "inferenceScope": true,
+        "scopePresent": true,
+        "rootSnapshotDigestBefore": "a3138c50f9e7f6f3ff914b33add06a1eb203d111e2c5c60ec307f8a22a0cc968",
+        "sourceReadOnly": true,
+        "rootDirectoryMode": 448,
+        "rootFileMode": 384,
+        "scopedDirectoryMode": 448,
+        "scopedFileMode": 384,
+        "refreshTokenAbsent": true,
+        "modelQueries": 0
+      },
+      "readOnlyBeforeImportsAndProxy": true,
+      "refreshTokenAbsentFromScopedRuntime": true,
+      "credentialCopyPolicy": "One isolated 0700/0600 Linux scoped source copied from exact read-only mounted controller WORK snapshot, with empty refresh token; harness uses its disposable 0600 runtime copy",
+      "sourceVerification": {
+        "baseline": {
+          "head": "0369441786b082aadeb31689dcbce41d7e8574d9",
+          "srcFiles": 534,
+          "allFrozenSourceFilesMatchExactHead": true,
+          "sourceManifestSha256": "1e3617203d40c07f9f58a769758fca2a3928c447249c79ee059e651428bbda34"
+        },
+        "fixed": {
+          "head": "cabc390fa9cf599225e505e9a8fcef3580db995d",
+          "srcFiles": 534,
+          "allFrozenSourceFilesMatchExactHead": true,
+          "sourceManifestSha256": "37bf1dd15cc6c690ca2b81da355d53334d0b2e8c9431711416e9d13e7a940415"
+        },
+        "sourceAndDependencyFilesUnchangedFromPriorTestedHead": true
+      },
+      "exactPackageAndToolProvenance": {
+        "container": "meridian-sonnet-round3-1267-20261004",
+        "pinnedImage": "sha256:94a3ec562dee261c739fc724f0bd866aafe11ab59ea4b8d6406ecae6ad650301",
+        "platform": "linux/x64",
+        "node": "v24.21.0",
+        "bun": "1.3.14",
+        "baselineHead": "0369441786b082aadeb31689dcbce41d7e8574d9",
+        "candidateHead": "cabc390fa9cf599225e505e9a8fcef3580db995d",
+        "arms": {
+          "baseline": {
+            "tarballSha256": "2bd75b4a18caba8534be7d9fe052722fece8179d3e730de4c8ea2fac4f8043ed",
+            "sourceArchiveSha256": "1e5583e731a6981f0a6937f85997d0c7b03f09c8a9d4e6e09ddfd995a47677ab",
+            "all409DistMatchExactPreviouslyBuiltTarball": true,
+            "distFileCount": 409,
+            "serverSha256": "2c819d3cd7bb387539869d77c5d23aaa106f0b4a58f2a0b5c67f797c54bfff6e",
+            "sdkVersion": "0.2.141",
+            "sdkModuleSha256": "48bde6aeabf7e71ad5528bf52c8feb1642c21f505ea2495c70f39db7df226d97",
+            "cliVersion": "2.1.284 (Claude Code)",
+            "nativeExecutableSha256": "5cd90aabd83f8a15136c35aa37bb1d92b348993573316643dc3fe4e04afbf88f",
+            "freshInstallLockSha256": "4651ee55a5297c4107389828f9754ed94aaded6f2599a6f9ffde9aaecfde0c26"
+          },
+          "fixed": {
+            "tarballSha256": "1afa42e0bf20ca81a51740510ce532e68f555ad9a74ea684f31a68fe72109bc7",
+            "sourceArchiveSha256": "e7d0ab777ee2030a20d875d3d6a28f57681798a32dbc8873b67dc331ac48f201",
+            "all409DistMatchExactPreviouslyBuiltTarball": true,
+            "distFileCount": 409,
+            "serverSha256": "f8e8f3d3ddae29a68ba312739a57e45d89f065e0ec0fac53977b407f5279d208",
+            "sdkVersion": "0.2.141",
+            "sdkModuleSha256": "48bde6aeabf7e71ad5528bf52c8feb1642c21f505ea2495c70f39db7df226d97",
+            "cliVersion": "2.1.284 (Claude Code)",
+            "nativeExecutableSha256": "5cd90aabd83f8a15136c35aa37bb1d92b348993573316643dc3fe4e04afbf88f",
+            "freshInstallLockSha256": "a53e2a0687d06fc707567ce885ab56f5e3cb30a48452d9398f84bdc636afa2d8"
+          }
+        },
+        "harnessSha256": "749761f150ad6206196d0da0990ee1819cdaa15ed5606640048f2bcccd92ead9",
+        "fixtureSha256": "2f3be87d311acda8dfc559fb8db035a8707aea8c7a92dec1f799fada3d9706b9",
+        "client": {
+          "version": "opencode v2.0.16",
+          "sha256": "ed875f18429bd3ee346792b50e6e4bb74f1b6e7695ded7e6abe4448fe76322de"
+        }
+      },
+      "freshIndependentInstallCommands": [
+        [
+          "docker",
+          "exec",
+          "-w",
+          "/owned/baseline-install",
+          "meridian-sonnet-round3-1267-20261004",
+          "npm",
+          "install",
+          "--ignore-scripts",
+          "--save-exact",
+          "/artifacts/linux-proof/round2-packages/baseline-meridian-rebased.tgz",
+          "@anthropic-ai/claude-agent-sdk@0.2.141",
+          "@anthropic-ai/claude-code@2.1.284"
+        ],
+        [
+          "docker",
+          "exec",
+          "-w",
+          "/owned/fixed-install",
+          "meridian-sonnet-round3-1267-20261004",
+          "npm",
+          "install",
+          "--ignore-scripts",
+          "--save-exact",
+          "/artifacts/linux-proof/round2-packages/fixed-meridian-rebased.tgz",
+          "@anthropic-ai/claude-agent-sdk@0.2.141",
+          "@anthropic-ai/claude-code@2.1.284"
+        ]
+      ],
+      "nativeInstallerCommands": [
+        [
+          "docker",
+          "exec",
+          "-w",
+          "/owned/baseline-install",
+          "meridian-sonnet-round3-1267-20261004",
+          "node",
+          "node_modules/@anthropic-ai/claude-code/install.cjs"
+        ],
+        [
+          "docker",
+          "exec",
+          "-w",
+          "/owned/fixed-install",
+          "meridian-sonnet-round3-1267-20261004",
+          "node",
+          "node_modules/@anthropic-ai/claude-code/install.cjs"
+        ]
+      ],
+      "rehearsal": {
+        "platform": "linux/x64",
+        "model": "claude-sonnet-5-5",
+        "client": "2.0.16",
+        "sdk": "0.2.141",
+        "maxGenerations": 2,
+        "entitlementOnly": false,
+        "readiness": {},
+        "catalogRequests": 1,
+        "wire": [],
+        "queries": [],
+        "resumed": false,
+        "result": "IMPORT_REHEARSAL_PASS",
+        "proxyWindow": 1000000,
+        "clientWindow": 1000000,
+        "importedMessages": 15,
+        "importedHistoryCharacters": 931634,
+        "ownedResidualProcesses": 0,
+        "privateCredentialCopyRemoved": true,
+        "cleanupJoined": true,
+        "suppressedLogLines": 1
+      },
+      "rehearsalExit": 0,
+      "exactControlCommand": [
+        "docker",
+        "exec",
+        "-w",
+        "/owned/fixed-install",
+        "-e",
+        "MERIDIAN_CREDENTIALS_READONLY=1",
+        "-e",
+        "TMPDIR=/owned/tmp",
+        "-e",
+        "E2E_MERIDIAN_ROOT=/owned/fixed-install/node_modules/@rynfar/meridian",
+        "-e",
+        "E2E_OPENCODE_BIN=/opt/e2e/node_modules/.bin/opencode",
+        "-e",
+        "E2E_PROFILE_CLAUDE_DIR=/owned/work-native-source",
+        "-e",
+        "E2E_ENTITLEMENT_ONLY=1",
+        "-e",
+        "E2E_MAX_GENERATIONS=1",
+        "-e",
+        "E2E_PROOF_DIR=/owned/proof/round3-entitlement",
+        "meridian-sonnet-round3-1267-20261004",
+        "bun",
+        "/harness/e2e-sonnet-context-v2-live.mjs"
+      ],
+      "control": {
+        "platform": "linux/x64",
+        "model": "claude-sonnet-5-5",
+        "client": "2.0.16",
+        "sdk": "0.2.141",
+        "maxGenerations": 1,
+        "entitlementOnly": true,
+        "readiness": {
+          "credentialPresent": true,
+          "expiryFuture": true,
+          "status": 200,
+          "nativeCliLoggedIn": true
+        },
+        "catalogRequests": 1,
+        "wire": [
+          {
+            "model": "claude-sonnet-5-5",
+            "agent": "build",
+            "mode": "primary",
+            "attested": true,
+            "ancientRetained": false,
+            "currentRetained": true,
+            "characters": 199,
+            "sessionHeaderPresent": true
+          }
+        ],
+        "queries": [
+          {
+            "credentialDirectoryMatched": true,
+            "resolvedSonnet": "claude-sonnet-5-5",
+            "sdkModel": "sonnet",
+            "nativeExecutableMatched": true,
+            "resumed": false,
+            "promptCharacters": 105,
+            "resumeMatchesFirstSession": false,
+            "historyMessagesRetained": 0,
+            "ancientRetained": false,
+            "currentRetained": true,
+            "omitted": false,
+            "nativeModels": [
+              "<synthetic>"
+            ],
+            "nativeAssistantErrors": [
+              "unknown"
+            ],
+            "upstreamErrors": [
+              {
+                "characters": 128,
+                "phrases": [
+                  "extra usage",
+                  "api error"
+                ],
+                "statuses": [
+                  400
+                ],
+                "unclassified": false
+              },
+              {
+                "characters": 128,
+                "phrases": [
+                  "extra usage",
+                  "api error"
+                ],
+                "statuses": [
+                  400
+                ],
+                "unclassified": false
+              }
+            ],
+            "inputTokens": 0,
+            "toolUseBlocks": 0,
+            "completed": false,
+            "nativeSessionMatchesFirst": true,
+            "resultSubtype": "success",
+            "nativeTurns": 1,
+            "resultIsError": true,
+            "thrownError": {
+              "characters": 166,
+              "phrases": [
+                "extra usage",
+                "api error"
+              ],
+              "statuses": [
+                400
+              ],
+              "unclassified": false
+            }
+          }
+        ],
+        "resumed": false,
+        "result": "FAIL",
+        "claudeCode": "2.1.284",
+        "proxyWindow": 1000000,
+        "clientWindow": 1000000,
+        "importedMessages": 0,
+        "stage": "native-query-1",
+        "clientAssistantResults": [
+          {
+            "model": "claude-sonnet-5-5",
+            "finish": "error",
+            "hasError": true,
+            "error": {
+              "characters": 170,
+              "phrases": [
+                "billing_error"
+              ],
+              "statuses": [],
+              "unclassified": false
+            },
+            "status": 200
+          }
+        ],
+        "sameAncientNoTrimAssertion": false,
+        "receiptDelivered": false,
+        "failure": "Wrong native account/model or incomplete SDK query",
+        "ownedResidualProcesses": 0,
+        "privateCredentialCopyRemoved": true,
+        "cleanupJoined": true,
+        "suppressedLogLines": 1,
+        "exit": 1
+      },
+      "originalUpstreamErrorClassification": {
+        "source": "Public real SDK assistant text before yielding to Meridian, result is_error/result text, and propagated iterator error; no private files",
+        "nativeAssistantError": "unknown",
+        "originalAssistantTextCharacters": 128,
+        "matchedOriginalDiagnosticPhrases": [
+          "extra usage",
+          "api error"
+        ],
+        "matchedOriginalStatus": 400,
+        "resultSubtype": "success",
+        "resultIsError": true,
+        "interpretation": "Actual upstream refusal mentions extra usage. Exact entitlement restriction is unproven: only fixed phrase matches, status and lengths are escrowed, not arbitrary original wording.",
+        "normalizedClient": "billing_error; finish=error; status 200; no assistant coding receipt"
+      },
+      "generationQueries": 1,
+      "observedValidRequiredModelCompletions": 0,
+      "giantPreparatoryQueries": 0,
+      "baseline": {
+        "result": "NOT_RUN",
+        "generationQueries": 0
+      },
+      "fixed": {
+        "result": "NOT_RUN",
+        "generationQueries": 0
+      },
+      "resume": {
+        "result": "NOT_RUN",
+        "generationQueries": 0
+      },
+      "stopReason": "Tiny inference entitlement control refused; stopped with no large history calls, fallback, profile changes, refresh, login or rerun",
+      "failureDistinctFromRound2": true,
+      "priorFailuresPreservedUnchanged": [
+        "round1 default-native invalid/expired 401 before SDK query",
+        "round2 personal usage readiness 200 then one synthetic billing/refusal SDK attempt; precise upstream cause unavailable"
+      ],
+      "cleanup": {
+        "rootPrivateCopyUnchanged": true,
+        "rootPrivateCopyPreserved": true,
+        "rootSnapshotDigestAfter": "a3138c50f9e7f6f3ff914b33add06a1eb203d111e2c5c60ec307f8a22a0cc968",
+        "scopedRuntimeCredentialRemoved": true,
+        "allOwnedFixtureRuntimeRemoved": true,
+        "ownedResidualProcesses": 0,
+        "proxyClientAndNativeJoined": true,
+        "generationQueries": 1,
+        "validRequiredModelCompletions": 0,
+        "baselineQueries": 0,
+        "fixedQueries": 0,
+        "resumeQueries": 0,
+        "refreshCalls": 0,
+        "loginCalls": 0,
+        "otherStoreReads": 0,
+        "sourceStoreWrites": 0,
+        "rootSnapshotWrites": 0,
+        "privateSdkTranscriptAccesses": 0,
+        "ownedContainerRemoved": true,
+        "ownedContainerId": "ed853ba500b7fbce99e55477f05cfb001c6e62eac4b0e1ec59b16965cfc7f3e2",
+        "pinnedSharedBaseImagePreserved": true
+      },
+      "localValidation": {
+        "harnessSyntax": "PASS node --check",
+        "diagnosticPrivacyControl": "PASS fixed-phrase/status allowlist excludes fake identity/token/URL/private ID; unknown diagnostics explicitly classified unproven",
+        "gitDiffWhitespace": "PASS",
+        "credentiallessAffectedClientRehearsal": "PASS actual installed Linux/OpenCode 2.0.16 V2, zero queries",
+        "npmFullSuite": "NOT_RUN: controller owns shared full-suite queue",
+        "productionTypecheckAndBuildApplicability": "Prior 286 focused/typecheck/build proofs apply to unchanged 534-file production sources and exact installed tarballs; new harness mode has syntax/rehearsal/refusal proof. Final complete-head gates remain controller-owned"
+      },
+      "adversarialReview": {
+        "checked": [
+          "Entitlement mode creates a new supported V2 session; zero history imports and 105-character SDK prompt",
+          "Real target dependency module/native executable/account directory are matched, real SDK query is not substituted",
+          "Control requires actual target model, result success with is_error false, complete stream, assistant-only coding receipt, no native tool calls and exactly one SDK query",
+          "Original huge fixture hash and all default history/no-trim/200k/receipt/resume assertions unchanged",
+          "Error facts captured before normalization; status 200 and result subtype success cannot pass an error result",
+          "Scoped grant lacks refresh token; source mount read-only; isolated HOME/XDG/session/ports; finally cleans owned native/client processes and runtime auth"
+        ],
+        "materialFindings": "No surviving new harness finding; control proves refusal only. Precise provider restriction and large-context fix remain unproven. Independent final review remains a controller gate"
+      },
+      "neededAcceptanceGates": [
+        "Usable actual claude-sonnet-5-5 inference entitlement for the same owner account on both installed Linux arms",
+        "Actual successful unchanged-main generation failing ancient/no-trim assertion with original fixture",
+        "Fixed retained complete history, input >200k, current coding receipt and tiny same-session resume",
+        "Controller final npm test/typecheck/build as applicable, independent adversarial review and required final-head CI including test"
+      ]
     }
   },
-  "finalEvidenceChangeScope": "Evidence only; production source, tests and committed critical harness unchanged from testedHead. Root owns current-head npm test, independent adversarial review and CI."
+  "finalEvidenceChangeScope": "Evidence only; production source, tests and committed critical harness unchanged from testedHead. Root owns current-head npm test, independent adversarial review and CI.",
+  "lastEvidenceSourceHead": "cabc390fa9cf599225e505e9a8fcef3580db995d",
+  "latestCleanup": {
+    "rootPrivateCopyUnchanged": true,
+    "rootPrivateCopyPreserved": true,
+    "rootSnapshotDigestAfter": "a3138c50f9e7f6f3ff914b33add06a1eb203d111e2c5c60ec307f8a22a0cc968",
+    "scopedRuntimeCredentialRemoved": true,
+    "allOwnedFixtureRuntimeRemoved": true,
+    "ownedResidualProcesses": 0,
+    "proxyClientAndNativeJoined": true,
+    "generationQueries": 1,
+    "validRequiredModelCompletions": 0,
+    "baselineQueries": 0,
+    "fixedQueries": 0,
+    "resumeQueries": 0,
+    "refreshCalls": 0,
+    "loginCalls": 0,
+    "otherStoreReads": 0,
+    "sourceStoreWrites": 0,
+    "rootSnapshotWrites": 0,
+    "privateSdkTranscriptAccesses": 0,
+    "ownedContainerRemoved": true,
+    "ownedContainerId": "ed853ba500b7fbce99e55477f05cfb001c6e62eac4b0e1ec59b16965cfc7f3e2",
+    "pinnedSharedBaseImagePreserved": true
+  }
 }

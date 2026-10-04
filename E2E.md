@@ -7387,3 +7387,14 @@ minimal resumed turn. `E2E_IMPORT_ONLY=1` is a credentialless import/catalog
 rehearsal only. Stop before generation when native readiness fails and
 retain the missing live gate. See
 [proof and blocker](docs/maintenance/evidence/1213-native-sonnet-context.md).
+
+When OAuth readiness succeeds but inference entitlement is unproven, first
+run the same harness with `E2E_ENTITLEMENT_ONLY=1 E2E_MAX_GENERATIONS=1`.
+It uses a fresh supported V2 session with no history import and one tiny
+coding prompt. Require the real model, completed successful SDK result with
+`is_error=false`, no native tools and an assistant-only coding receipt.
+A status-200 client error or synthetic SDK assistant is a refusal; stop
+without the large fixture calls. Original upstream diagnostic phrases/status
+are captured before normalization without storing arbitrary provider text.
+This control does not prove the large-context fix; the unchanged before/after
+fixture and resumed turn remain necessary after it succeeds.

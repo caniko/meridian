@@ -25,17 +25,21 @@ const sdkVersion = JSON.parse(readFileSync(join(dirname(sdkPath), 'package.json'
 assert.equal(sdkVersion, '0.2.141', 'This acceptance gate requires the implicated SDK version')
 const client = realpathSync(process.env.E2E_OPENCODE_BIN)
 const importOnly = process.env.E2E_IMPORT_ONLY === '1'
+const entitlementOnly = process.env.E2E_ENTITLEMENT_ONLY === '1'
+assert(!(importOnly && entitlementOnly), 'Entitlement control requires actual inference')
 const maxGenerations = Number(process.env.E2E_MAX_GENERATIONS ?? '2')
 assert([1, 2].includes(maxGenerations), 'The gate permits one baseline or two fixed generations')
+if (entitlementOnly) assert.equal(maxGenerations, 1, 'Entitlement control permits exactly one SDK query')
 const owned = importOnly ? undefined : realpathSync(process.env.E2E_PROFILE_CLAUDE_DIR)
 const proof = resolve(process.env.E2E_PROOF_DIR ?? '.')
 mkdirSync(proof, { recursive: true, mode: 0o700 })
 const root = realpathSync(mkdtempSync(join(tmpdir(), 'meridian-native-sonnet-')))
 const project = join(root, 'project'), config = join(root, 'client-config'), auth = join(root, 'private-native-auth')
 for (const directory of [project, config, auth]) mkdirSync(directory, { mode: 0o700 })
-const fixture = sonnetContextFixture()
+const fixture = entitlementOnly ? { messages: [], ancient: 'SONNET_ENTITLEMENT_UNUSED_1213', current: 'SONNET_ENTITLEMENT_CURRENT_1213',
+  prompt: 'For this tiny coding task, return only console.log("SONNET_ENTITLEMENT_CURRENT_1213"); Do not call tools.' } : sonnetContextFixture()
 const facts = { platform: `${process.platform}/${process.arch}`, model: 'claude-sonnet-5-5', client: '2.0.16',
-  sdk: sdkVersion, maxGenerations,
+  sdk: sdkVersion, maxGenerations, entitlementOnly,
   root, readiness: {}, catalogRequests: 0, wire: [], queries: [], resumed: false, result: 'INCOMPLETE' }
 const savedConsole = { log: console.log, warn: console.warn, error: console.error, debug: console.debug }
 let logCount = 0
@@ -43,6 +47,23 @@ for (const key of Object.keys(savedConsole)) console[key] = () => { logCount++ }
 let proxy, relay, server, serverOutput, observer, sdk, censusTimer, firstNativeSession, nativeExecutable
 const trackedProcesses = new Map()
 const writeFacts = () => writeFileSync(join(proof, 'sonnet-context-results.json'), JSON.stringify({ ...facts, suppressedLogLines: logCount }, null, 2), { mode: 0o600 })
+// Preserve original provider error facts before Meridian normalizes them.
+// Only fixed diagnostic phrases leave memory: no arbitrary provider text,
+// identity, token, URL, SDK transcript or successful generated prose is saved.
+function providerErrorFacts(value) {
+  const text = typeof value === 'string' ? value : JSON.stringify(value) ?? ''
+  const phrases = [
+    'credit balance is too low', 'no active subscription', 'subscription is inactive', 'subscription has expired',
+    'subscription access', 'has disabled claude', 'billing_error', 'billing issue', 'payment required',
+    'insufficient credit', 'usage limit', 'out of usage credits', 'extra usage', 'rate_limit_error',
+    'rate limit', 'too many requests', 'hit your limit', 'reached your', 'context_overflow', 'context window',
+    'invalid_request_error', 'authentication_error', 'invalid or expired', 'token has expired', 'unauthorized',
+    'permission_error', 'permission denied', 'not allowed', 'not available', 'not supported', 'model not found',
+    'api error', 'internal server error', 'overloaded_error', 'failed to authenticate',
+  ].filter(phrase => text.toLowerCase().includes(phrase))
+  const statuses = [...new Set([...text.matchAll(/\b(400|401|402|403|404|429|500|502|503|529)\b/g)].map(match => Number(match[1])))]
+  return { characters: text.length, phrases, statuses, unclassified: phrases.length === 0 }
+}
 async function bounded(promise, milliseconds, label) {
   let timer
   try {
@@ -137,13 +158,14 @@ try {
       ancientRetained: text?.includes(fixture.ancient) ?? false,
       currentRetained: text?.includes(fixture.current) ?? false,
       omitted: text?.includes('were omitted from this replay') ?? false,
-      nativeModels: [], inputTokens: 0, toolUseBlocks: 0, completed: false }
+      nativeModels: [], nativeAssistantErrors: [], upstreamErrors: [], inputTokens: 0, toolUseBlocks: 0, completed: false }
     facts.queries.push(row)
     facts.stage = `native-query-${facts.queries.length}`
     writeFacts()
     const query = actualQuery(input)
     return new Proxy(query, { get(target, key) {
       if (key === Symbol.asyncIterator) return async function* () {
+        try {
           for await (const event of query) {
             if (typeof event.session_id === 'string') {
               firstNativeSession ??= event.session_id
@@ -154,16 +176,27 @@ try {
               const usage = event.message.usage
               if (usage) row.inputTokens = Math.max(row.inputTokens, (usage.input_tokens ?? 0) + (usage.cache_read_input_tokens ?? 0) + (usage.cache_creation_input_tokens ?? 0))
               row.toolUseBlocks += event.message.content.filter(block => block.type === 'tool_use').length
+              if (event.error) row.nativeAssistantErrors.push(/^[a-z_]+$/.test(event.error) ? event.error : 'redacted-other')
+              if (event.error || event.message.model === '<synthetic>') row.upstreamErrors.push(...event.message.content
+                .filter(block => block.type === 'text').map(block => providerErrorFacts(block.text)))
             }
             if (event.type === 'result') {
               row.resultSubtype = event.subtype
               row.nativeTurns = event.num_turns
+              row.resultIsError = event.is_error === true
+              if (Array.isArray(event.errors)) row.upstreamErrors.push(...event.errors.map(providerErrorFacts))
+              if (event.is_error && typeof event.result === 'string') row.upstreamErrors.push(providerErrorFacts(event.result))
             }
             writeFacts()
             yield event
           }
           row.completed = true
           writeFacts()
+        } catch (error) {
+          row.thrownError = providerErrorFacts(error instanceof Error ? error.message : error)
+          writeFacts()
+          throw error
+        }
       }
       const value = Reflect.get(target, key, target)
       return typeof value === 'function' ? value.bind(target) : value
@@ -250,15 +283,15 @@ try {
   assert.equal(facts.clientWindow, facts.proxyWindow, 'Installed V2 client did not adopt the advertised catalog')
   assert(facts.catalogRequests > 0, 'Installed V2 plugin never fetched the proxy catalog')
   const created = await api('/api/session', { location: { directory: project }, title: 'Native Sonnet context proof', agent: 'build', model: { providerID: 'anthropic', id: facts.model } })
-  const info = { ...created.data, id: `ses_${randomUUID().replaceAll('-', '')}` }
+  const info = entitlementOnly ? created.data : { ...created.data, id: `ses_${randomUUID().replaceAll('-', '')}` }
   let time = Date.now()
   const messages = fixture.messages.map(message => message.role === 'user'
     ? { id: `msg_${randomUUID().replaceAll('-', '')}`, type: 'user', time: { created: time++ }, text: message.content }
     : { id: `msg_${randomUUID().replaceAll('-', '')}`, type: 'assistant', time: { created: time++, completed: time++ }, agent: 'build', model: info.model,
       content: [{ type: 'text', text: message.content }], finish: 'stop' })
   messages.push({ id: `msg_${randomUUID().replaceAll('-', '')}`, type: 'idle', time: { created: time++ }, outcome: 'succeeded' })
-  await api('/api/experimental/session/import', { info, messages })
-  facts.importedMessages = messages.length
+  if (!entitlementOnly) await api('/api/experimental/session/import', { info, messages })
+  facts.importedMessages = entitlementOnly ? 0 : messages.length
   if (importOnly) {
     const imported = await api(`/api/session/${info.id}/message?order=asc&limit=100`)
     const content = JSON.stringify(imported)
@@ -279,12 +312,23 @@ try {
       .flatMap(row => row.content.filter(block => block.type === 'text').map(block => block.text)).join('\n')
   }
   const answer = await prompt(fixture.prompt)
+  facts.clientAssistantResults = answer.data.filter(row => row.type === 'assistant' && row.agent === 'build').map(row => ({
+    model: row.model.id, finish: row.finish, hasError: Boolean(row.error),
+    ...(row.error ? { error: providerErrorFacts(row.error), status: row.error.status } : {}),
+  }))
   const fresh = facts.queries.find(row => !row.resumed && row.currentRetained)
   facts.sameAncientNoTrimAssertion = Boolean(fresh?.ancientRetained && !fresh.omitted)
   facts.receiptDelivered = assistantText(answer).includes(`console.log("${fixture.current}");`)
   writeFacts()
-  assert(facts.wire.some(row => row.model === facts.model && row.agent === 'build' && row.mode === 'primary' && row.attested && row.ancientRetained), 'Actual V2 primary request did not carry the imported history and signed identity')
+  assert(facts.wire.some(row => row.model === facts.model && row.agent === 'build' && row.mode === 'primary' && row.attested && (entitlementOnly ? row.currentRetained : row.ancientRetained)), 'Actual V2 primary request did not carry the coding request/history and signed identity')
   assert(fresh?.credentialDirectoryMatched && fresh.nativeModels.includes(facts.model) && fresh.completed, 'Wrong native account/model or incomplete SDK query')
+  if (entitlementOnly) {
+    assert(fresh.nativeExecutableMatched && fresh.resolvedSonnet === facts.model && fresh.resultSubtype === 'success' && !fresh.resultIsError, 'Entitlement native executable/model/result mismatch')
+    assert(fresh.nativeTurns === 1 && fresh.toolUseBlocks === 0 && fresh.inputTokens > 0 && fresh.promptCharacters < 2000, 'Entitlement control was not one tiny successful coding turn without tools')
+    assert.equal(facts.queries.length, 1, 'Entitlement control did not use exactly one SDK query')
+    assert(facts.receiptDelivered, 'Actual V2 entitlement response lacks the assistant coding receipt')
+    facts.result = 'ENTITLEMENT_PASS'
+  } else {
   assert(facts.sameAncientNoTrimAssertion, 'Native Sonnet fresh replay prematurely discarded ancient history')
   assert.equal(fresh.historyMessagesRetained, fixture.messages.length, 'Native Sonnet fresh replay discarded part of the imported history')
   assert(fresh.nativeExecutableMatched && fresh.resultSubtype === 'success', 'Initial native executable/result mismatch')
@@ -303,6 +347,7 @@ try {
   assert(facts.resumed, 'Minimal actual V2/SDK resume control failed')
   assert.equal(facts.queries.length, 2, 'The fixed arm did not use exactly two native generations')
   facts.result = 'PASS'
+  }
   }
 } catch (error) {
   facts.result = 'FAIL'

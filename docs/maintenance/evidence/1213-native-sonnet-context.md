@@ -2,8 +2,8 @@
 
 **Prepared, not accepted:** local code proof is complete; actual Linux /
 OpenCode 2.0.16 / Sonnet 5.5 before-and-after generation remains a gate. No
-model call has been made for this review. Required final-head CI and owner
-acceptance remain open.
+model call has been made for this review. Required final-head CI and
+affected-flow acceptance remain open.
 
 Source head: `553fd5c386de5e18e531a1d0101d64ef3a3b1792`. Contributor
 `robertn702`'s two commits (`179257b9`, `553fd5c3`) were cherry-picked with

@@ -10,6 +10,9 @@ Source head: `553fd5c386de5e18e531a1d0101d64ef3a3b1792`. Contributor
 original Author/AuthorDate preserved. Maintainer corrections are separate.
 Initial exact unchanged-main control:
 `f299fe06e72411b786380b5212edea79cd13966a`.
+Final integration base is current main
+`9d77d8e282cb9c58d99b8962b900777e9f4b0803`; rebased contributor mappings
+are `179257b9` → `fd39b5c5` and `553fd5c3` → `731dbdf6`.
 
 ## Product fit and adversarial corrections
 
@@ -81,9 +84,17 @@ scopes present=false. No default/global Keychain service was consulted.
 No grant, identity, authorization URL, raw client log or private SDK
 transcript was displayed or retained as proof.
 
-The real 2.0.16 supported API accepted a synthetic transcript through
-`POST /api/experimental/session/import` with HTTP 200, with no model query.
-This permits the full fixture to be seeded without preparatory giant calls.
+The final credentialless real 2.0.16 rehearsal passes the complete installed
+plugin/config/catalog/import path: client and proxy both report 1,000,000,
+the plugin makes one `/v1/models` discovery request, and supported import
+retains all 15 projected messages (931,634 serialized characters).
+Model requests are fenced; wire/model-query counts are zero. Cleanup observes
+zero owned residual processes, joins the public proxy/child lifecycle and
+removes the private credential-copy directory. This permits the full fixture
+to be seeded without preparatory giant calls. The first fresh-image startup
+refused a missing machine-id; the failed result is retained. Generating a
+machine-id only inside the new disposable container resolved that prerequisite;
+no admission guard or assertion was bypassed.
 The escrowed [live/rehearsal harness](../../../scripts/e2e-sonnet-context-v2-live.mjs)
 isolates HOME/XDG, package-installed plugin/config, ports, projects and
 sessions. It uses supported V2 import/prompt/wait APIs, observes public SDK
@@ -120,5 +131,21 @@ their source store and deleted from the disposable runtime in `finally`.
 
 Focused checks: 112 pure model/replay tests, 121 catalog/conversion tests,
 41 actual HTTP replay tests and 12 health/catalog-route tests pass. Standalone
-typecheck passes. Final current-main full `npm test`, typecheck/build and
-exact-head CI must be recorded before landing; live acceptance is still open.
+typecheck and native Node bundle builds pass on macOS and Linux.
+Full `npm test` at `74e50774fba47a7540f5b1c8c9f24e8d2db35bb8` passes
+**5,321 tests, 35 skips, zero failures across 18 isolated stages**. Its pretest
+typechecks. Later changes affect only the escrow harness/evidence; final
+standalone typecheck, syntax check and actual credentialless rehearsal pass.
+Product code is unchanged after the full suite.
+
+Independent adversarial review has no material production or harness findings
+remaining. It corrected receipt checks that could match user prompts, SDK
+observation from the wrong dependency tree, inherited HOME/global plugin
+loading, unbounded/private-copy cleanup and lost descendant ownership after
+reparenting. The final harness uses assistant-only receipts, the selected
+tree's exact SDK 0.2.141, isolated parent/client HOME/XDG/plugin paths,
+bounded shutdown and tracked Linux PID/start-time identities with zero owned
+residuals. Native generation is fenced in rehearsal and bounded to at most
+two queries per live arm. Exact final-head CI and the real affected-flow
+before/after remain required before acceptance; no merge, closure or release
+is authorized by these local results.

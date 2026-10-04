@@ -2,9 +2,27 @@
   "sourceHead": "553fd5c386de5e18e531a1d0101d64ef3a3b1792",
   "unchangedMain": "f299fe06e72411b786380b5212edea79cd13966a",
   "sameSyntheticFixtureEstimatedTokens": 261350,
-  "localBefore": { "exit": 1, "budget": 160000, "advertisedWindow": 200000, "ancientRetained": false, "currentRetained": true, "omittedMessages": 7 },
-  "localAfter": { "exit": 0, "budget": 836000, "advertisedWindow": 1000000, "ancientRetained": true, "currentRetained": true, "omittedMessages": 0 },
-  "negativeWindows": { "sonnet46": 200000, "unknownSonnet6": 200000, "explicitCliDisable": 200000 },
+  "localBefore": {
+    "exit": 1,
+    "budget": 160000,
+    "advertisedWindow": 200000,
+    "ancientRetained": false,
+    "currentRetained": true,
+    "omittedMessages": 7
+  },
+  "localAfter": {
+    "exit": 0,
+    "budget": 836000,
+    "advertisedWindow": 1000000,
+    "ancientRetained": true,
+    "currentRetained": true,
+    "omittedMessages": 0
+  },
+  "negativeWindows": {
+    "sonnet46": 200000,
+    "unknownSonnet6": 200000,
+    "explicitCliDisable": 200000
+  },
   "readiness": {
     "linuxNativeStatusLoggedIn": true,
     "linuxAccessExpired": true,
@@ -13,7 +31,53 @@
     "explicitOwnedCustomMacExpiryFuture": false,
     "explicitOwnedCustomMacScopesPresent": false
   },
-  "supportedImportRehearsal": { "client": "2.0.16", "platform": "linux/x64", "node": "24.21.0", "bun": "1.3.14", "apiStatus": 200, "generationCalls": 0 },
-  "actualAffectedFlow": { "status": "OPEN", "generationCalls": 0, "requiredModel": "claude-sonnet-5-5", "requiredClient": "OpenCode 2.0.16 installed V2 plugin", "requiredSdk": "0.2.141", "requiredPlatform": "linux/x64" },
-  "localChecks": { "focusedPassed": 286, "focusedFailed": 0, "standaloneTypecheck": "PASS", "finalCurrentMainFullSuite": "PENDING", "build": "PENDING", "finalHeadCi": "PENDING" }
+  "supportedImportRehearsal": {
+    "client": "2.0.16",
+    "platform": "linux/x64",
+    "node": "24.21.0",
+    "bun": "1.3.14",
+    "apiStatus": 200,
+    "generationCalls": 0,
+    "result": "IMPORT_REHEARSAL_PASS",
+    "sdk": "0.2.141",
+    "proxyWindow": 1000000,
+    "clientWindow": 1000000,
+    "catalogRequests": 1,
+    "importedMessages": 15,
+    "importedHistoryCharacters": 931634,
+    "ownedResidualProcesses": 0,
+    "privateCredentialCopyRemoved": true,
+    "cleanupJoined": true
+  },
+  "actualAffectedFlow": {
+    "status": "OPEN",
+    "generationCalls": 0,
+    "requiredModel": "claude-sonnet-5-5",
+    "requiredClient": "OpenCode 2.0.16 installed V2 plugin",
+    "requiredSdk": "0.2.141",
+    "requiredPlatform": "linux/x64"
+  },
+  "localChecks": {
+    "focusedPassed": 286,
+    "focusedFailed": 0,
+    "standaloneTypecheck": "PASS",
+    "finalCurrentMainFullSuite": {
+      "pass": 5321,
+      "skip": 35,
+      "fail": 0,
+      "isolatedStages": 18
+    },
+    "build": "PASS macOS and Linux",
+    "finalHeadCi": "PENDING",
+    "fullSuiteHead": "74e50774fba47a7540f5b1c8c9f24e8d2db35bb8",
+    "independentAdversarialReview": "No material findings remain"
+  },
+  "integrationBase": "9d77d8e282cb9c58d99b8962b900777e9f4b0803",
+  "contributorMappings": {
+    "179257b96c1e1d591d0c5d2ed28ccff1af1ae85e": "fd39b5c541281499242d41e66732d587fe3e778a",
+    "553fd5c386de5e18e531a1d0101d64ef3a3b1792": "731dbdf6e25edfa38a3483b9416762e9e1140e9b"
+  },
+  "retainedFailedControls": [
+    "Fresh isolated Linux image lacked machine-id; startup guard refused before any generation. A machine-id was generated only in that private disposable container; the same full rehearsal then passed."
+  ]
 }

@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict'
 import { once } from 'node:events'
 import { randomBytes, randomUUID } from 'node:crypto'
-import { mkdtempSync, mkdirSync, readFileSync, realpathSync, writeFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, readFileSync, realpathSync, writeFileSync, rmSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { resolve, join, dirname } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -36,8 +36,62 @@ const facts = { platform: `${process.platform}/${process.arch}`, model: 'claude-
 const savedConsole = { log: console.log, warn: console.warn, error: console.error, debug: console.debug }
 let logCount = 0
 for (const key of Object.keys(savedConsole)) console[key] = () => { logCount++ }
-let proxy, relay, server, serverOutput, observer, sdk
+let proxy, relay, server, serverOutput, observer, sdk, censusTimer
+const trackedProcesses = new Map()
 const writeFacts = () => writeFileSync(join(proof, 'sonnet-context-results.json'), JSON.stringify({ ...facts, suppressedLogLines: logCount }, null, 2), { mode: 0o600 })
+async function bounded(promise, milliseconds, label) {
+  let timer
+  try {
+    return await Promise.race([promise, new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} timed out`)), milliseconds)
+    })])
+  } finally { clearTimeout(timer) }
+}
+function ownedProcesses() {
+  const processes = new Map()
+  for (const name of readdirSync('/proc')) {
+    if (!/^\d+$/.test(name) || Number(name) === process.pid) continue
+    try {
+      const stat = readFileSync(`/proc/${name}/stat`, 'utf8')
+      const fields = stat.slice(stat.lastIndexOf(') ') + 2).split(' ')
+      const cwd = realpathSync(`/proc/${name}/cwd`)
+      const start = fields[19]
+      processes.set(Number(name), { parent: Number(fields[1]), start,
+        owned: cwd === root || cwd.startsWith(`${root}/`) || trackedProcesses.get(Number(name)) === start })
+    } catch (error) {
+      if (['ENOENT', 'ESRCH', 'EACCES'].includes(error.code)) continue
+      throw new Error('Owned process census failed')
+    }
+  }
+  // Include descendants that changed cwd while their owned parent is alive.
+  let changed
+  do {
+    changed = false
+    for (const row of processes.values()) if (!row.owned && processes.get(row.parent)?.owned) { row.owned = true; changed = true }
+  } while (changed)
+  const owned = new Map([...processes].filter(([, row]) => row.owned))
+  for (const [pid, row] of owned) trackedProcesses.set(pid, row.start)
+  for (const [pid, start] of trackedProcesses) if (processes.get(pid)?.start !== start) trackedProcesses.delete(pid)
+  return owned
+}
+async function joinOwnedProcesses() {
+  const signal = kind => {
+    for (const [pid, row] of ownedProcesses()) {
+      // Recheck the process incarnation before signaling; PID reuse is not
+      // permission to terminate another process. No command/env/grant is read.
+      const current = ownedProcesses().get(pid)
+      if (current?.start !== row.start) continue
+      try { process.kill(pid, kind) }
+      catch (error) { if (error.code !== 'ESRCH') throw new Error('Owned process termination failed') }
+    }
+  }
+  signal('SIGTERM')
+  await Bun.sleep(500)
+  if (ownedProcesses().size) signal('SIGKILL')
+  for (let attempt = 0; attempt < 50 && ownedProcesses().size; attempt++) await Bun.sleep(100)
+  facts.ownedResidualProcesses = ownedProcesses().size
+  assert.equal(facts.ownedResidualProcesses, 0, 'Owned native/client descendants survived cleanup')
+}
 try {
   if (!importOnly) {
     // The source mount remains read-only. Only this private disposable copy can
@@ -67,6 +121,8 @@ try {
   sdk = await import(pathToFileURL(sdkPath).href)
   const actualQuery = sdk.query
   observer = spyOn(sdk, 'query').mockImplementation(input => {
+    assert(!importOnly, 'Import rehearsal fenced native generation')
+    assert(facts.queries.length < 2, 'Bounded gate refused an additional native generation')
     const text = typeof input.prompt === 'string' ? input.prompt : undefined
     const row = { credentialDirectoryMatched: input.options.env?.CLAUDE_CONFIG_DIR === auth,
       resolvedSonnet: input.options.env?.ANTHROPIC_DEFAULT_SONNET_MODEL, sdkModel: input.options.model,
@@ -123,6 +179,7 @@ try {
       facts.wire.push({ model: input.model, session: request.headers.get('x-opencode-session'), agent: request.headers.get('x-opencode-agent-name'),
         mode: request.headers.get('x-opencode-agent-mode'), attested: request.headers.has('x-meridian-opencode-turn'),
         ancientRetained: text.includes(fixture.ancient), currentRetained: text.includes(fixture.current), characters: text.length })
+      if (importOnly) return new Response('Import rehearsal fences generation', { status: 503 })
     }
     const response = await fetch(`${upstream}${url.pathname}${url.search}`, { method: request.method, headers: request.headers, ...(body === undefined ? {} : { body }) })
     return new Response(response.body, { status: response.status, headers: response.headers })
@@ -146,6 +203,11 @@ try {
   const port = reservation.port
   await reservation.stop(true)
   server = Bun.spawn([client, 'serve', '--hostname', '127.0.0.1', '--port', String(port)], { cwd: project, env: clientEnv, stdout: 'pipe', stderr: 'pipe' })
+  // Retain observed incarnations through cwd changes and reparenting, before
+  // terminating a parent. This inspects only process metadata, never argv/env.
+  censusTimer = setInterval(() => {
+    try { ownedProcesses() } catch { facts.processCensusFailed = true }
+  }, 100)
   serverOutput = Promise.all([new Response(server.stdout).text(), new Response(server.stderr).text()])
   const base = `http://127.0.0.1:${port}`
   const headers = { authorization: `Basic ${Buffer.from('opencode:local-e2e').toString('base64')}`, 'content-type': 'application/json' }
@@ -216,13 +278,42 @@ try {
   facts.failure = error instanceof Error ? error.message : 'Unknown gate failure'
   process.exitCode = 1
 } finally {
-  server?.kill()
-  if (server) { await server.exited; await serverOutput }
-  relay?.stop(true)
-  if (proxy) await proxy.close()
-  observer?.mockRestore()
-  rmSync(auth, { recursive: true, force: true })
-  for (const key of Object.keys(savedConsole)) console[key] = savedConsole[key]
-  writeFacts()
-  console.log(JSON.stringify({ result: facts.result, proof: join(proof, 'sonnet-context-results.json'), readiness: facts.readiness, generationQueries: facts.queries.length }))
+  const cleanupFailures = []
+  try {
+    clearInterval(censusTimer)
+    try { ownedProcesses() } catch { cleanupFailures.push('Owned process pre-termination census') }
+    if (facts.processCensusFailed) cleanupFailures.push('Owned process census')
+    if (server) {
+      try {
+        server.kill('SIGTERM')
+        try { await bounded(server.exited, 5000, 'OpenCode termination') }
+        catch {
+          server.kill('SIGKILL')
+          await bounded(server.exited, 5000, 'OpenCode kill')
+        }
+        await bounded(serverOutput, 5000, 'OpenCode pipes')
+      } catch { cleanupFailures.push('OpenCode termination or pipes') }
+    }
+    try { if (relay) await bounded(Promise.resolve(relay.stop(true)), 5000, 'Relay close') }
+    catch { cleanupFailures.push('Relay close') }
+    try { if (proxy) await bounded(proxy.close(), 10000, 'Proxy close') }
+    catch { cleanupFailures.push('Proxy close') }
+    try { await bounded(joinOwnedProcesses(), 7000, 'Owned process join') }
+    catch { cleanupFailures.push('Owned native/client process join') }
+  } finally {
+    try { observer?.mockRestore() } catch { cleanupFailures.push('SDK observer restore') }
+    try {
+      rmSync(auth, { recursive: true, force: true })
+      facts.privateCredentialCopyRemoved = true
+    } catch { cleanupFailures.push('Private credential removal') }
+    for (const key of Object.keys(savedConsole)) console[key] = savedConsole[key]
+    facts.cleanupJoined = cleanupFailures.length === 0
+    if (cleanupFailures.length) {
+      facts.cleanupFailures = cleanupFailures
+      facts.result = 'FAIL'
+      process.exitCode = 1
+    }
+    writeFacts()
+    console.log(JSON.stringify({ result: facts.result, proof: join(proof, 'sonnet-context-results.json'), readiness: facts.readiness, generationQueries: facts.queries.length }))
+  }
 }

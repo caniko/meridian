@@ -1,0 +1,20 @@
+bun test v1.3.14 (0d9b296a)
+
+src/__tests__/priority-routing-integration.test.ts:
+[PROXY] e5bebc14-f3af-4f2a-9997-469dfb89be3a adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] abd6cb6f-ddc3-4870-8f0f-0506ec8ac9bd adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] abd6cb6f-ddc3-4870-8f0f-0506ec8ac9bd usage: input=10 output=50 cache=0%
+(pass) priority routing > does not start another account before suppressed retirement, or after cancellation during retirement [507.36ms]
+[PROXY] 03652e1d-2443-4042-ae70-acb6b48b7d08 adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 03652e1d-2443-4042-ae70-acb6b48b7d08 adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 03652e1d-2443-4042-ae70-acb6b48b7d08 usage: input=10 output=50 cache=0%
+(pass) priority routing > treats an oversized post-header JSON boundary as terminal with joined retirement, without trying a third account [255.18ms]
+[PROXY] 05539415-6527-423c-be3b-4a4080b8509a adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 05539415-6527-423c-be3b-4a4080b8509a adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+(pass) priority routing > treats an oversized post-header JSON boundary as terminal with rejected retirement, without trying a third account [49.41ms]
+
+ 3 pass
+ 84 filtered out
+ 0 fail
+ 24 expect() calls
+Ran 3 tests across 1 file. [1156.00ms]

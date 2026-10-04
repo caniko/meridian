@@ -1411,6 +1411,21 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
         const isCancelled = () => sink.isCancelled() || requestAbort.controller.signal.aborted
         let activeExposure: PriorityAttemptExposure | null = null
         let failedUnexpectedly = false
+        let cleanupFailed = false
+        const joinAttempt = async (inner: Response): Promise<void> => {
+          try {
+            await responseCompletions.get(inner)
+          } catch (error) {
+            cleanupFailed = true
+            // A rejected join does not prove writer retirement. Retain both
+            // durable attempt authority and the session fence, never retry.
+            options.requestMeta.retainSessionTurnFence?.()
+            claudeLog("priority.attempt_completion_failed", {
+              error: error instanceof Error ? error.message : String(error),
+            })
+            throw error
+          }
+        }
         let settled = false
         const settle = (disposition: "release" | "block"): boolean => {
           if (settled) return true
@@ -1431,12 +1446,19 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
               : await runPriorityAttempt(options, attempt, candidate, attemptOwnerToken, requestAbort, activeExposure)
             lastInner = inner
             const verdict = await relayStreamAttempt(inner, { ...sink, isCancelled })
+            if (verdict.kind === "relayed" && verdict.cleanupFailure) {
+              cleanupFailed = true
+              options.requestMeta.retainSessionTurnFence?.()
+              claudeLog("priority.reader_retirement_fenced", { error: String(verdict.cleanupFailure.error) })
+              requestAbort.abort("priority reader retirement failed")
+              return
+            }
             if (verdict.kind === "suppressed") {
               // Cancel BEFORE joining cleanup, then read the final exposure
               // state. Cleanup may itself latch a side effect; testing the
               // barrier before completion could replay an exposed attempt.
               await verdict.discard()
-              await responseCompletions.get(inner)?.catch(() => {})
+              await joinAttempt(inner)
               const reason = verdict.errorType
               const cooldownUntil = markPriorityFailure(candidate, reason)
               if (isCancelled()) break
@@ -1464,6 +1486,19 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
               continue
             }
             if (isCancelled()) break
+            if (verdict.terminalError) {
+              // Converted post-header JSON/overflow errors are not a served
+              // answer. Join cleanup before settling, without establishing
+              // affinity or announcing a successful failover. The terminal
+              // frame is already on the wire; a failed settlement stays fenced
+              // rather than appending a second conflicting error frame.
+              await joinAttempt(inner)
+              if (!settle(exposure.committed ? "block" : "release")) {
+                options.requestMeta.retainSessionTurnFence?.()
+                claudeLog("priority.terminal_settlement_fenced", { profile: candidate })
+              }
+              return
+            }
             if (options.sessionKey && !options.durableRoute) {
               // Process memory preserves only legacy/keyless new-conversation
               // affinity. Trusted attempts publish authority at the atomic
@@ -1546,10 +1581,15 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
           // ordering.
           void (async () => {
             try {
-              if (lastInner) await responseCompletions.get(lastInner)?.catch(() => {})
+              if (lastInner) await joinAttempt(lastInner)
+            } catch (error) {
+              // joinAttempt recorded and fenced this failure. Observe the
+              // detached finalizer's rejection without claiming cleanup.
+              cleanupFailed = true
+              claudeLog("priority.outer_completion_fenced", { error: String(error) })
             } finally {
               // Settle only after cleanup, when the exposure barrier is final.
-              if (isCancelled() || failedUnexpectedly) settle(activeExposure?.committed ? "block" : "release")
+              if (!cleanupFailed && (isCancelled() || failedUnexpectedly)) settle(activeExposure?.committed ? "block" : "release")
               if (!options.requestAbortLink) requestAbort.detach()
               resolveOuterCompletion()
             }

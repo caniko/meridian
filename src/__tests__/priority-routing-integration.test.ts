@@ -18,6 +18,23 @@ import { assistantMessage, messageStart, textBlockStart, textDelta, blockStop, m
 import { createPriorityAttestation } from "../../plugin/priority-attestation"
 import type { PriorityFailbackPolicy } from "../proxy/routing"
 import type { DurablePriorityAssignment } from "../proxy/sessionStore"
+import * as relayExports from "../proxy/sseFailureSniff"
+
+// This file already runs in its own npm-test process. Keep the real transport
+// and framing; the narrow seam injects abnormal provider Response boundaries
+// and delays reader retirement without adding a product configuration hook.
+const actualRelayExports = { ...relayExports }
+let substituteRelayResponse: ((inner: Response) => Response) | null = null
+let beforeSuppressedDiscard: (() => Promise<void>) | null = null
+mock.module("../proxy/sseFailureSniff", () => ({
+  ...actualRelayExports,
+  relayStreamAttempt: async (inner: Response, opts: relayExports.SseRelaySink) => {
+    const verdict = await actualRelayExports.relayStreamAttempt(substituteRelayResponse?.(inner) ?? inner, opts)
+    if (verdict.kind !== "suppressed" || !beforeSuppressedDiscard) return verdict
+    const beforeDiscard = beforeSuppressedDiscard
+    return { ...verdict, discard: async () => { await beforeDiscard(); await verdict.discard() } }
+  },
+}))
 
 type CapturedSdkCall = {
   readonly dir: string
@@ -63,6 +80,7 @@ function createStreamCompletionGate(phase: number): StreamCompletionGate {
 }
 
 let capturedEnvs: string[] = []
+let capturedPriorityEvents: string[] = []
 let capturedSdkCalls: CapturedSdkCall[] = []
 let capturePhase = 0
 let failingDirs = new Set<string>()
@@ -255,7 +273,7 @@ installSdkMock(() => ({
 }), "priority-routing-integration.test.ts")
 
 installLoggerMock(() => ({
-  claudeLog: () => {},
+  claudeLog: (event: string) => { if (event.startsWith("priority.")) capturedPriorityEvents.push(event) },
   withClaudeLogContext: (_ctx: unknown, fn: () => unknown) => fn(),
 }))
 
@@ -440,6 +458,9 @@ let savedPriorityFailbackSetting: PriorityFailbackPolicy | undefined
 // (file-level) hooks before inner (describe-level) ones, so those overrides
 // still win for those tests.
 beforeEach(() => {
+  capturedPriorityEvents = []
+  substituteRelayResponse = null
+  beforeSuppressedDiscard = null
   failureMessage = DEFAULT_FAILURE
   failAfterContentDirs = new Set()
   preludePingDirs = new Set()
@@ -1976,6 +1997,80 @@ describe("priority routing", () => {
     expect(text).toContain("billing_error")
     expect(text).not.toContain("message_start")
   }, 20_000)
+
+  it("does not start another account before suppressed retirement, or after cancellation during retirement", async () => {
+    failureMessage = SUBSCRIPTION_REFUSAL
+    failingDirs.add("prof-work")
+    let entered = (): void => {}
+    let retire = (): void => {}
+    const discarding = new Promise<void>(resolve => { entered = resolve })
+    const retirement = new Promise<void>(resolve => { retire = resolve })
+    beforeSuppressedDiscard = async () => { entered(); await retirement }
+    const app = createTestApp()
+    const res = await postStream(app, {})
+    await discarding
+    expect(capturedEnvs).toHaveLength(1)
+    // Body cancellation must abort the request-wide link while cleanup is
+    // still pending; resolving cleanup must not resurrect the fallback loop.
+    await res.body!.cancel("cancel during suppressed retirement")
+    retire()
+    await Bun.sleep(50)
+    expect(capturedEnvs).toHaveLength(1)
+    expect(capturedEnvs[0]).toContain("prof-work")
+    beforeSuppressedDiscard = null
+    failingDirs.clear()
+    const fresh = await postStream(app, { content: "fresh request after joined cancellation" })
+    expect(await fresh.text()).toContain("message_start")
+  }, 5_000)
+
+  it.each(["joined", "rejected"] as const)("treats an oversized post-header JSON boundary as terminal with %s retirement, without trying a third account", async retirement => {
+    failureMessage = SUBSCRIPTION_REFUSAL
+    failingDirs.add("prof-work")
+    process.env.MERIDIAN_PROFILE_ORDER = "work,personal,third"
+    const { app } = createProxyServer({
+      port: 0, host: "127.0.0.1", defaultProfile: "work",
+      profiles: [...PROFILES, { id: "third", claudeConfigDir: "/tmp/meridian-test-prof-third" }],
+    })
+    let attempts = 0
+    let cancelled = 0
+    substituteRelayResponse = inner => {
+      if (++attempts !== 2) return inner
+      return new Response(new ReadableStream<Uint8Array>({
+        start(controller) {
+          // The incomplete body mentions an account refusal, but is too large
+          // and never closes. It cannot justify replaying a third account.
+          controller.enqueue(new TextEncoder().encode('{"error":{"type":"billing_error","message":"' + "x".repeat(65536)))
+        },
+        cancel() {
+          cancelled++
+          if (retirement === "rejected") return Promise.reject(new Error("fixture reader retirement rejected"))
+        },
+      }), { status: 402, headers: { "content-type": "application/json" } })
+    }
+    const res = await postStream(app, {})
+    const reader = res.body!.getReader()
+    const chunks: Uint8Array[] = []
+    const timer = setTimeout(() => { void reader.cancel("test deadline") }, 1000)
+    try {
+      while (true) {
+        const chunk = await reader.read()
+        if (chunk.done) break
+        chunks.push(chunk.value)
+      }
+    } finally { clearTimeout(timer); reader.releaseLock() }
+    const body = new TextDecoder().decode(Buffer.concat(chunks))
+    expect(res.status).toBe(200)
+    expect(body).toContain('"type":"api_error"')
+    expect(body.split("event: error").length - 1).toBe(1)
+    expect(body).not.toContain("billing_error")
+    expect(attempts).toBe(2)
+    expect(cancelled).toBe(1)
+    expect(capturedEnvs.some(dir => dir.includes("prof-third"))).toBe(false)
+    expect((await exhaustedMarks(app)).map(mark => mark.id)).toEqual(["work"])
+    const events = await (await app.fetch(new Request("http://localhost/profiles/events"))).json() as { events: Array<{ kind: string }> }
+    expect(events.events.some(event => event.kind === "failover")).toBe(false)
+    expect(capturedPriorityEvents.includes("priority.reader_retirement_fenced")).toBe(retirement === "rejected")
+  }, 5_000)
 
   it("surfaces the refusal's own status when every account is refused", async () => {
     failureMessage = SUBSCRIPTION_REFUSAL

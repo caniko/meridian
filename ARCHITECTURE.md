@@ -427,8 +427,18 @@ and starts the next — never on a cancelled request. The first real frame
 relays byte-exact, an exposure-committed attempt relays its error instead of
 failing over, and a pool exhausted after headers emits one SSE error frame.
 
-The relay is bounded: the outer queue holds 64 KiB, and an incomplete prelude
-reaching 64 KiB ends sniffing and relays the attempt unchanged.
+The relay's outer queue holds 64 KiB plus at most one 16-KiB write. SSE
+classification retains at most 64 KiB; a chunk exceeding the remaining budget
+is checked before decoding and conservatively relayed byte-exact, ending
+sniffing. Incoming transport chunks and the inner SDK producer's buffering
+are independent of these bounds. A post-header non-SSE body is classified
+only after EOF and only up to 64 KiB. Overflow emits one `api_error`, then
+cancels and joins the reader; it cannot justify another account or establish
+affinity. The terminal error reaches the client before cancellation joins.
+Unsettled cancellation keeps EOF and request/turn ownership pending; rejected
+retirement keeps authority fenced. Cancellation joins the exact first
+underlying reader cancellation, since a second `cancel()` can resolve before
+the first operation settles.
 
 **A `[1m]` bench is scoped to whatever actually failed.** Extra Usage exhaustion
 is an entitlement fact about the account, so it benches the whole profile. A

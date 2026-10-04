@@ -1,0 +1,121 @@
+bun test v1.3.14 (0d9b296a)
+
+src/__tests__/sse-failure-sniff.test.ts:
+(pass) nextSseFrame framing > returns the first complete frame and the position past its terminator [0.14ms]
+(pass) nextSseFrame framing > returns null while a frame is incomplete [0.04ms]
+(pass) nextSseFrame framing > handles CRLF frame terminators [0.02ms]
+(pass) nextSseFrame framing > handles a CRLF terminator split across chunks (lone CR stays open) [0.01ms]
+(pass) nextSseFrame framing > treats a lone CR as a line terminator (SSE spec)
+(pass) nextSseFrame framing > yields consecutive zero-content frames without looping [0.03ms]
+(pass) classifySseFrame verdicts > heartbeat comments and empty frames are keepalive [0.33ms]
+(pass) classifySseFrame verdicts > a forwarded ping event is keepalive, not content [0.04ms]
+(pass) classifySseFrame verdicts > error frames expose the parsed type and payload [0.04ms]
+(pass) classifySseFrame verdicts > an error frame with unparseable data still decides, without a type [0.06ms]
+(pass) classifySseFrame verdicts > parses spec-legal data fields without a space after the colon [0.02ms]
+(pass) classifySseFrame verdicts > any other real frame means content has begun [0.01ms]
+(pass) prelude decision timeline across heartbeats > a heartbeat comment never decides; the quota refusal behind it fails over [0.11ms]
+(pass) prelude decision timeline across heartbeats > repeated comments before a billing refusal fail over too [0.07ms]
+(pass) prelude decision timeline across heartbeats > an error-first stream fails over with no prelude [0.05ms]
+(pass) prelude decision timeline across heartbeats > a refusal split across chunk boundaries anywhere still fails over [0.21ms]
+(pass) prelude decision timeline across heartbeats > a ping keepalive before the refusal does not mask it [0.07ms]
+(pass) prelude decision timeline across heartbeats > content decides passthrough even when a refusal follows it [0.03ms]
+(pass) prelude decision timeline across heartbeats > a non-account error frame decides passthrough [0.02ms]
+(pass) prelude decision timeline across heartbeats > comments-only until EOF stay pending for the caller's pass-through [0.02ms]
+(pass) SsePreludeScanner (incremental relay) > classifies frames across push boundaries and trims to the incomplete tail [0.21ms]
+(pass) SsePreludeScanner (incremental relay) > surfaces every keepalive between decisions and keeps the tail bounded [0.05ms]
+(pass) SsePreludeScanner (incremental relay) > keeps the deciding error frame's type for the caller's exposure policy [0.03ms]
+(pass) stream transport (actual relay, not a duplicate scan loop) > preserves a partial EOF frame and undecoded EOF bytes [1.82ms]
+(pass) stream transport (actual relay, not a duplicate scan loop) > does not expose a chunk containing undecoded UTF-8 before classifying it [12.82ms]
+(pass) stream transport (actual relay, not a duplicate scan loop) > preserves byte-exact fragmented CRLF, lone CR and Unicode success [2.60ms]
+(pass) stream transport (actual relay, not a duplicate scan loop) > bounds an incomplete prelude, then stands down without losing bytes [0.90ms]
+(pass) stream transport (actual relay, not a duplicate scan loop) > stands down exactly at the incomplete prelude byte ceiling [32.70ms]
+(pass) stream transport (actual relay, not a duplicate scan loop) > tracks incomplete UTF-8 across chunks without counting replacement bytes [0.63ms]
+(pass) stream transport (actual relay, not a duplicate scan loop) > cancels a reader installed AFTER outer cancellation [0.50ms]
+(pass) stream transport (actual relay, not a duplicate scan loop) > bounds the slow subscriber's queue and unblocks backpressure on cancel [21.81ms]
+(pass) stream transport (actual relay, not a duplicate scan loop) > keeps heartbeat delivery live while selection is pending [11.05ms]
+(pass) stream transport (actual relay, not a duplicate scan loop) > discard unblocks completion that depends on reader cancellation [0.33ms]
+(pass) stream transport (actual relay, not a duplicate scan loop) > releases response readers after EOF and transport failure [0.27ms]
+(pass) stream transport (actual relay, not a duplicate scan loop) > does not invent a zero wait when a JSON error has no Retry-After header [0.49ms]
+(pass) stream transport (actual relay, not a duplicate scan loop) > retains JSON account failures' valid header hint through suppression [0.11ms]
+434 |     opts.isCancelled = () => stopped
+435 |     opts.registerCancel = cancel => { stop = () => { stopped = true; cancel("test deadline") } }
+436 |     try {
+437 |       const verdict = await relayStreamAttempt(inner, opts)
+438 |       expect(verdict.kind).toBe("relayed")
+439 |       expect(text(output)).toContain('"type":"api_error"')
+                                 ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "\"type\":\"api_error\""
+Received: ""
+
+      at <anonymous> (/Users/rynfar/repos/meridian-sse-priority-incorporation-1214-20261004/src/__tests__/sse-failure-sniff.test.ts:439:28)
+(fail) stream transport (actual relay, not a duplicate scan loop) > bounds fallback JSON before EOF and cancels rather than guessing an account refusal [101.32ms]
+460 |       if (bytes <= 65536) {
+461 |         expect(verdict.kind).toBe("suppressed")
+462 |         if (verdict.kind === "suppressed") await verdict.discard()
+463 |         expect(output).toHaveLength(0)
+464 |       } else {
+465 |         expect(verdict.kind).toBe("relayed")
+                                   ^
+error: expect(received).toBe(expected)
+
+Expected: "relayed"
+Received: "suppressed"
+
+      at <anonymous> (/Users/rynfar/repos/meridian-sse-priority-incorporation-1214-20261004/src/__tests__/sse-failure-sniff.test.ts:465:30)
+(fail) stream transport (actual relay, not a duplicate scan loop) > accepts complete JSON at the byte limit but rejects one byte more, even in one oversized chunk [2.06ms]
+478 |     const output: Uint8Array[] = []
+479 |     let exposed = 0
+480 |     const opts = sink(output)
+481 |     opts.onMeaningfulForwarded = () => { exposed++ }
+482 |     const verdict = await relayStreamAttempt(response([input]), opts)
+483 |     expect(verdict.kind).toBe("relayed")
+                               ^
+error: expect(received).toBe(expected)
+
+Expected: "relayed"
+Received: "suppressed"
+
+      at <anonymous> (/Users/rynfar/repos/meridian-sse-priority-incorporation-1214-20261004/src/__tests__/sse-failure-sniff.test.ts:483:26)
+(fail) stream transport (actual relay, not a duplicate scan loop) > does not decode an oversized SSE deciding chunk or retry it [4.60ms]
+503 |     stopped = true
+504 |     cancelRegistered("client disconnected")
+505 |     await Bun.sleep(5)
+506 |     try {
+507 |       expect(cancelCalls).toBe(1)
+508 |       expect(completed).toBe(false)
+                              ^
+error: expect(received).toBe(expected)
+
+Expected: false
+Received: true
+
+      at <anonymous> (/Users/rynfar/repos/meridian-sse-priority-incorporation-1214-20261004/src/__tests__/sse-failure-sniff.test.ts:508:25)
+(fail) stream transport (actual relay, not a duplicate scan loop) > joins the exact cancellation registered before cleanup, including delayed cancellation [13.18ms]
+525 |     opts.registerCancel = cancel => { stop = cancel }
+526 |     opts.isCancelled = () => stopped
+527 |     const task = relayStreamAttempt(inner, opts).then(() => { completed = true })
+528 |     await Bun.sleep(10)
+529 |     try {
+530 |       expect(text(output)).toContain('"type":"api_error"')
+                                 ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "\"type\":\"api_error\""
+Received: ""
+
+      at <anonymous> (/Users/rynfar/repos/meridian-sse-priority-incorporation-1214-20261004/src/__tests__/sse-failure-sniff.test.ts:530:28)
+(fail) stream transport (actual relay, not a duplicate scan loop) > delivers the bounded JSON error while stalled cancellation keeps completion fenced [11.36ms]
+
+5 tests failed:
+(fail) stream transport (actual relay, not a duplicate scan loop) > bounds fallback JSON before EOF and cancels rather than guessing an account refusal [101.32ms]
+(fail) stream transport (actual relay, not a duplicate scan loop) > accepts complete JSON at the byte limit but rejects one byte more, even in one oversized chunk [2.06ms]
+(fail) stream transport (actual relay, not a duplicate scan loop) > does not decode an oversized SSE deciding chunk or retry it [4.60ms]
+(fail) stream transport (actual relay, not a duplicate scan loop) > joins the exact cancellation registered before cleanup, including delayed cancellation [13.18ms]
+(fail) stream transport (actual relay, not a duplicate scan loop) > delivers the bounded JSON error while stalled cancellation keeps completion fenced [11.36ms]
+
+ 36 pass
+ 5 fail
+ 183 expect() calls
+Ran 41 tests across 1 file. [246.00ms]

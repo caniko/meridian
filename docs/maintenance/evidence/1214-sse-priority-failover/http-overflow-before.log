@@ -1,0 +1,43 @@
+bun test v1.3.14 (0d9b296a)
+
+src/__tests__/priority-routing-integration.test.ts:
+[PROXY] de0c2f2a-9874-4617-8983-0c4ced21c409 adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] de0c2f2a-9874-4617-8983-0c4ced21c409 adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] de0c2f2a-9874-4617-8983-0c4ced21c409 usage: input=10 output=50 cache=0%
+2058 |         chunks.push(chunk.value)
+2059 |       }
+2060 |     } finally { clearTimeout(timer); reader.releaseLock() }
+2061 |     const body = new TextDecoder().decode(Buffer.concat(chunks))
+2062 |     expect(res.status).toBe(200)
+2063 |     expect(body).toContain('"type":"api_error"')
+                        ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "\"type\":\"api_error\""
+Received: ""
+
+      at <anonymous> (/Users/rynfar/repos/meridian-sse-priority-incorporation-1214-20261004/src/__tests__/priority-routing-integration.test.ts:2063:18)
+(fail) priority routing > treats an oversized post-header JSON boundary as terminal with joined retirement, without trying a third account [1442.27ms]
+[PROXY] 0512ea5f-57dd-4274-8f15-4bdb27b24c86 adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 0512ea5f-57dd-4274-8f15-4bdb27b24c86 adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 0512ea5f-57dd-4274-8f15-4bdb27b24c86 usage: input=10 output=50 cache=0%
+2058 |         chunks.push(chunk.value)
+2059 |       }
+2060 |     } finally { clearTimeout(timer); reader.releaseLock() }
+2061 |     const body = new TextDecoder().decode(Buffer.concat(chunks))
+2062 |     expect(res.status).toBe(200)
+2063 |     expect(body).toContain('"type":"api_error"')
+                        ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "\"type\":\"api_error\""
+Received: ""
+
+      at <anonymous> (/Users/rynfar/repos/meridian-sse-priority-incorporation-1214-20261004/src/__tests__/priority-routing-integration.test.ts:2063:18)
+(fail) priority routing > treats an oversized post-header JSON boundary as terminal with rejected retirement, without trying a third account [1010.96ms]
+
+ 0 pass
+ 85 filtered out
+ 2 fail
+ 4 expect() calls
+Ran 2 tests across 1 file. [3.09s]

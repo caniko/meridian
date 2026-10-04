@@ -19,7 +19,7 @@
 //   E2E_SSE_REFUSAL_DELAY_MS         fixture refusal delay (default 16000; must exceed the 15s heartbeat)
 //   E2E_SSE_WORKING_FIXTURE=1        use a local Anthropic answer fixture
 import assert from 'node:assert/strict'
-import { mkdtempSync, realpathSync } from 'node:fs'
+import { mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -61,102 +61,105 @@ const MODEL = process.env.E2E_SSE_MODEL ?? 'claude-haiku-4-5-20251001'
 const WORKING_FIXTURE = process.env.E2E_SSE_WORKING_FIXTURE === '1'
 
 const root = realpathSync(mkdtempSync(join(tmpdir(), 'meridian-sse-quota-failover-')))
-for (const key of Object.keys(process.env)) {
-  if (key.startsWith('MERIDIAN_') || key.startsWith('CLAUDE_PROXY_')) delete process.env[key]
-}
-Object.assign(process.env, {
-  MERIDIAN_CONFIG_DIR: join(root, 'config'),
-  MERIDIAN_SESSION_DIR: join(root, 'sessions'),
-  MERIDIAN_WORKDIR: root,
-  MERIDIAN_TELEMETRY_PERSIST: '0',
-  MERIDIAN_ROUTING: 'priority',
-  MERIDIAN_PROFILE_ORDER: 'refused,working',
-  MERIDIAN_CREDENTIALS_READONLY: '1',
-  MERIDIAN_NO_UPDATE_CHECK: '1',
-})
-
-// Quota refusal with both the wire type and the prose the proxy classifier
-// keys on — whichever layer classifies, it must read as a spent account.
-let refusedCalls = 0
-let firstRefusalAt = 0
-const upstream = await serveFixture(async request => {
-    if (!new URL(request.url, 'http://localhost').pathname.endsWith('/v1/messages')) {
-      return Response.json({ input_tokens: 100 })
-    }
-    refusedCalls++
-    await delay(REFUSAL_DELAY_MS)
-    firstRefusalAt ||= Date.now()
-    return Response.json(
-      { type: 'error', error: { type: 'rate_limit_error', message: "You've hit your usage limit. Your quota resets later today." } },
-      { status: 429, headers: { 'x-should-retry': 'false', 'request-id': 'fixture-sse-quota-refusal' } },
-    )
-})
-
-// Offline mode only: a canned Anthropic answer so the working leg needs no
-// credentials. The delivery assertions are identical either way.
-const workingFixture = await serveFixture(async request => {
-    if (!new URL(request.url, 'http://localhost').pathname.endsWith('/v1/messages')) {
-      return Response.json({ input_tokens: 100 })
-    }
-    await delay(50)
-    return Response.json({
-      id: 'msg_fixture_working',
-      type: 'message',
-      role: 'assistant',
-      model: MODEL,
-      content: [{ type: 'text', text: `fixture working answer ${receipt}` }],
-      stop_reason: 'end_turn',
-      stop_sequence: null,
-      usage: { input_tokens: 10, output_tokens: 20 },
-    })
-})
-
-const { startProxyServer } = await import(pathToFileURL(serverModule).href)
-
-const workingProfile = WORKING_FIXTURE
-  ? { id: 'working', type: 'api', apiKey: 'local-fixture-key', baseUrl: `http://127.0.0.1:${workingFixture.port}` }
-  : { id: 'working', type: 'claude-max' }
-if (!WORKING_FIXTURE && process.env.E2E_SSE_WORKING_CLAUDE_CONFIG_DIR) {
-  workingProfile.claudeConfigDir = process.env.E2E_SSE_WORKING_CLAUDE_CONFIG_DIR
-}
-
-const start = async () => {
-  const instance = await startProxyServer({
-  port: 0, host: '127.0.0.1', silent: true,
-  profiles: [
-    { id: 'refused', type: 'api', apiKey: 'local-fixture-key', baseUrl: `http://127.0.0.1:${upstream.port}` },
-    workingProfile,
-  ],
-  defaultProfile: 'refused',
-  })
-  if (!instance.server.listening) await once(instance.server, 'listening')
-  return instance
-}
-
-async function telemetryRows(port, requestId) {
-  // The HTTP endpoint splits views: plain rows hide priority hop attempts,
-  // ?hops=1 returns exactly those — and both include the final row, so
-  // merge then dedupe per (profile, attempt, outcome).
-  const [plain, hops] = await Promise.all([
-    fetch(`http://127.0.0.1:${port}/telemetry/requests`).then(res => res.json()),
-    fetch(`http://127.0.0.1:${port}/telemetry/requests?hops=1`).then(res => res.json()),
-  ])
-  const seen = new Set()
-  const rows = []
-  for (const row of [...hops, ...plain]) {
-    if (row.requestId !== requestId) continue
-    const key = `${row.profileId}:${row.status}:${row.error}:${row.routeAttempt ?? 0}`
-    if (seen.has(key)) continue
-    seen.add(key)
-    rows.push(row)
-  }
-  return rows
-}
-
-const receipt = `SSEOK${crypto.randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase()}`
-const cases = ['failover', 'failover-stream']
-let proxy = await start()
+let upstream
+let workingFixture
+let proxy
 try {
+  for (const key of Object.keys(process.env)) {
+    if (key.startsWith('MERIDIAN_') || key.startsWith('CLAUDE_PROXY_')) delete process.env[key]
+  }
+  Object.assign(process.env, {
+    MERIDIAN_CONFIG_DIR: join(root, 'config'),
+    MERIDIAN_SESSION_DIR: join(root, 'sessions'),
+    MERIDIAN_WORKDIR: root,
+    MERIDIAN_TELEMETRY_PERSIST: '0',
+    MERIDIAN_ROUTING: 'priority',
+    MERIDIAN_PROFILE_ORDER: 'refused,working',
+    MERIDIAN_CREDENTIALS_READONLY: '1',
+    MERIDIAN_NO_UPDATE_CHECK: '1',
+  })
+
+  // Quota refusal with both the wire type and the prose the proxy classifier
+  // keys on — whichever layer classifies, it must read as a spent account.
+  let refusedCalls = 0
+  let firstRefusalAt = 0
+  upstream = await serveFixture(async request => {
+      if (!new URL(request.url, 'http://localhost').pathname.endsWith('/v1/messages')) {
+        return Response.json({ input_tokens: 100 })
+      }
+      refusedCalls++
+      await delay(REFUSAL_DELAY_MS)
+      firstRefusalAt ||= Date.now()
+      return Response.json(
+        { type: 'error', error: { type: 'rate_limit_error', message: "You've hit your usage limit. Your quota resets later today." } },
+        { status: 429, headers: { 'x-should-retry': 'false', 'request-id': 'fixture-sse-quota-refusal' } },
+      )
+  })
+
+  // Offline mode only: a canned Anthropic answer so the working leg needs no
+  // credentials. The delivery assertions are identical either way.
+  workingFixture = WORKING_FIXTURE ? await serveFixture(async request => {
+      if (!new URL(request.url, 'http://localhost').pathname.endsWith('/v1/messages')) {
+        return Response.json({ input_tokens: 100 })
+      }
+      await delay(50)
+      return Response.json({
+        id: 'msg_fixture_working',
+        type: 'message',
+        role: 'assistant',
+        model: MODEL,
+        content: [{ type: 'text', text: `fixture working answer ${receipt}` }],
+        stop_reason: 'end_turn',
+        stop_sequence: null,
+        usage: { input_tokens: 10, output_tokens: 20 },
+      })
+  }) : undefined
+
+  const { startProxyServer } = await import(pathToFileURL(serverModule).href)
+
+  const workingProfile = WORKING_FIXTURE
+    ? { id: 'working', type: 'api', apiKey: 'local-fixture-key', baseUrl: `http://127.0.0.1:${workingFixture.port}` }
+    : { id: 'working', type: 'claude-max' }
+  if (!WORKING_FIXTURE && process.env.E2E_SSE_WORKING_CLAUDE_CONFIG_DIR) {
+    workingProfile.claudeConfigDir = process.env.E2E_SSE_WORKING_CLAUDE_CONFIG_DIR
+  }
+
+  const start = async () => {
+    const instance = await startProxyServer({
+    port: 0, host: '127.0.0.1', silent: true,
+    profiles: [
+      { id: 'refused', type: 'api', apiKey: 'local-fixture-key', baseUrl: `http://127.0.0.1:${upstream.port}` },
+      workingProfile,
+    ],
+    defaultProfile: 'refused',
+    })
+    if (!instance.server.listening) await once(instance.server, 'listening')
+    return instance
+  }
+
+  async function telemetryRows(port, requestId) {
+    // The HTTP endpoint splits views: plain rows hide priority hop attempts,
+    // ?hops=1 returns exactly those — and both include the final row, so
+    // merge then dedupe per (profile, attempt, outcome).
+    const [plain, hops] = await Promise.all([
+      fetch(`http://127.0.0.1:${port}/telemetry/requests`).then(res => res.json()),
+      fetch(`http://127.0.0.1:${port}/telemetry/requests?hops=1`).then(res => res.json()),
+    ])
+    const seen = new Set()
+    const rows = []
+    for (const row of [...hops, ...plain]) {
+      if (row.requestId !== requestId) continue
+      const key = `${row.profileId}:${row.status}:${row.error}:${row.routeAttempt ?? 0}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      rows.push(row)
+    }
+    return rows
+  }
+
+  const receipt = `SSEOK${crypto.randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase()}`
+  const cases = ['failover', 'failover-stream']
+  proxy = await start()
   for (const mode of cases) {
     // A fresh proxy per case, so the previous case's expected account cooldown
     // cannot let this one skip straight to the fallback without a refusal.
@@ -218,10 +221,8 @@ try {
     if (stream) {
       for (const line of body.split('\n')) {
         if (!line.startsWith('data:')) continue
-        try {
-          const event = JSON.parse(line.slice(5))
-          if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') reply += event.delta.text
-        } catch { /* keepalive comments have no data line worth parsing */ }
+        const event = JSON.parse(line.slice(5))
+        if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') reply += event.delta.text
       }
     } else {
       const parsed = JSON.parse(body)
@@ -251,7 +252,13 @@ try {
   console.error('[e2e-sse-quota-failover] assertion/runtime failure:', error)
   throw error
 } finally {
-  await proxy.close()
-  await upstream.stop()
-  await workingFixture.stop()
+  // Also clean up import/startup/assertion failures, including the isolated
+  // durable session state. Cleanup failure stays observable after all owned
+  // resources have had their cleanup attempted.
+  const cleanup = await Promise.allSettled([
+    proxy?.close(), upstream?.stop(), workingFixture?.stop(),
+  ])
+  rmSync(root, { recursive: true, force: true })
+  const failures = cleanup.filter(result => result.status === 'rejected')
+  if (failures.length > 0) throw new AggregateError(failures.map(result => result.reason), 'SSE failover harness cleanup failed')
 }

@@ -1,0 +1,543 @@
+bun test v1.3.14 (0d9b296a)
+
+src/__tests__/priority-routing-integration.test.ts:
+[PROXY] 8f5885ba-e943-420f-9635-ecbc471a73ca adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 8f5885ba-e943-420f-9635-ecbc471a73ca usage: input=10 output=50 cache=0%
+(pass) priority routing > routes unpinned requests to the highest-priority profile [304.94ms]
+[PROXY] 334e130b-7e20-465a-ad57-aa076b2b0743 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 334e130b-7e20-465a-ad57-aa076b2b0743 rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] 334e130b-7e20-465a-ad57-aa076b2b0743 rate-limited on sonnet, retry 2/2 in 2000ms
+[PROXY] 334e130b-7e20-465a-ad57-aa076b2b0743 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 334e130b-7e20-465a-ad57-aa076b2b0743 usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+(pass) priority routing > fails over per request when the preferred profile is rate-limited [3358.99ms]
+[PROXY] e23f8993-dd0c-4c91-8d7d-745508b40a0e adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/1 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] e23f8993-dd0c-4c91-8d7d-745508b40a0e adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/1 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] e23f8993-dd0c-4c91-8d7d-745508b40a0e usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (billing_error)
+(pass) priority routing > fails over without deadlocking when MAX_CONCURRENT is 1 [80.12ms]
+[PROXY] ab6c91aa-2912-418d-9c45-b81ebe5750a6 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] ab6c91aa-2912-418d-9c45-b81ebe5750a6 rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] ab6c91aa-2912-418d-9c45-b81ebe5750a6 rate-limited on sonnet, retry 2/2 in 2000ms
+[PROXY] ab6c91aa-2912-418d-9c45-b81ebe5750a6 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] ab6c91aa-2912-418d-9c45-b81ebe5750a6 usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+(pass) priority routing > reports a failover as ONE telemetry row naming every account it touched [3100.19ms]
+[PROXY] f081785b-c7e8-4dfe-9699-f3470fdd37ca adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] f081785b-c7e8-4dfe-9699-f3470fdd37ca adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] f081785b-c7e8-4dfe-9699-f3470fdd37ca usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+(pass) priority routing > fails over on the CLI's shorter 'You've hit your limit' wording [232.51ms]
+[PROXY] d40ded16-5c79-4c98-90ee-093d482a54cc adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] d40ded16-5c79-4c98-90ee-093d482a54cc adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] d40ded16-5c79-4c98-90ee-093d482a54cc usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+(pass) priority routing > fails over on the CLI's 'You've hit your weekly limit' wording [54.73ms]
+[PROXY] 1f94c1f3-77a5-4638-94d5-f34286e8ea75 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 1f94c1f3-77a5-4638-94d5-f34286e8ea75 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 1f94c1f3-77a5-4638-94d5-f34286e8ea75 usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+(pass) priority routing > fails over on the CLI's 'You're out of usage credits' wording [62.84ms]
+[PROXY] 7cb4d126-afce-40ee-b557-e8ad196d8bb7 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] eb1c64a4-3ac5-4f22-b9ec-d10d1ccd5142 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] eb1c64a4-3ac5-4f22-b9ec-d10d1ccd5142 usage: input=10 output=50 cache=0%
+(pass) priority routing > does not spend or exhaust the pool for incidental usage-credit prose [61.59ms]
+[PROXY] 09065046-e5cb-4df6-9ad5-6b4eb09f79c3 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 09065046-e5cb-4df6-9ad5-6b4eb09f79c3 rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] 09065046-e5cb-4df6-9ad5-6b4eb09f79c3 rate-limited on sonnet, retry 2/2 in 2000ms
+[PROXY] 09065046-e5cb-4df6-9ad5-6b4eb09f79c3 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 09065046-e5cb-4df6-9ad5-6b4eb09f79c3 rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] 09065046-e5cb-4df6-9ad5-6b4eb09f79c3 rate-limited on sonnet, retry 2/2 in 2000ms
+(pass) priority routing > surfaces the LAST tried profile's error when every profile is exhausted [6281.86ms]
+[PROXY] 6b7f06ae-8959-4cc2-a260-9904a8a8a82f adapter=opencode profile=work model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 6b7f06ae-8959-4cc2-a260-9904a8a8a82f rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] 6b7f06ae-8959-4cc2-a260-9904a8a8a82f rate-limited on sonnet, retry 2/2 in 2000ms
+(pass) priority routing > a pinned x-meridian-profile header bypasses the pool entirely [3061.49ms]
+[PROXY] 132fcabb-8b56-4d41-af29-5bce320aca61 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=2ms msgCount=1 msgs=user[string]
+[PROXY] 132fcabb-8b56-4d41-af29-5bce320aca61 rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] 132fcabb-8b56-4d41-af29-5bce320aca61 rate-limited on sonnet, retry 2/2 in 2000ms
+[PROXY] 132fcabb-8b56-4d41-af29-5bce320aca61 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 132fcabb-8b56-4d41-af29-5bce320aca61 usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+[PROXY] Session not resumable (key=personal…): reason=unrelated-history, prefix overlap 0/1, incoming 1 msgs. Starting fresh replay.
+[PROXY] bf2eb5c8-1c70-4c46-9e72-da2de281c9c5 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=unrelated-history sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] bf2eb5c8-1c70-4c46-9e72-da2de281c9c5 SESSION RECOVERY: previous conversation available. Run: claude --resume cdd57c87-b55a-4f0c-a69b-0cbcb01d02aa
+[PROXY] bf2eb5c8-1c70-4c46-9e72-da2de281c9c5 usage: input=10 output=50 cache=0%
+(pass) priority routing > keeps a failed-over session on its target while NEW sessions drain back [3129.04ms]
+[PROXY] ee07b20c-a9b1-4f5a-bc8e-57e3c99d5642 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] ee07b20c-a9b1-4f5a-bc8e-57e3c99d5642 usage: input=10 output=50 cache=0%
+[PROXY] e71c0a51-fa31-444d-a3a0-b0d2f15462c2 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=continuation session=8670f83b agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=2ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] e71c0a51-fa31-444d-a3a0-b0d2f15462c2 usage: input=10 output=50 cache=0%
+[PROXY] e71c0a51-fa31-444d-a3a0-b0d2f15462c2 TOKEN WARN: Cache hit rate 0% on resume — normal after proxy restart, cache will re-prime on next turn.
+(pass) priority routing > defaults an unset priority failback policy to new-conversation affinity [69.10ms]
+[PROXY] 54bf3f93-6445-44fc-9470-1b15abc8b140 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] 54bf3f93-6445-44fc-9470-1b15abc8b140 usage: input=10 output=50 cache=0%
+[PROXY] da326afa-9f3d-464b-9b5a-83ada9e1a960 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=continuation session=fd5c8f27 agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] da326afa-9f3d-464b-9b5a-83ada9e1a960 usage: input=10 output=50 cache=0%
+[PROXY] da326afa-9f3d-464b-9b5a-83ada9e1a960 TOKEN WARN: Cache hit rate 0% on resume — normal after proxy restart, cache will re-prime on next turn.
+(pass) priority routing > defaults an invalid priority failback policy to new-conversation affinity [71.44ms]
+[PROXY] 6c463145-cc11-4bc3-8480-b4a5e60939a2 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] 6c463145-cc11-4bc3-8480-b4a5e60939a2 usage: input=10 output=50 cache=0%
+[PROXY] 8f1b8eba-cb56-46e4-9f87-1a5756c41ab1 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=priority-failback agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=2ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] 8f1b8eba-cb56-46e4-9f87-1a5756c41ab1 usage: input=10 output=50 cache=0%
+(pass) priority routing > accepts next-user-turn and promotes on a changed human request [220.26ms]
+[PROXY] 8b5cba3d-3fe0-4ab0-af6c-d9068b611bf9 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] 8b5cba3d-3fe0-4ab0-af6c-d9068b611bf9 usage: input=10 output=50 cache=0%
+[PROXY] fd81e377-86a2-41c5-857d-e7de5f9c9f68 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=priority-failback agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] fd81e377-86a2-41c5-857d-e7de5f9c9f68 usage: input=10 output=50 cache=0%
+(pass) priority routing > uses persisted priorityFailback when the environment is unset [69.08ms]
+[PROXY] 596cc046-dd93-41fc-b8a6-618395cb5dbf adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] 596cc046-dd93-41fc-b8a6-618395cb5dbf usage: input=10 output=50 cache=0%
+[PROXY] a937531c-e356-42f4-82ef-48e97a8fe2d8 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=continuation session=60d6f959 agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] a937531c-e356-42f4-82ef-48e97a8fe2d8 usage: input=10 output=50 cache=0%
+[PROXY] a937531c-e356-42f4-82ef-48e97a8fe2d8 TOKEN WARN: Cache hit rate 0% on resume — normal after proxy restart, cache will re-prime on next turn.
+(pass) priority routing > lets MERIDIAN_PRIORITY_FAILBACK override persisted priorityFailback [76.95ms]
+[PROXY] a1ee9dcd-19b7-4f02-82e8-33db42f9f9d8 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] a1ee9dcd-19b7-4f02-82e8-33db42f9f9d8 usage: input=10 output=50 cache=0%
+[PROXY] b90bb9a0-270c-406e-b00f-ad6c4389bb8e adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=continuation session=cac5d20f agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=3 msgs=user[string] → assistant[tool_use] → user[tool_result]
+[PROXY] b90bb9a0-270c-406e-b00f-ad6c4389bb8e usage: input=10 output=50 cache=0%
+[PROXY] b90bb9a0-270c-406e-b00f-ad6c4389bb8e TOKEN WARN: Cache hit rate 0% on resume — normal after proxy restart, cache will re-prime on next turn.
+(pass) priority routing > does not promote a same-ID tool continuation even when kind remains human [75.15ms]
+[PROXY] dac44752-b5be-477f-b89b-ab5e1c4dde3c adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] dac44752-b5be-477f-b89b-ab5e1c4dde3c usage: input=10 output=50 cache=0%
+[PROXY] 08916297-dfce-4bc3-a8ef-43b206c15e6f adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=continuation session=3104afb2 sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] 08916297-dfce-4bc3-a8ef-43b206c15e6f usage: input=10 output=50 cache=0%
+[PROXY] 08916297-dfce-4bc3-a8ef-43b206c15e6f TOKEN WARN: Cache hit rate 0% on resume — normal after proxy restart, cache will re-prime on next turn.
+(pass) priority routing > does not promote a changed synthetic request [69.28ms]
+[PROXY] 576a4b3c-f190-48b8-a024-c63c5604749a adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] 576a4b3c-f190-48b8-a024-c63c5604749a usage: input=10 output=50 cache=0%
+[PROXY] 217980b1-6523-4906-9dae-a1dba7437293 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=continuation session=0b332fb7 sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] 217980b1-6523-4906-9dae-a1dba7437293 usage: input=10 output=50 cache=0%
+[PROXY] 217980b1-6523-4906-9dae-a1dba7437293 TOKEN WARN: Cache hit rate 0% on resume — normal after proxy restart, cache will re-prime on next turn.
+(pass) priority routing > does not promote a changed request with an unknown kind [73.79ms]
+[PROXY] 6dc43d12-e21e-4725-b5f1-6c5ff2b5f884 adapter=pi profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 6dc43d12-e21e-4725-b5f1-6c5ff2b5f884 usage: input=10 output=50 cache=0%
+[PROXY] bc82d0df-ce6b-45c3-b79b-992e91c467a7 adapter=pi profile=personal(priority) model=sonnet stream=false tools=0 lineage=continuation session=40f33d9b sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] bc82d0df-ce6b-45c3-b79b-992e91c467a7 usage: input=10 output=50 cache=0%
+[PROXY] bc82d0df-ce6b-45c3-b79b-992e91c467a7 TOKEN WARN: Cache hit rate 0% on resume — normal after proxy restart, cache will re-prime on next turn.
+(pass) priority routing > ignores spoofed OpenCode turn headers on a non-OpenCode adapter [221.81ms]
+[PROXY] eece5969-f1e4-4bad-9f0e-7fd8c958f550 adapter=opencode profile=work model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=2ms msgCount=1 msgs=user[string]
+[PROXY] eece5969-f1e4-4bad-9f0e-7fd8c958f550 usage: input=10 output=50 cache=0%
+[PROXY] 16b6bd06-e9ca-4b73-813d-d52a9e6b67d0 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 16b6bd06-e9ca-4b73-813d-d52a9e6b67d0 usage: input=10 output=50 cache=0%
+[PROXY] a3dd71d9-7632-4c52-8ccc-2555c96d4d1b adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=priority-failback agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] a3dd71d9-7632-4c52-8ccc-2555c96d4d1b SESSION RECOVERY: previous conversation available. Run: claude --resume 3e12048a-937d-429e-9486-2ddce7721e00
+[PROXY] a3dd71d9-7632-4c52-8ccc-2555c96d4d1b usage: input=10 output=50 cache=0%
+(pass) priority routing > starts a fresh preferred backing session when promoting [94.77ms]
+[PROXY] 3dfa93e6-3a5e-4b3b-850f-5ade360f9d9b adapter=opencode profile=work model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=2ms msgCount=1 msgs=user[string]
+[PROXY] 3dfa93e6-3a5e-4b3b-850f-5ade360f9d9b usage: input=10 output=50 cache=0%
+[PROXY] 6b49c1d7-f51d-4dcb-95aa-3c98dd1077ce adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 6b49c1d7-f51d-4dcb-95aa-3c98dd1077ce usage: input=10 output=50 cache=0%
+[PROXY] 05791f3f-6555-44dc-9b11-cc1d04d762d7 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=priority-failback agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] 05791f3f-6555-44dc-9b11-cc1d04d762d7 SESSION RECOVERY: previous conversation available. Run: claude --resume 5e22900c-d516-4cde-af8d-858d8d0ea7d3
+[PROXY] 05791f3f-6555-44dc-9b11-cc1d04d762d7 rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] 05791f3f-6555-44dc-9b11-cc1d04d762d7 rate-limited on sonnet, retry 2/2 in 2000ms
+[PROXY] 05791f3f-6555-44dc-9b11-cc1d04d762d7 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=continuation session=52cfbfec agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] 05791f3f-6555-44dc-9b11-cc1d04d762d7 usage: input=10 output=50 cache=0%
+[PROXY] 05791f3f-6555-44dc-9b11-cc1d04d762d7 TOKEN WARN: Cache hit rate 0% on resume — normal after proxy restart, cache will re-prime on next turn.
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+(pass) priority routing > retains and resumes fallback after a pre-content preferred quota failure [3178.57ms]
+[PROXY] 021b235a-1bb5-4586-b993-3be671efd566 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] 021b235a-1bb5-4586-b993-3be671efd566 usage: input=10 output=50 cache=0%
+[PROXY] 019951ba-8b60-47f6-b6fa-1cd1010e4c6a adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=priority-failback agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] 019951ba-8b60-47f6-b6fa-1cd1010e4c6a usage: input=10 output=50 cache=0%
+[PROXY] Session not resumable (key=work:con…): reason=replayed-request, prefix overlap 0/3, incoming 3 msgs. Starting fresh replay.
+(pass) priority routing > serializes concurrent next-user-turn promotions for one logical session [81.84ms]
+[PROXY] 492a4c56-d19c-4f05-8937-79d73b067407 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=2ms msgCount=1 msgs=user[string]
+[PROXY] 492a4c56-d19c-4f05-8937-79d73b067407 usage: input=10 output=50 cache=0%
+[PROXY] be675fa1-f6e7-44ac-b372-ac8a788f1c11 adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=priority-failback agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=3ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] be675fa1-f6e7-44ac-b372-ac8a788f1c11 usage: input=10 output=50 cache=0%
+[PROXY] Session not resumable (key=work:com…): reason=replayed-request, prefix overlap 0/3, incoming 3 msgs. Starting fresh replay.
+(pass) priority routing > releases a queued turn when the promoted stream completes [107.46ms]
+[PROXY] e1bbb882-9545-4877-a41b-3202958ac24e adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=4ms msgCount=1 msgs=user[string]
+[PROXY] e1bbb882-9545-4877-a41b-3202958ac24e usage: input=10 output=50 cache=0%
+[PROXY] 25101349-1539-4b55-ac43-6c106dc36ab4 adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=priority-failback agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] 25101349-1539-4b55-ac43-6c106dc36ab4 usage: input=10 output=0 cache=0%
+[PROXY] f5956812-b3e9-4bb6-a5f3-2ff984702f7f adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=priority-failback agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=11ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] f5956812-b3e9-4bb6-a5f3-2ff984702f7f usage: input=10 output=50 cache=0%
+(pass) priority routing > releases a queued promotion when the promoted stream is cancelled [97.77ms]
+[PROXY] 762f53c3-1cee-4010-83ac-6d4ecefd3de8 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] 762f53c3-1cee-4010-83ac-6d4ecefd3de8 usage: input=10 output=50 cache=0%
+[PROXY] 4a0099c0-18d7-4d13-be4b-512cc94f9a72 adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=priority-failback agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] 4a0099c0-18d7-4d13-be4b-512cc94f9a72 usage: input=10 output=0 cache=0%
+[PROXY] 66ec5862-5f16-42d1-8666-4fabd82f6071 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=priority-failback agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=5ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] 66ec5862-5f16-42d1-8666-4fabd82f6071 usage: input=10 output=50 cache=0%
+(pass) priority routing > holds the turn lease until an aborted promoted stream completes [100.47ms]
+[PROXY] d033c565-0275-45df-976d-9e89966d0500 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=2ms msgCount=1 msgs=user[string]
+[PROXY] d033c565-0275-45df-976d-9e89966d0500 usage: input=10 output=50 cache=0%
+[PROXY] 698e9b41-39aa-4555-a0a7-ed9ccc8dcacb adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=priority-failback agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] 698e9b41-39aa-4555-a0a7-ed9ccc8dcacb usage: input=10 output=50 cache=0%
+[PROXY] Session not resumable (key=work:abo…): reason=replayed-request, prefix overlap 0/3, incoming 3 msgs. Starting fresh replay.
+(pass) priority routing > returns 499 for an aborted waiter and rejects a superseded following turn [64.12ms]
+[PROXY] 25ed28ff-414a-40c4-adca-787b3661ab71 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] 25ed28ff-414a-40c4-adca-787b3661ab71 usage: input=10 output=50 cache=0%
+[PROXY] 3c8dbcd9-2f89-4f4e-b317-ddf6ae16a5aa adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=priority-failback agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+(pass) priority routing > does not replay a promoted stream on fallback after content starts [52.85ms]
+[PROXY] a901b79f-4947-4602-9546-a7fcb0bb03b3 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=2ms msgCount=1 msgs=user[string]
+[PROXY] a901b79f-4947-4602-9546-a7fcb0bb03b3 usage: input=10 output=50 cache=0%
+[PROXY] 51ba0ffb-b0c2-45a5-98a1-c9f946a39bac adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=continuation session=c753c035 agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] 51ba0ffb-b0c2-45a5-98a1-c9f946a39bac usage: input=10 output=50 cache=0%
+[PROXY] 51ba0ffb-b0c2-45a5-98a1-c9f946a39bac TOKEN WARN: Cache hit rate 0% on resume — normal after proxy restart, cache will re-prime on next turn.
+[PROXY] 648ef993-2235-468a-a3b3-dcbea29f4b18 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 648ef993-2235-468a-a3b3-dcbea29f4b18 usage: input=10 output=50 cache=0%
+[PROXY] b33f0831-422b-4255-87dc-9cf3bae95e2d adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=continuation session=378d01cc agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] b33f0831-422b-4255-87dc-9cf3bae95e2d usage: input=10 output=50 cache=0%
+[PROXY] b33f0831-422b-4255-87dc-9cf3bae95e2d TOKEN WARN: Cache hit rate 0% on resume — normal after proxy restart, cache will re-prime on next turn.
+(pass) priority routing > withholds replayed older or equal changed attestations and retains the current route [170.41ms]
+[PROXY] 551cc8ce-f5e4-42f7-b46b-5ec515554160 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] 551cc8ce-f5e4-42f7-b46b-5ec515554160 usage: input=10 output=50 cache=0%
+[PROXY] 63bb5872-513c-41f8-915d-9bdebe2064a0 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=continuation session=78790849 agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] 63bb5872-513c-41f8-915d-9bdebe2064a0 usage: input=10 output=50 cache=0%
+[PROXY] 63bb5872-513c-41f8-915d-9bdebe2064a0 TOKEN WARN: Cache hit rate 0% on resume — normal after proxy restart, cache will re-prime on next turn.
+[PROXY] 03502bd4-71ea-4896-abfa-2fa170182a0a adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=continuation session=7ee0517d agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=5 msgs=user[string] → assistant[text] → user[string] → assistant[text] → user[string]
+[PROXY] 03502bd4-71ea-4896-abfa-2fa170182a0a usage: input=10 output=50 cache=0%
+[PROXY] 03502bd4-71ea-4896-abfa-2fa170182a0a TOKEN WARN: Cache hit rate 0% on resume — normal after proxy restart, cache will re-prime on next turn.
+[PROXY] d9a1cddd-1355-4245-ad1d-4e4234d153e9 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] d9a1cddd-1355-4245-ad1d-4e4234d153e9 usage: input=10 output=50 cache=0%
+[PROXY] b46810ea-3f62-4452-b915-5e5740de7453 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=continuation session=9005be49 agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] b46810ea-3f62-4452-b915-5e5740de7453 usage: input=10 output=50 cache=0%
+[PROXY] b46810ea-3f62-4452-b915-5e5740de7453 TOKEN WARN: Cache hit rate 0% on resume — normal after proxy restart, cache will re-prime on next turn.
+[PROXY] 026acf8d-50f3-405d-8203-a6b621dcb907 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=continuation session=69509db9 agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=5 msgs=user[string] → assistant[text] → user[string] → assistant[text] → user[string]
+[PROXY] 026acf8d-50f3-405d-8203-a6b621dcb907 usage: input=10 output=50 cache=0%
+[PROXY] 026acf8d-50f3-405d-8203-a6b621dcb907 TOKEN WARN: Cache hit rate 0% on resume — normal after proxy restart, cache will re-prime on next turn.
+(pass) priority routing > retains a durable fallback route without a valid attestation, including after app restart [219.68ms]
+[PROXY] 955a987c-936b-4292-a3d6-75699ee9e27b adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=2ms msgCount=1 msgs=user[string]
+[PROXY] 955a987c-936b-4292-a3d6-75699ee9e27b usage: input=10 output=50 cache=0%
+[PROXY] c44c6981-8f92-4f74-a13d-e095c7f6a435 adapter=opencode profile=personal(priority) model=sonnet stream=true tools=1 lineage=continuation session=4cc8b474 agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=3ms msgCount=3 msgs=user[string] → assistant[tool_use] → user[tool_result]
+(pass) priority routing > never creates an unauthenticated cross-profile transcript when the retained account refuses [86.57ms]
+[PROXY] 35e6f1ff-267d-447c-9eec-3d9fd28a1181 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=2ms msgCount=1 msgs=user[string]
+[PROXY] 35e6f1ff-267d-447c-9eec-3d9fd28a1181 usage: input=10 output=50 cache=0%
+[PROXY] 717674ed-051c-4de9-a63b-5ed70a3acd95 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=continuation session=97ad2055 agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=3 msgs=user[string] → assistant[tool_use] → user[tool_result]
+[PROXY] 717674ed-051c-4de9-a63b-5ed70a3acd95 usage: input=10 output=50 cache=0%
+[PROXY] 717674ed-051c-4de9-a63b-5ed70a3acd95 TOKEN WARN: Cache hit rate 0% on resume — normal after proxy restart, cache will re-prime on next turn.
+[PROXY] fba1ec6a-ed28-41a1-98cf-ffdbabb06205 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=priority-failback agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=7ms msgCount=5 msgs=user[string] → assistant[tool_use] → user[tool_result] → assistant[text] → user[string]
+[PROXY] fba1ec6a-ed28-41a1-98cf-ffdbabb06205 usage: input=10 output=50 cache=0%
+(pass) priority routing > atomically refreshes a same-human tool continuation before the next human promotes [184.35ms]
+[PROXY] 0dbb1dc5-ab0b-4c49-bbfc-5c07b809fff3 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=3ms msgCount=1 msgs=user[string]
+[PROXY] 0dbb1dc5-ab0b-4c49-bbfc-5c07b809fff3 usage: input=10 output=50 cache=0%
+[PROXY] 87e698a1-61a2-4bbd-ab0e-5598c590977f adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=priority-failback agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] 87e698a1-61a2-4bbd-ab0e-5598c590977f usage: input=10 output=50 cache=0%
+(pass) priority routing > fresh-replays instead of resuming when the durable route mapping is stale [117.07ms]
+[PROXY] 19efc795-5269-44c2-aafa-71a2ab9aa539 adapter=opencode profile=work(priority) model=sonnet stream=false tools=1 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=3ms msgCount=1 msgs=user[string]
+[PROXY] 95e228bd-967d-42dc-a559-2afd9c78951b adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] 95e228bd-967d-42dc-a559-2afd9c78951b usage: input=10 output=50 cache=0%
+[PROXY] 459cabb2-58ae-463b-807a-047ad6a96218 adapter=opencode profile=work(priority) model=sonnet stream=true tools=1 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] 71fd5127-f7d8-45a9-ad1c-83154c81fda9 adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] 71fd5127-f7d8-45a9-ad1c-83154c81fda9 usage: input=10 output=50 cache=0%
+[PROXY] 678485d0-7209-4965-85fd-18bef15765ba adapter=opencode profile=work(priority) model=sonnet stream=false tools=1 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=3ms msgCount=1 msgs=user[string]
+[PROXY] c396ef7d-f68c-4866-a5a0-a5969604954f adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=3ms msgCount=1 msgs=user[string]
+[PROXY] c396ef7d-f68c-4866-a5a0-a5969604954f usage: input=10 output=50 cache=0%
+[PROXY] fdc18dfa-45ae-4bcc-915c-9ad180e3cf21 adapter=opencode profile=work(priority) model=sonnet stream=true tools=1 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] 8f4a9fa5-a318-45e6-9758-f07a33329340 adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=2ms msgCount=1 msgs=user[string]
+[PROXY] 8f4a9fa5-a318-45e6-9758-f07a33329340 usage: input=10 output=50 cache=0%
+(pass) priority routing > returns a usable first-frame account error after tool or structured exposure without failover [418.63ms]
+[PROXY] 1075f0e3-18f8-454d-b1a4-a418f2ed6227 adapter=opencode profile=work(priority) model=sonnet stream=false tools=1 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+(pass) priority routing > durably blocks retry after an internal server-side tool is exposed [35.72ms]
+[PROXY] 1dbcc8e3-5583-4223-b42f-919ee8703576 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] 1dbcc8e3-5583-4223-b42f-919ee8703576 usage: input=10 output=50 cache=0%
+[PROXY] aa0039e9-59db-4bb6-bc33-1f11ffae7bea adapter=opencode profile=work(priority) model=sonnet stream=false tools=1 lineage=new session=new diverged=priority-failback agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] adceb5c9-7e8f-47ed-a75f-328c140d0ac5 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] adceb5c9-7e8f-47ed-a75f-328c140d0ac5 usage: input=10 output=50 cache=0%
+[PROXY] 8e22a052-8000-4eff-b846-6cf4de0e9595 adapter=opencode profile=work(priority) model=sonnet stream=true tools=1 lineage=new session=new diverged=priority-failback agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+(pass) priority routing > withholds promoted tool terminals until atomic route and mapping publication [136.58ms]
+[PROXY] e7ce2cf9-5d5c-4fc2-8ad2-b89213d695e0 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] e7ce2cf9-5d5c-4fc2-8ad2-b89213d695e0 usage: input=10 output=50 cache=0%
+[PROXY] 1c21b6a4-bd6d-4706-a4f8-454c9a96fe8f adapter=opencode profile=personal(priority) model=sonnet stream=false tools=1 lineage=continuation session=0f63a463 agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=3 msgs=user[string] → assistant[tool_use] → user[tool_result]
+[PROXY] cecb540f-2d2c-4718-8605-ae6bf11f4c07 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=3ms msgCount=1 msgs=user[string]
+[PROXY] cecb540f-2d2c-4718-8605-ae6bf11f4c07 usage: input=10 output=50 cache=0%
+[PROXY] a4f6aecf-c72c-4558-ac2a-25a7e9b22ff3 adapter=opencode profile=personal(priority) model=sonnet stream=true tools=1 lineage=continuation session=01942f24 agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=4ms msgCount=3 msgs=user[string] → assistant[tool_use] → user[tool_result]
+(pass) priority routing > withholds same-profile durable tool terminals without atomic publication [189.16ms]
+[PROXY] 9d47d444-d327-410a-96e9-8c122e0e9f48 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] 9d47d444-d327-410a-96e9-8c122e0e9f48 usage: input=10 output=50 cache=0%
+[PROXY] c795acda-2304-4b12-ad0e-bc9859d9c38d adapter=opencode profile=personal(priority) model=sonnet stream=false tools=1 lineage=continuation session=3f74a305 agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=3 msgs=user[string] → assistant[tool_use] → user[tool_result]
+[PROXY] 0f80b80b-f1cc-46f6-87bb-d022068f3973 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=4ms msgCount=1 msgs=user[string]
+[PROXY] 0f80b80b-f1cc-46f6-87bb-d022068f3973 usage: input=10 output=50 cache=0%
+[PROXY] 3e12dd0b-2f23-4c04-8a9e-ed098db15662 adapter=opencode profile=personal(priority) model=sonnet stream=true tools=1 lineage=continuation session=a6d8bb1c agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=2ms msgCount=3 msgs=user[string] → assistant[tool_use] → user[tool_result]
+(pass) priority routing > withholds unsigned retain-only tool terminals and preserves exact fallback authority [190.44ms]
+[PROXY] 69fbb373-2844-473a-a1e1-72d0b00ab30f adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] 69fbb373-2844-473a-a1e1-72d0b00ab30f usage: input=10 output=50 cache=0%
+[PROXY] e17bff31-18c2-48a0-ba00-75677b50a5ba adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=priority-failback agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] e17bff31-18c2-48a0-ba00-75677b50a5ba usage: input=10 output=50 cache=0%
+(pass) priority routing > rolls a late published promotion back to fallback when the client cancels [92.62ms]
+[PROXY] 6d0b9632-e0a1-4f37-899a-d2713f605d39 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=2ms msgCount=1 msgs=user[string]
+[PROXY] 6d0b9632-e0a1-4f37-899a-d2713f605d39 usage: input=10 output=50 cache=0%
+[PROXY] 271d0430-4990-4544-b081-a800e10c81ff adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=continuation session=4d12c251 agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=3 msgs=user[string] → assistant[tool_use] → user[tool_result]
+[PROXY] 271d0430-4990-4544-b081-a800e10c81ff usage: input=10 output=50 cache=0%
+(pass) priority routing > rolls an unsigned retain-only publication back on pre-terminal cancellation [114.96ms]
+[PROXY] d5473edc-84c9-49a5-8f0b-6370545ea3cf adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] d5473edc-84c9-49a5-8f0b-6370545ea3cf usage: input=10 output=50 cache=0%
+[PROXY] 013a068d-6be1-4223-bf2e-33667ac7e232 adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=continuation session=f834db5f agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=3 msgs=user[string] → assistant[tool_use] → user[tool_result]
+(pass) priority routing > keeps unsigned retain-only authority after queued terminal cancellation [64.22ms]
+[PROXY] 5612e56d-a3e4-4a79-a2d6-89c80868c0aa adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] 5612e56d-a3e4-4a79-a2d6-89c80868c0aa usage: input=10 output=50 cache=0%
+[PROXY] 53dc0228-f05d-4b55-84c6-335baa04fabf adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=continuation session=f07ad863 agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=3 msgs=user[string] → assistant[tool_use] → user[tool_result]
+(pass) priority routing > keeps finalized same-profile authority when a queued terminal body is cancelled [74.03ms]
+[PROXY] ebf34673-fc88-449c-9336-922b52af9218 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] ebf34673-fc88-449c-9336-922b52af9218 rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] ebf34673-fc88-449c-9336-922b52af9218 rate-limited on sonnet, retry 2/2 in 2000ms
+[PROXY] ebf34673-fc88-449c-9336-922b52af9218 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] ebf34673-fc88-449c-9336-922b52af9218 usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+[PROXY] e5564c79-b624-4e80-842a-0d75e112f225 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] e5564c79-b624-4e80-842a-0d75e112f225 usage: input=10 output=50 cache=0%
+(pass) priority routing > skips a profile marked exhausted without re-attempting it [3117.20ms]
+[PROXY] 5fe70dc5-5f73-4d41-a823-16683d9fe55f adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 5fe70dc5-5f73-4d41-a823-16683d9fe55f rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] 5fe70dc5-5f73-4d41-a823-16683d9fe55f rate-limited on sonnet, retry 2/2 in 2000ms
+[PROXY] 5fe70dc5-5f73-4d41-a823-16683d9fe55f adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 5fe70dc5-5f73-4d41-a823-16683d9fe55f usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+(pass) priority routing > streams fail over too when the error precedes any content [3098.46ms]
+[PROXY] 82aabcdb-266e-43bb-980b-359fc6acde81 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 82aabcdb-266e-43bb-980b-359fc6acde81 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 82aabcdb-266e-43bb-980b-359fc6acde81 usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (billing_error)
+(pass) priority routing > fails over when the preferred account's subscription is refused [62.24ms]
+[PROXY] 81948538-276c-4ef3-bf45-27e3e6fc0742 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 81948538-276c-4ef3-bf45-27e3e6fc0742 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 81948538-276c-4ef3-bf45-27e3e6fc0742 usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (billing_error)
+(pass) priority routing > marks the refused account with its own reason, not the quota one [103.49ms]
+[PROXY] eea637e7-0656-499d-baee-5b185ccbf2ba adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] eea637e7-0656-499d-baee-5b185ccbf2ba capped turn produced nothing — retrying with the turn cap lifted
+(pass) priority routing > does not spend the pool on an error that merely names a billing word [65.39ms]
+[PROXY] 05effcb4-9399-455c-ae20-a43aa89bc25c adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 05effcb4-9399-455c-ae20-a43aa89bc25c capped turn produced nothing — retrying with the turn cap lifted
+[PROXY] b12c4ebc-4fa0-4edd-b39e-786b5c18908d adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] b12c4ebc-4fa0-4edd-b39e-786b5c18908d rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] b12c4ebc-4fa0-4edd-b39e-786b5c18908d rate-limited on sonnet, retry 2/2 in 2000ms
+[PROXY] b12c4ebc-4fa0-4edd-b39e-786b5c18908d adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] b12c4ebc-4fa0-4edd-b39e-786b5c18908d usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+(pass) priority routing > still fails over to a healthy account after one of those errors [3150.88ms]
+[PROXY] f151603d-f8ac-4e51-86a5-85598913a935 adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] f151603d-f8ac-4e51-86a5-85598913a935 adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] f151603d-f8ac-4e51-86a5-85598913a935 usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (billing_error)
+(pass) priority routing > streams fail over on a refused subscription too [49.40ms]
+[PROXY] 7f258e39-8d29-4420-918d-910a97dd28d8 adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 7f258e39-8d29-4420-918d-910a97dd28d8 usage: input=10 output=50 cache=0%
+[PROXY] Session not resumable (key=work:str…): reason=replayed-request, prefix overlap 0/1, incoming 1 msgs. Starting fresh replay.
+(pass) priority routing > keeps a pre-stream refusal's own HTTP status on a streaming request [37.58ms]
+[PROXY] d702cd83-91d5-47f2-9362-9b49ea106dbc adapter=openai profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[text]
+[PROXY] d702cd83-91d5-47f2-9362-9b49ea106dbc usage: input=10 output=50 cache=0%
+[PROXY] Session not resumable (key=work:com…): reason=replayed-request, prefix overlap 0/1, incoming 1 msgs. Starting fresh replay.
+(pass) priority routing > lets a compat route relay a pre-stream refusal with its status [42.82ms]
+[PROXY] cd30fc82-7d66-43d4-8d4e-e897f8ad19b3 adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] cd30fc82-7d66-43d4-8d4e-e897f8ad19b3 rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] cd30fc82-7d66-43d4-8d4e-e897f8ad19b3 rate-limited on sonnet, retry 2/2 in 2000ms
+[PROXY] cd30fc82-7d66-43d4-8d4e-e897f8ad19b3 adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] cd30fc82-7d66-43d4-8d4e-e897f8ad19b3 usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+(pass) priority routing > streams fail over when a keepalive ping precedes the account error [4000.92ms]
+[PROXY] 818e54cc-792e-4e56-92ca-7022a5db7b88 adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 818e54cc-792e-4e56-92ca-7022a5db7b88 usage: input=10 output=50 cache=0%
+(pass) priority routing > discards SDK transport pings without suppressing successful content [178.01ms]
+[PROXY] dec85081-d309-45d4-afe5-f02e8995abd2 adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] dec85081-d309-45d4-afe5-f02e8995abd2 adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] dec85081-d309-45d4-afe5-f02e8995abd2 usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (billing_error)
+(pass) priority routing > streams fail over when the service heartbeat precedes the account error [16197.03ms]
+[PROXY] 22feac79-76e8-4968-b6b5-489bfd952479 adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 22feac79-76e8-4968-b6b5-489bfd952479 adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 22feac79-76e8-4968-b6b5-489bfd952479 usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (billing_error)
+(pass) priority routing > delivers headers and the first keepalive before a delayed refusal, then fails over exactly once [16065.39ms]
+[PROXY] 32435f07-2139-4efd-9083-1a8f9a1267af adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+(pass) priority routing > cancelling before the inner response exists never starts SDK work [307.57ms]
+[PROXY] 69060b3b-5411-4f7d-bcd2-c313ca085966 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 69060b3b-5411-4f7d-bcd2-c313ca085966 usage: input=10 output=50 cache=0%
+[PROXY] 6d4412fc-14bb-45f9-b5dc-d45e5b0bcbcc adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=continuation session=88e450c3 agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] 7663bf17-15f5-4b76-a300-536f004ab99c adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=continuation session=88e450c3 agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] 7663bf17-15f5-4b76-a300-536f004ab99c usage: input=10 output=50 cache=0%
+[PROXY] 7663bf17-15f5-4b76-a300-536f004ab99c TOKEN WARN: Cache hit rate 0% on resume — normal after proxy restart, cache will re-prime on next turn.
+(pass) priority routing > releases the exact durable turn claim after pre-response cancellation [393.20ms]
+[PROXY] b833b6a6-e22b-4268-95ef-0e9beb4701a0 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] b833b6a6-e22b-4268-95ef-0e9beb4701a0 usage: input=10 output=50 cache=0%
+[PROXY] f8b11fa2-1964-4c23-bc2b-19ef3843c322 adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=continuation session=d6fb1ae7 agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] f8b11fa2-1964-4c23-bc2b-19ef3843c322 adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=priority-failback agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] 887b3d26-e4d8-468c-b8cf-f7a149e5c5ae adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=continuation session=d6fb1ae7 agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] 887b3d26-e4d8-468c-b8cf-f7a149e5c5ae usage: input=10 output=50 cache=0%
+[PROXY] 887b3d26-e4d8-468c-b8cf-f7a149e5c5ae TOKEN WARN: Cache hit rate 0% on resume — normal after proxy restart, cache will re-prime on next turn.
+(pass) priority routing > releases the exact durable turn claim after the entire stream pool refuses [137.99ms]
+[PROXY] e063446a-ab30-49c7-bc39-4b703da61064 adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] c7e87d86-5f2c-4db2-9c81-0e7a63495dfb adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] c7e87d86-5f2c-4db2-9c81-0e7a63495dfb usage: input=10 output=50 cache=0%
+(pass) priority routing > cancelling a keepalive-only pending stream stops promptly without a fallback [15475.12ms]
+[PROXY] 23b974e5-0557-4b89-9d22-e2bb449f37f6 adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 23b974e5-0557-4b89-9d22-e2bb449f37f6 adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+(pass) priority routing > emits the pool's terminal error exactly once once headers are out [58.02ms]
+[PROXY] 1cd93ff6-3616-4045-9b80-ba9ea64e42ec adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] acabe147-2958-43a1-9cde-4370f767c1db adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] acabe147-2958-43a1-9cde-4370f767c1db usage: input=10 output=50 cache=0%
+(pass) priority routing > does not start another account before suppressed retirement, or after cancellation during retirement [110.41ms]
+[PROXY] 9a02e50f-070a-46a6-bf44-c4171fee7c78 adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 9a02e50f-070a-46a6-bf44-c4171fee7c78 adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 9a02e50f-070a-46a6-bf44-c4171fee7c78 usage: input=10 output=50 cache=0%
+(pass) priority routing > treats an oversized post-header JSON boundary as terminal with joined retirement, without trying a third account [258.73ms]
+[PROXY] ce24aeb8-d2c9-42c5-9d8f-5d6bd574bbe0 adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] ce24aeb8-d2c9-42c5-9d8f-5d6bd574bbe0 adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+(pass) priority routing > treats an oversized post-header JSON boundary as terminal with rejected retirement, without trying a third account [51.26ms]
+[PROXY] 0025f2cf-ac27-446e-9b77-3434fb9cc42a adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 0025f2cf-ac27-446e-9b77-3434fb9cc42a adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+(pass) priority routing > surfaces the refusal's own status when every account is refused [60.41ms]
+[PROXY] f2b5bdde-113d-44db-9bce-07a2c9f35444 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+(pass) priority routing > does NOT spend the pool on a failure that says nothing about the account [51.80ms]
+[PROXY] e3cff33a-f7ed-4ea7-b9aa-672f1a8ab257 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] e3cff33a-f7ed-4ea7-b9aa-672f1a8ab257 usage: input=10 output=50 cache=0%
+[PROXY] Session not resumable (key=work:s1…): reason=replayed-request, prefix overlap 0/1, incoming 1 msgs. Starting fresh replay.
+[PROXY] 33f3792c-a11d-4cbf-b390-493749e60efc adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=replayed-request sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 33f3792c-a11d-4cbf-b390-493749e60efc SESSION RECOVERY: previous conversation available. Run: claude --resume d56bed9b-213c-4b15-9438-3030f5c2f526
+[PROXY] 33f3792c-a11d-4cbf-b390-493749e60efc adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 33f3792c-a11d-4cbf-b390-493749e60efc usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (billing_error)
+[PROXY] Session not resumable (key=personal…): reason=replayed-request, prefix overlap 0/1, incoming 1 msgs. Starting fresh replay.
+[PROXY] 6271a85a-027c-4cda-8ea1-c64467bc60bf adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=replayed-request sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 6271a85a-027c-4cda-8ea1-c64467bc60bf SESSION RECOVERY: previous conversation available. Run: claude --resume 73bc82cb-68b9-4c8a-b38f-49f3658ce665
+[PROXY] 6271a85a-027c-4cda-8ea1-c64467bc60bf usage: input=10 output=50 cache=0%
+(pass) priority routing > moves an assigned conversation off an account once its subscription is refused [127.98ms]
+[PROXY] e045519a-cc0e-4dcf-bbc3-86a6ec86471a adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] e045519a-cc0e-4dcf-bbc3-86a6ec86471a adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+(pass) priority routing > streams the refusal's own payload when every account is refused [56.09ms]
+[PROXY] 496079dc-7d2a-4747-a6aa-456c0e4e1066 adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+(pass) priority routing > leaves a refusal that arrives AFTER content alone [38.09ms]
+[PROXY] 37223408-c643-4352-bb22-bbb840a9e55f adapter=opencode profile=work model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 37223408-c643-4352-bb22-bbb840a9e55f rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] 37223408-c643-4352-bb22-bbb840a9e55f rate-limited on sonnet, retry 2/2 in 2000ms
+(pass) priority routing > mode OFF is byte-identical: no failover, error surfaces from the default profile [3055.23ms]
+[PROXY] c0798979-05fb-4ef6-9af9-d6d8905a960c adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] c0798979-05fb-4ef6-9af9-d6d8905a960c rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] c0798979-05fb-4ef6-9af9-d6d8905a960c rate-limited on sonnet, retry 2/2 in 2000ms
+[PROXY] c0798979-05fb-4ef6-9af9-d6d8905a960c adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] c0798979-05fb-4ef6-9af9-d6d8905a960c usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+(pass) priority cooldown resolution > uses the failing profile's OWN five_hour reset, not another profile's [3090.19ms]
+[PROXY] a1e538db-c6a7-433c-aa16-db60d4eca070 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] a1e538db-c6a7-433c-aa16-db60d4eca070 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] a1e538db-c6a7-433c-aa16-db60d4eca070 usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (billing_error)
+(pass) priority cooldown resolution > ignores the five_hour reset when the refusal is about the subscription, not the quota [64.31ms]
+[PROXY] 8d86b687-c084-4d70-aa3c-b61ecd412109 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 8d86b687-c084-4d70-aa3c-b61ecd412109 rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] 8d86b687-c084-4d70-aa3c-b61ecd412109 rate-limited on sonnet, retry 2/2 in 2000ms
+[PROXY] 8d86b687-c084-4d70-aa3c-b61ecd412109 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 8d86b687-c084-4d70-aa3c-b61ecd412109 usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+(pass) priority cooldown resolution > adopts a SECONDS-valued reset from the SDK, which tier 1 could never match before (#708) [3257.23ms]
+[PROXY] 7a245534-b60f-4c2c-b6c2-ce77763a8663 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 7a245534-b60f-4c2c-b6c2-ce77763a8663 rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] 7a245534-b60f-4c2c-b6c2-ce77763a8663 rate-limited on sonnet, retry 2/2 in 2000ms
+[PROXY] 7a245534-b60f-4c2c-b6c2-ce77763a8663 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 7a245534-b60f-4c2c-b6c2-ce77763a8663 usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+(pass) priority cooldown resolution > falls back to the 10-minute default when the profile has no entry of its own [3105.70ms]
+[PROXY] d2474efa-8dc0-43ad-977f-49e902799a76 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] d2474efa-8dc0-43ad-977f-49e902799a76 rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] d2474efa-8dc0-43ad-977f-49e902799a76 rate-limited on sonnet, retry 2/2 in 2000ms
+[PROXY] d2474efa-8dc0-43ad-977f-49e902799a76 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] d2474efa-8dc0-43ad-977f-49e902799a76 usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+(pass) priority cooldown resolution > falls back to the 10-minute default when the profile's own five_hour entry is healthy (allowed, utilization < 1) [3118.49ms]
+[PROXY] 1a4333f9-81a5-4c42-8d2c-b894b05f158d adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 1a4333f9-81a5-4c42-8d2c-b894b05f158d rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] 1a4333f9-81a5-4c42-8d2c-b894b05f158d rate-limited on sonnet, retry 2/2 in 2000ms
+[PROXY] 1a4333f9-81a5-4c42-8d2c-b894b05f158d adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 1a4333f9-81a5-4c42-8d2c-b894b05f158d usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+(pass) priority cooldown resolution > refines a default-length mark with the authoritative OAuth reset [3118.56ms]
+[PROXY] 1bf1f5a1-f02e-4b83-8663-e7348a3f07b0 adapter=opencode profile=keyed(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 1bf1f5a1-f02e-4b83-8663-e7348a3f07b0 rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] 1bf1f5a1-f02e-4b83-8663-e7348a3f07b0 rate-limited on sonnet, retry 2/2 in 2000ms
+[PROXY] 1bf1f5a1-f02e-4b83-8663-e7348a3f07b0 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 1bf1f5a1-f02e-4b83-8663-e7348a3f07b0 usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover keyed -> personal (rate_limit_error)
+(pass) priority cooldown resolution > does not attempt an OAuth usage fetch for a non-claude-max profile (#699) [3256.03ms]
+[PROXY] 4cbdba57-acb2-494e-8ecb-2cabfece88b3 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 4cbdba57-acb2-494e-8ecb-2cabfece88b3 rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] 4cbdba57-acb2-494e-8ecb-2cabfece88b3 rate-limited on sonnet, retry 2/2 in 2000ms
+[PROXY] 4cbdba57-acb2-494e-8ecb-2cabfece88b3 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 4cbdba57-acb2-494e-8ecb-2cabfece88b3 usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+(pass) priority cooldown resolution > still refines a claude-max profile, proving the guard is type-scoped and not a blanket skip [3142.71ms]
+[PROXY] 7c83f315-4000-41d4-9a37-d1cd54c7e7c2 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 7c83f315-4000-41d4-9a37-d1cd54c7e7c2 rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] 7c83f315-4000-41d4-9a37-d1cd54c7e7c2 rate-limited on sonnet, retry 2/2 in 2000ms
+[PROXY] 7c83f315-4000-41d4-9a37-d1cd54c7e7c2 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 7c83f315-4000-41d4-9a37-d1cd54c7e7c2 usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+(pass) priority cooldown resolution > never shortens an existing mark with an earlier OAuth reset [3134.06ms]
+[PROXY] 89aab9df-f6a1-4484-9f27-b9bf6fe83d3c adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 89aab9df-f6a1-4484-9f27-b9bf6fe83d3c rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] 89aab9df-f6a1-4484-9f27-b9bf6fe83d3c rate-limited on sonnet, retry 2/2 in 2000ms
+[PROXY] 89aab9df-f6a1-4484-9f27-b9bf6fe83d3c adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 89aab9df-f6a1-4484-9f27-b9bf6fe83d3c usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+(pass) priority cooldown resolution > leaves the mark unchanged when the OAuth fetch rejects [3138.89ms]
+[PROXY] 249756a7-166e-4126-8c0d-ab04eb205dc6 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 249756a7-166e-4126-8c0d-ab04eb205dc6 rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] 249756a7-166e-4126-8c0d-ab04eb205dc6 rate-limited on sonnet, retry 2/2 in 2000ms
+[PROXY] 249756a7-166e-4126-8c0d-ab04eb205dc6 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 249756a7-166e-4126-8c0d-ab04eb205dc6 usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+(pass) priority cooldown resolution > leaves the mark unchanged when the OAuth fetch returns null [3131.84ms]
+[PROXY] 006518a3-0386-4bdb-bac2-0676175a44a4 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 006518a3-0386-4bdb-bac2-0676175a44a4 rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] 006518a3-0386-4bdb-bac2-0676175a44a4 rate-limited on sonnet, retry 2/2 in 2000ms
+[PROXY] 006518a3-0386-4bdb-bac2-0676175a44a4 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 006518a3-0386-4bdb-bac2-0676175a44a4 usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+(pass) priority cooldown resolution > does not extend the mark when the OAuth five_hour window is healthy (utilization < 1) [3121.59ms]
+[PROXY] 37ebc59f-b0b1-47ed-9990-41bd91bb4f60 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 37ebc59f-b0b1-47ed-9990-41bd91bb4f60 rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] 37ebc59f-b0b1-47ed-9990-41bd91bb4f60 rate-limited on sonnet, retry 2/2 in 2000ms
+[PROXY] 37ebc59f-b0b1-47ed-9990-41bd91bb4f60 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 37ebc59f-b0b1-47ed-9990-41bd91bb4f60 usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+(pass) priority cooldown resolution > clamps the synchronous mark to the 6-hour cap even when the profile's own reset is far beyond it [3113.05ms]
+[PROXY] f29af7c7-5631-485a-a40d-d135f05b94f8 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] f29af7c7-5631-485a-a40d-d135f05b94f8 rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] f29af7c7-5631-485a-a40d-d135f05b94f8 rate-limited on sonnet, retry 2/2 in 2000ms
+[PROXY] f29af7c7-5631-485a-a40d-d135f05b94f8 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] f29af7c7-5631-485a-a40d-d135f05b94f8 usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+(pass) priority cooldown resolution > clamps the refinement mark to the 6-hour cap even when OAuth reports a reset far beyond it [3154.26ms]
+[PROXY] 94d1abb7-935c-4e9b-b37c-ad4fbf97e45f adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 94d1abb7-935c-4e9b-b37c-ad4fbf97e45f rate-limited on sonnet, retry 1/2 in 1000ms
+[PROXY] 94d1abb7-935c-4e9b-b37c-ad4fbf97e45f rate-limited on sonnet, retry 2/2 in 2000ms
+[PROXY] 94d1abb7-935c-4e9b-b37c-ad4fbf97e45f adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 94d1abb7-935c-4e9b-b37c-ad4fbf97e45f usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+(pass) priority cooldown resolution > does not block failover on the OAuth fetch [3107.78ms]
+[PROXY] a55411b3-a75f-47d8-83e9-173e38b9e4c8 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] a55411b3-a75f-47d8-83e9-173e38b9e4c8 rate-limited on sonnet, retry 1/2 in 1ms
+[PROXY] a55411b3-a75f-47d8-83e9-173e38b9e4c8 rate-limited on sonnet, retry 2/2 in 2ms
+[PROXY] a55411b3-a75f-47d8-83e9-173e38b9e4c8 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] a55411b3-a75f-47d8-83e9-173e38b9e4c8 usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+[PROXY] Session not resumable (key=37e1e34f…): reason=replayed-request, prefix overlap 0/1, incoming 1 msgs. Starting fresh replay.
+[PROXY] f6af629c-60bb-429c-8d31-cc2978571296 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=replayed-request sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] f6af629c-60bb-429c-8d31-cc2978571296 usage: input=10 output=50 cache=0%
+(pass) keyless priority affinity > keeps a KEYLESS conversation on its failed-over profile after the preferred one recovers [10145.19ms]
+[PROXY] 9d311aa2-a380-4047-9c44-a6fe882fb65d adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 9d311aa2-a380-4047-9c44-a6fe882fb65d rate-limited on sonnet, retry 1/2 in 1ms
+[PROXY] 9d311aa2-a380-4047-9c44-a6fe882fb65d rate-limited on sonnet, retry 2/2 in 2ms
+[PROXY] 9d311aa2-a380-4047-9c44-a6fe882fb65d adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 9d311aa2-a380-4047-9c44-a6fe882fb65d usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+[PROXY] 80168cf8-4c1e-4017-b9d0-db52ea636d9d adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 80168cf8-4c1e-4017-b9d0-db52ea636d9d usage: input=10 output=50 cache=0%
+(pass) keyless priority affinity > gives two keyless conversations independent assignments [10138.62ms]
+[PROXY] 34be8251-6208-4ebf-8485-8f4a03b22806 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 34be8251-6208-4ebf-8485-8f4a03b22806 rate-limited on sonnet, retry 1/2 in 1ms
+[PROXY] 34be8251-6208-4ebf-8485-8f4a03b22806 rate-limited on sonnet, retry 2/2 in 2ms
+[PROXY] 34be8251-6208-4ebf-8485-8f4a03b22806 adapter=opencode profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 34be8251-6208-4ebf-8485-8f4a03b22806 usage: input=10 output=50 cache=0%
+[PROXY] PRIORITY failover work -> personal (rate_limit_error)
+[PROXY] b309b83a-f9a3-4248-8953-fa184b80fe9f adapter=opencode source=fork-memory-extract profile=personal(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=independent-request:fork-source sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] b309b83a-f9a3-4248-8953-fa184b80fe9f usage: input=10 output=50 cache=0%
+(pass) keyless priority affinity > lands a keyless fork on the same account as its parent [10133.17ms]
+
+ 87 pass
+ 0 fail
+ 443 expect() calls
+Ran 87 tests across 1 file. [167.74s]

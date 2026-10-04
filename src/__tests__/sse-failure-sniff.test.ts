@@ -114,6 +114,12 @@ describe("classifySseFrame verdicts", () => {
     expect(classifySseFrame("event: error")).toEqual({ kind: "error", errorType: null, payload: null })
   })
 
+  it("does not treat non-string JSON error types as account verdicts", () => {
+    for (const payload of [null, 1, [], { error: null }, { error: { type: 429 } }, { error: { type: { value: "billing_error" } } }]) {
+      expect(classifySseFrame(`event: error\ndata: ${JSON.stringify(payload)}`)).toEqual({ kind: "error", errorType: null, payload })
+    }
+  })
+
   it("parses spec-legal data fields without a space after the colon", () => {
     const verdict = classifySseFrame('event: error\ndata:{"error":{"type":"billing_error"}}')
     expect(verdict).toEqual({
@@ -410,5 +416,151 @@ describe("stream transport (actual relay, not a duplicate scan loop)", () => {
     if (verdict.kind !== "suppressed") throw new Error("expected suppression")
     expect(verdict.errorPayload).toEqual({ error: { type: "rate_limit_error", retry_after: 30 } })
     await verdict.discard()
+  })
+
+  it("bounds fallback JSON before EOF and cancels rather than guessing an account refusal", async () => {
+    let cancelled = 0
+    let pulls = 0
+    const output: Uint8Array[] = []
+    const inner = new Response(new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulls++
+        // Never closes. A cap must make progress independently of EOF.
+        // Stall after six chunks so even the broken implementation cannot
+        // starve the test deadline with an endless synchronous microtask loop.
+        if (pulls <= 6) controller.enqueue(encoder.encode("x".repeat(16 * 1024)))
+      },
+      cancel() { cancelled++ },
+    }), { status: 429, headers: { "content-type": "application/json" } })
+    // Bound the broken control's run too, without turning timeout into a pass.
+    let stop = (): void => {}
+    const guard = setTimeout(() => stop(), 100)
+    const opts = sink(output)
+    let stopped = false
+    opts.isCancelled = () => stopped
+    opts.registerCancel = cancel => { stop = () => { stopped = true; cancel("test deadline") } }
+    try {
+      const verdict = await relayStreamAttempt(inner, opts)
+      expect(verdict.kind).toBe("relayed")
+      expect(text(output)).toContain('"type":"api_error"')
+      expect(text(output)).toContain("exceeded 65536 bytes")
+      expect(text(output).split("event: error").length - 1).toBe(1)
+      expect(pulls).toBeLessThanOrEqual(6)
+      expect(cancelled).toBe(1)
+      expect(inner.body!.locked).toBe(false)
+    } finally { clearTimeout(guard) }
+  })
+
+  it("accepts complete JSON at the byte limit but rejects one byte more, even in one oversized chunk", async () => {
+    for (const bytes of [65535, 65536, 65537, 2 * 1024 * 1024]) {
+      const prefix = '{"error":{"type":"billing_error","message":"'
+      const suffix = '"}}'
+      const body = encoder.encode(prefix + "x".repeat(bytes - prefix.length - suffix.length) + suffix)
+      let cancelled = 0
+      const output: Uint8Array[] = []
+      const inner = new Response(new ReadableStream<Uint8Array>({
+        start(controller) { controller.enqueue(body); controller.close() },
+        cancel() { cancelled++ },
+      }), { status: 402 })
+      const verdict = await relayStreamAttempt(inner, sink(output))
+      if (bytes <= 65536) {
+        expect(verdict.kind).toBe("suppressed")
+        if (verdict.kind === "suppressed") await verdict.discard()
+        expect(output).toHaveLength(0)
+      } else {
+        expect(verdict.kind).toBe("relayed")
+        expect(text(output)).toContain('"type":"api_error"')
+        expect(text(output)).not.toContain("billing_error")
+        expect(text(output).length).toBeLessThan(1024)
+      }
+      expect(inner.body!.locked).toBe(false)
+      // A closed stream needs no underlying cancel callback.
+      expect(cancelled).toBeLessThanOrEqual(1)
+    }
+  })
+
+  it("does not decode an oversized SSE deciding chunk or retry it", async () => {
+    const input = encoder.encode(BILLING.replace("inactive", "x".repeat(2 * 1024 * 1024)))
+    const output: Uint8Array[] = []
+    let exposed = 0
+    const opts = sink(output)
+    opts.onMeaningfulForwarded = () => { exposed++ }
+    const OriginalDecoder = globalThis.TextDecoder
+    const decodedByteLengths: number[] = []
+    globalThis.TextDecoder = class extends OriginalDecoder {
+      override decode(...args: Parameters<TextDecoder["decode"]>): string {
+        const [input] = args
+        if (input) decodedByteLengths.push(input.byteLength)
+        return super.decode(...args)
+      }
+    }
+    let verdict: Awaited<ReturnType<typeof relayStreamAttempt>>
+    try { verdict = await relayStreamAttempt(response([input]), opts) }
+    finally { globalThis.TextDecoder = OriginalDecoder }
+    expect(decodedByteLengths.every(bytes => bytes <= 65536)).toBe(true)
+    expect(verdict.kind).toBe("relayed")
+    expect(exposed).toBe(1)
+    expect(Buffer.concat(output)).toEqual(Buffer.from(input))
+  })
+
+  it("joins the exact cancellation registered before cleanup, including delayed cancellation", async () => {
+    let finishCancel = (): void => {}
+    const gate = new Promise<void>(resolve => { finishCancel = resolve })
+    let cancelRegistered = (_reason: unknown): void => {}
+    let cancelCalls = 0
+    let stopped = false
+    let completed = false
+    const inner = new Response(new ReadableStream<Uint8Array>({
+      cancel() { cancelCalls++; return gate },
+    }), { headers: { "content-type": "text/event-stream" } })
+    const opts = sink([])
+    opts.isCancelled = () => stopped
+    opts.registerCancel = cancel => { cancelRegistered = cancel }
+    const task = relayStreamAttempt(inner, opts).then(() => { completed = true })
+    await Bun.sleep(5)
+    stopped = true
+    cancelRegistered("client disconnected")
+    await Bun.sleep(5)
+    try {
+      expect(cancelCalls).toBe(1)
+      expect(completed).toBe(false)
+    } finally { finishCancel(); await task }
+    expect(inner.body!.locked).toBe(false)
+  })
+
+  it("delivers the bounded JSON error while stalled cancellation keeps completion fenced", async () => {
+    let finishCancel = (): void => {}
+    const cancelled = new Promise<void>(resolve => { finishCancel = resolve })
+    let completed = false
+    const output: Uint8Array[] = []
+    const inner = new Response(new ReadableStream<Uint8Array>({
+      start(controller) { controller.enqueue(new Uint8Array(65537)) },
+      cancel() { return cancelled },
+    }), { status: 429 })
+    const opts = sink(output)
+    let stop = (_reason: unknown): void => {}
+    let stopped = false
+    opts.registerCancel = cancel => { stop = cancel }
+    opts.isCancelled = () => stopped
+    const task = relayStreamAttempt(inner, opts).then(() => { completed = true })
+    await Bun.sleep(10)
+    try {
+      expect(text(output)).toContain('"type":"api_error"')
+      expect(completed).toBe(false)
+    } finally { stopped = true; stop("test cleanup"); finishCancel(); await task }
+    expect(inner.body!.locked).toBe(false)
+  })
+
+  it("reports rejected retirement to the caller after one terminal frame, without declaring success", async () => {
+    const output: Uint8Array[] = []
+    const failure = new Error("underlying cancellation rejected")
+    const inner = new Response(new ReadableStream<Uint8Array>({
+      start(controller) { controller.enqueue(new Uint8Array(65537)) },
+      cancel() { return Promise.reject(failure) },
+    }), { status: 429 })
+    const verdict = await relayStreamAttempt(inner, sink(output))
+    expect(verdict).toEqual({ kind: "relayed", terminalError: true, cleanupFailure: { error: failure } })
+    expect(text(output).split("event: error").length - 1).toBe(1)
+    expect(inner.body!.locked).toBe(false)
   })
 })

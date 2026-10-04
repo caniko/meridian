@@ -1,6 +1,10 @@
 import { isAccountFailoverError } from "./errors"
 import { parseRetryAfterMs } from "./retryAfter"
 
+// Internal classification limits, not public proxy configuration. A response
+// larger than this is never sufficient evidence to replay another account.
+const CLASSIFICATION_MAX_BYTES = 64 * 1024
+
 /**
  * SSE prelude scanning and transport for priority account failover.
  * Content-free comments and ping events do not decide an account verdict.
@@ -100,8 +104,10 @@ export function classifySseFrame(frame: string): SseFrameClass {
     let errorType: string | null = null
     if (dataJoined !== null) {
       try {
-        payload = JSON.parse(dataJoined) as { error?: { type?: string } } | null
-        errorType = (payload as { error?: { type?: string } } | null)?.error?.type ?? null
+        payload = JSON.parse(dataJoined)
+        const error = payload !== null && typeof payload === "object" && "error" in payload ? payload.error : null
+        const type = error !== null && typeof error === "object" && "type" in error ? error.type : null
+        errorType = typeof type === "string" ? type : null
       } catch {
         // Not the expected JSON shape: the error frame still decides, with
         // no failover-qualifying type.
@@ -164,7 +170,7 @@ export type StreamAttemptVerdict =
       held: Uint8Array[]
       discard: () => Promise<void>
     }
-  | { kind: "relayed" }
+  | { kind: "relayed"; terminalError?: true; cleanupFailure?: { error: unknown } }
 
 export type SseRelaySink = {
   enqueue: (chunk: Uint8Array) => Promise<boolean>
@@ -207,6 +213,7 @@ export function createSseRelayStream(
   let cancelReason: unknown
   let activeCancel: ((reason: unknown) => void) | null = null
   let wake: (() => void) | null = null
+  let heartbeat: ReturnType<typeof setInterval> | undefined
   return new ReadableStream<Uint8Array>({
     start(controller) {
       let meaningful = false
@@ -226,7 +233,7 @@ export function createSseRelayStream(
           writing = false
         }
       }
-      const heartbeat = setInterval(() => {
+      heartbeat = setInterval(() => {
         // A non-reading client needs no queued keepalives; do not accumulate
         // timer writes behind a slow content write or a held partial frame.
         if (!cancelled && !meaningful && !writing && (controller.desiredSize ?? 0) > 0) {
@@ -253,6 +260,9 @@ export function createSseRelayStream(
     cancel(reason) {
       cancelled = true
       cancelReason = reason
+      // Cancellation may be waiting on an uncooperative upstream. That must
+      // not leave this keepalive timer retaining the disconnected response.
+      clearInterval(heartbeat)
       onCancel(reason)
       activeCancel?.(reason)
       const resolve = wake
@@ -271,17 +281,32 @@ export async function relayStreamAttempt(
   const reader = inner.body?.getReader()
   if (!reader) return { kind: "relayed" }
   let transferred = false
-  let discarded = false
-  const discard = async (): Promise<void> => {
-    if (discarded) return
-    discarded = true
-    try { await reader.cancel().catch(() => {}) }
-    finally {
-      reader.releaseLock()
-      opts.registerCancel(() => {})
-    }
+  let terminalErrorForwarded = false
+  let cancellation: Promise<{ ok: true } | { ok: false; error: unknown }> | undefined
+  const cancelReader = (reason?: unknown) => {
+    // A second reader.cancel() on a closed stream resolves immediately even
+    // while the FIRST underlying cancellation is still pending. Join that
+    // exact operation; otherwise cancellation can falsely finish cleanup.
+    cancellation ??= reader.cancel(reason).then(
+      () => ({ ok: true as const }),
+      error => ({ ok: false as const, error }),
+    )
+    return cancellation
   }
-  opts.registerCancel(reason => { void reader.cancel(reason).catch(() => {}) })
+  let discardCompletion: Promise<void> | undefined
+  const discard = (): Promise<void> => {
+    discardCompletion ??= (async () => {
+      try {
+        const result = await cancelReader()
+        if (!result.ok) throw result.error
+      } finally {
+        reader.releaseLock()
+        opts.registerCancel(() => {})
+      }
+    })()
+    return discardCompletion
+  }
+  opts.registerCancel(reason => { void cancelReader(reason) })
   try {
     const copyRest = async (enqueue: (chunk: Uint8Array) => Promise<boolean>): Promise<void> => {
       while (!opts.isCancelled()) {
@@ -292,15 +317,33 @@ export async function relayStreamAttempt(
     }
     const contentType = inner.headers.get("content-type") ?? ""
     if (!contentType.includes("text/event-stream")) {
-      const chunks: Uint8Array[] = []
+      // Allocate only the bounded diagnostic buffer. In particular, do not
+      // decode, Blob-copy or retain an oversized incoming chunk before checking
+      // its length. The upstream transport owns its own incoming allocation.
+      const bytes = new Uint8Array(CLASSIFICATION_MAX_BYTES)
+      let byteLength = 0
       while (!opts.isCancelled()) {
         const { done, value } = await reader.read()
         if (done) break
-        if (value) chunks.push(value)
+        if (!value || value.byteLength === 0) continue
+        if (value.byteLength > CLASSIFICATION_MAX_BYTES - byteLength) {
+          opts.onMeaningfulForwarded()
+          terminalErrorForwarded = true
+          await opts.enqueue(new TextEncoder().encode(`event: error\ndata: ${JSON.stringify({
+            type: "error", error: { type: "api_error", message: `Expected an SSE response; upstream body exceeded ${CLASSIFICATION_MAX_BYTES} bytes` },
+          })}\n\n`))
+          // Deliver the terminal frame before joining cancellation. A broken
+          // underlying cancel may delay EOF/cleanup, but never authorize a new
+          // account or release the caller's request/turn authority early.
+          return { kind: "relayed", terminalError: true }
+        }
+        bytes.set(value, byteLength)
+        byteLength += value.byteLength
       }
       if (opts.isCancelled()) return { kind: "relayed" }
       let payload: unknown = null
-      try { payload = JSON.parse(await new Response(new Blob(chunks)).text()) } catch { /* invalid JSON */ }
+      try { payload = JSON.parse(new TextDecoder().decode(bytes.subarray(0, byteLength))) }
+      catch { payload = null }
       const error = payload !== null && typeof payload === "object" && "error" in payload
         ? payload.error : null
       const parsedType = error !== null && typeof error === "object" && "type" in error ? error.type : null
@@ -320,8 +363,9 @@ export async function relayStreamAttempt(
         return { kind: "suppressed", errorPayload: payload, errorType, held: [frame], discard }
       }
       opts.onMeaningfulForwarded()
+      terminalErrorForwarded = true
       await opts.enqueue(frame)
-      return { kind: "relayed" }
+      return { kind: "relayed", terminalError: true }
     }
 
     const scanner = new SsePreludeScanner()
@@ -343,6 +387,15 @@ export async function relayStreamAttempt(
         return { kind: "relayed" }
       }
       if (!value) continue
+      if (value.byteLength > CLASSIFICATION_MAX_BYTES - heldBytes) {
+        // Check BEFORE decoding or holding the incoming chunk. Oversized
+        // frames are not reliable replay evidence; preserve their exact bytes
+        // and stand down, even when their leading text names an account error.
+        opts.onMeaningfulForwarded()
+        await forwardHeld()
+        if (await opts.enqueue(value)) await copyRest(opts.enqueue)
+        return { kind: "relayed" }
+      }
       held.push(value)
       heldBytes += value.byteLength
       const decoded = decoder.decode(value, { stream: true })
@@ -365,7 +418,7 @@ export async function relayStreamAttempt(
       // An incomplete/malformed frame is not bounded by protocol. Stand down
       // conservatively at 64 KiB rather than allocating indefinitely. Once
       // bytes are exposed, later errors cannot be retried on another account.
-      if (heldBytes >= 64 * 1024) {
+      if (heldBytes >= CLASSIFICATION_MAX_BYTES) {
         opts.onMeaningfulForwarded()
         await forwardHeld()
         await copyRest(opts.enqueue)
@@ -379,6 +432,15 @@ export async function relayStreamAttempt(
   } finally {
     // A suppressed attempt transfers cleanup to its caller, which must join
     // cancellation before consulting the final no-replay exposure barrier.
-    if (!transferred) await discard()
+    if (!transferred) {
+      try { await discard() }
+      catch (error) {
+        // The converted terminal frame already reached the client. Report the
+        // failed retirement to the authority owner without emitting a second
+        // conflicting frame or describing this attempt as a served answer.
+        if (terminalErrorForwarded) return { kind: "relayed", terminalError: true, cleanupFailure: { error } }
+        throw error
+      }
+    }
   }
 }

@@ -4828,6 +4828,21 @@ working Claude Max credential directory.
 fixture. This exercises the installed package, SDK/CLI and HTTP delivery
 without credentials, but does not establish live subscription/client behavior.
 
+The maintained deterministic controls run without model generation:
+
+```bash
+bun test src/__tests__/sse-failure-sniff.test.ts
+bun test src/__tests__/priority-routing-integration.test.ts
+```
+
+They exercise the real relay, mocked HTTP dispatch, a real loopback socket,
+bounded JSON/SSE classification, cancellation retirement and exposure barriers.
+They do not establish the affected client's retry and cancellation behavior.
+The [#1214 evidence record](docs/maintenance/evidence/1214-sse-priority-failover.md)
+records the failed-before controls and the remaining exact-client/model/SDK
+gate. The packaged HTTP harness above must be supplemented by that actual
+client proof before accepting the fix as complete.
+
 ## E45: Codex auto-defer
 
 **What it proves:** a Codex request past the auto-defer threshold keeps its

@@ -517,8 +517,11 @@ export const profileBarJs = `
     driftChip.textContent = '';
   }
 
+  var healthGeneration = 0;
   function loadHeader() {
-    fetch('/health').then(function(r) { return r.json(); }).then(function(h) {
+    var generation = ++healthGeneration;
+    fetch('/health', { cache: 'no-store' }).then(function(r) { return r.json(); }).then(function(h) {
+      if (generation !== healthGeneration) return;
       var st = h.status === 'healthy' ? 'healthy' : h.status === 'degraded' ? 'degraded' : 'unhealthy';
       statusDot.className = 'mh-dot ' + st;
       statusText.textContent = st === 'healthy' ? 'Operational' : st === 'degraded' ? 'Degraded' : 'Offline';
@@ -529,8 +532,10 @@ export const profileBarJs = `
         profileChip.removeAttribute('href');
       }
     }).catch(function() {
+      if (generation !== healthGeneration) return;
       statusDot.className = 'mh-dot unhealthy';
       statusText.textContent = 'Offline';
+      renderHost(undefined);
     });
 
     fetch('/profiles/list').then(function(r) { return r.json(); }).then(function(data) {

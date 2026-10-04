@@ -23,8 +23,11 @@ It contains the protected-key index, predecessor guards, conservative uncertain
 publication handling and isolated-grant harness authority tests.
 The final harness setup/target-SDK correction is
 `d8bd970684bc49042cf641120e0da2412473c123`; its three files change the native
-harness, its authority tests and E2E instructions. Product source/test blobs
-outside that authority test remain identical to `c62fe691`.
+harness, its authority tests and E2E instructions. At that checkpoint, product
+source/test blobs outside that authority test remain identical to `c62fe691`.
+The modern store fixture correction is
+`3424de9f492f5e8ce7fe14faa472fe26c3312722`; product source and both harnesses
+remain unchanged.
 
 The owner authorized this internal correction for exact locators already
 recorded by Meridian. It adds no public plugin/configuration/route interface,
@@ -254,21 +257,56 @@ The passing harness is committed at `d8bd970684bc49042cf641120e0da2412473c123`.
 Host: macOS arm64, Bun **1.3.14**, Node **22.22.3**. Focused checks used isolated
 temporary Meridian stores and mocked SDK/custom recording deleters.
 
+The first full `npm test` ran without any source/document edits on frozen
+`ab9bb9aeccabe312d1339c15343415445d625cb8` and exited **1**. Its main batch
+completed **5047 pass / 35 skip / 0 fail**; the isolated async-operations batch
+completed **3 pass / 0 fail**. The next isolated store batch stopped the chain at
+**23 pass / 1 fail**, 103 assertions. The failed existing test, "moves the exact
+transcript locator when the Claude session ID changes", published two raw
+locators and attempted a third replacement without journaled ownership. That
+would discard the unfenced original predecessor; the new store guard returned
+false, so its assertion expecting the current locator to disappear failed.
+Later isolated batches did not run. This failure is preserved rather than
+counted as a completed passing full suite.
+
+Root independently confirmed the missing modern-publication precondition and
+approved correcting the fixture without weakening the guard or its assertions.
+Actual managed HTTP callers pre-journal fresh/fork targets before publication;
+the new bounded legacy coordinator, predecessor rejection and HTTP retry tests
+cover unfenced callers. The existing movement test now obtains its original and
+replacement locators from real `registerLiveTranscript` transactions in its
+isolated metadata store. Every original immediate-source, fallback, same-ID and
+non-immediate-locator assertion is preserved. These transactions do not create
+SDK transcripts or make native/model calls.
+
+The unchanged test on `ab9bb9ae` independently reproduced **0 pass / 1 fail /
+23 filtered**, exit **1**, with 3 assertions reached. The corrected fixture
+passed **1 pass / 0 fail / 23 filtered**, 5 assertions, using this exact command:
+
+```sh
+bun test src/__tests__/proxy-session-store.test.ts \
+  --test-name-pattern 'moves the exact transcript locator'
+```
+
+The complete isolated store suite then passed **24 pass / 0 fail**, 105
+assertions. No production source or native harness changed for this correction.
+
 | Check | Result |
 | --- | --- |
 | New direct enrollment/ownership suite | **38 pass / 0 fail**, 362 assertions. |
 | Harness authority with synthetic grants, stopped before CLI/query | **4 pass / 0 fail**, 25 assertions. No real credentials or model calls. |
 | HTTP admission + existing profile-copy pruning | **25 pass / 0 fail**, 121 assertions, including both streaming modes, corrupt metadata, capacity progress and the two-profile/one-item gate. |
 | Combined final focused run of the three rows above | **67 pass / 0 fail**, 508 assertions across four files. |
+| Existing store suite with real modern ownership fixtures | **24 pass / 0 fail**, 105 assertions; all original movement assertions retained. |
 | Existing lifecycle/publication/contention/process/Windows-GC suites before the final victim-selection correction | **69 pass / 1 skip / 0 fail**, 374 assertions. The skip requires native Windows PID-reuse behavior. |
-| `npm run typecheck` | Exit 0 after the final harness setup/target-SDK corrections. |
+| `npm run typecheck` | Exit 0 after the final harness setup/target-SDK and modern store fixture corrections. |
 | `npm run build` | Exit 0 after the final harness setup/target-SDK corrections; Node entrypoint bundling completed (certified local build 5). |
 | `git diff --check`; syntax checks for both committed harnesses | Exit 0. |
-| Full `npm test` | Queued for the parent's exclusive full-suite slot. Not yet run for this delivery. |
+| Full `npm test` | First frozen `ab9bb9ae` run exited 1 on the causal fixture precondition above. A necessary rerun on the corrected committed fixture is pending in the parent's exclusive slot. |
 | Native before/after fixture | Escrowed; not run. Model slot is reserved by another authorized gate. |
 | E41 chain/parallel × streaming/nonstreaming | Not run for this correction. |
 | Actual reported Linux/OpenCode host; native Windows | Not run. No cross-platform/model success claim. |
-| Exact final-head required CI and independent final diff | Root independently reviewed corrected ownership uncertainty and isolated-grant semantics. Independent reviewer `preload_cleanup` approved the final setup/target-SDK corrections and their discriminating controls with no surviving material finding. Exact committed final diff/evidence and final-head CI remain pending. |
+| Exact final-head required CI and independent final diff | Root independently reviewed corrected ownership uncertainty, isolated-grant semantics and exact `ab9bb9ae` metadata/harness/test diff with no surviving material finding, then approved the causal fixture correction. Independent reviewer `preload_cleanup` approved the final setup/target-SDK corrections and their discriminating controls. Exact final-head CI remains pending. |
 
 The committed
 [native harness](../../../scripts/e2e-legacy-transcript-enrollment.mjs) costs

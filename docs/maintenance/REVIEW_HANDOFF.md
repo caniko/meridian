@@ -24,25 +24,42 @@ Draft #1271 (`7de8cf5f`) retains safe fsync/publication durability, separate
 maintainer corrections and Nowaker credit; historical full suite is
 5,349 pass / 35 skips / 0 failures. Independent review passes, but live/native
 proof and final-head CI remain gates. #1223's excluded recovery stays open.
-SSE #1214's product `bb33d26d` passes 5,406 tests / 35 skips / 0 failures,
-typecheck/build and independent review; native proof remains open. E41 harness
-`b49defec` now runs its exclusive full suite. Approved expiry `b26dfce2` fixes
-the inactive-window focus gap found in browser review, with discriminating
-controls and typecheck/build; its full suite is queued. Original #1245/#1220
-cause, complete expiry browser/native proof and final integration gates remain
-open. Transcript enrollment's committed `4d645c7f` has further predecessor and
-uncertain-publication ownership corrections in progress; its live harness
-isolates the selected immutable grant. Native/client/Windows acceptance remains
-open.
+Draft [SSE #1273](https://github.com/rynfar/meridian/pull/1273), final `8e1bf53b`,
+retains fully tested product `bb33d26d`: 5,406 / 35 skips / 0 failures across
+19 stages. Test-only synchronization at `dabb2165` has discriminating controls
+and typecheck/build; final evidence-only commit preserves product/harness blobs.
+Native flow and final-head CI remain open.
 
-Sonnet draft #1267 is locally rebased to `dac34820`. The prior default-native
-attempt stopped at read-only 401 with zero SDK queries. Fresh explicitly
-selected personal usage returned 200, and T3's round-two affected Linux/V2/
-Sonnet gate is ongoing; readiness does not establish before/after generation
-or resume proof. Refresh exact source/delivery/base/local/CI evidence before
-integration. Active worktree records and precise source maps are linked in
-the continuation; this checkpoint does not refresh the entire queue itself.
+Ready normal [E41 #1272](https://github.com/rynfar/meridian/pull/1272), final
+`8a08d3d4`, retains executable `b49defec`: 5,354 / 35 skips / 0 failures across
+19 stages, focused/typecheck/build and independent review pass. Its last change
+is evidence only; required CI remains. Original #1245/#1220 causality stays open.
+Approved expiry `b386b148` passes 5,374 / 35 skips / 0 failures and actual
+inactive-browser DOM retention/blur/in-flight success/failure controls on both
+pages. Visible keyboard and screen-reader proof remain unavailable; current
+native screenshot coverage is limited. Positive native/provider login and
+client/package/CI acceptance remain open.
 
+Transcript enrollment is committed at frozen `80d1a482`, not a working draft.
+Installed-SDK identity and setup/cleanup review requires a further harness
+correction now in progress before its full suite. Native/client/Windows and
+final review/CI remain open; this is not collection of the untracked backlog.
+
+Sonnet draft #1267's verified local terminal head is `5a8097c3`. Default-native
+401/zero-query and round-two personal 200 followed by one `<synthetic>` query
+with zero input and normalized subscription refusal remain retained separately.
+Round three's distinct work snapshot returned usage 200, but its tiny actual
+Linux/V2/SDK/Sonnet control made one SDK query: `<synthetic>`, zero input,
+`is_error=true`, provider HTTP 400/API Error mentioning extra usage, no receipt.
+The precise entitlement cause remains unproven. Large baseline/fixed/resume
+were NOT RUN; retained rounds total two SDK query attempts and zero valid
+required-model completions. Package/client identities and each arm's 409
+installed dist files match; credentialless/syntax/privacy/content checks pass. Root verified
+terminal completion, zero owned children and removal of owned runtime/container
+with source unchanged. Native acceptance and fresh local/base/head/CI remain
+open; controller owns the requested working-login follow-up. Refresh active
+source/delivery evidence before integration; this checkpoint does not itself
+refresh the entire queue.
 
 ## Current continuation — 2026-10-04
 

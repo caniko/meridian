@@ -268,7 +268,7 @@ describe("profile login routes", () => {
       const local = await post("/profiles/login/start", { profile: "personal" }, { host: "127.0.0.1:3457" })
       const localBody = await local.json() as { mode: string; authorizeUrl: string; pasteAuthorizeUrl: string }
       expect(localBody.mode).toBe("redirect")
-      expect(new URL(localBody.authorizeUrl).searchParams.get("redirect_uri")).toBe("http://127.0.0.1:3457/callback")
+      expect(new URL(localBody.authorizeUrl).searchParams.get("redirect_uri")).toBe("http://localhost:3457/callback")
       expect(new URL(localBody.pasteAuthorizeUrl).searchParams.get("redirect_uri"))
         .toBe("https://platform.claude.com/oauth/code/callback")
 
@@ -341,11 +341,11 @@ describe("profile login routes", () => {
       expect(body.mode).toBe("paste")
       expect(body.authorizeUrl).toBe(body.pasteAuthorizeUrl)
       expect(new URL(body.loopbackAuthorizeUrl ?? "").searchParams.get("redirect_uri"))
-        .toBe("http://127.0.0.1:3999/callback")
+        .toBe("http://localhost:3999/callback")
       // The probe is this login's own status URL on the loopback origin, so a
       // 200 from it proves the responder is this very instance.
       expect(body.loopbackProbeUrl)
-        .toBe(`http://127.0.0.1:3999/profiles/login/status?loginId=${encodeURIComponent(body.loginId)}`)
+        .toBe(`http://localhost:3999/profiles/login/status?loginId=${encodeURIComponent(body.loginId)}`)
     })
 
     it.skipIf(skipOnDarwin)("completes the login when Claude redirects back, and says so on the page", async () => {
@@ -366,7 +366,7 @@ describe("profile login routes", () => {
       // The one-time code must not survive into the rendered page.
       expect(html).not.toContain("redirect-code")
 
-      expect(requests[0]).toMatchObject({ redirect_uri: "http://127.0.0.1:3457/callback" })
+      expect(requests[0]).toMatchObject({ redirect_uri: "http://localhost:3457/callback" })
       expect(JSON.parse(readFileSync(join(tempDir, "personal", ".credentials.json"), "utf-8")).claudeAiOauth.accessToken)
         .toBe("route-access-token")
 

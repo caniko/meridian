@@ -8,7 +8,7 @@
  * stays here.
  *
  * A login started from a browser ON THE MERIDIAN HOST finishes by itself:
- * Anthropic redirects to `http://127.0.0.1:<port>/callback`, this module
+ * Anthropic redirects to `http://localhost:<port>/callback`, this module
  * exchanges the code, and the page notices via `GET /profiles/login/status`.
  * Anthropic's published client metadata for the Claude Code client
  * (`https://claude.ai/oauth/claude-code-client-metadata`) registers
@@ -289,7 +289,9 @@ export function resolveLoopbackRedirectUri(hostHeader: string | undefined): stri
     return undefined
   }
   if (!LOOPBACK_HOSTNAMES.has(parsed.hostname)) return undefined
-  return `http://${parsed.host}${OAUTH_LOOPBACK_CALLBACK_PATH}`
+  // Claude canonicalizes 127.0.0.1 to localhost on its consent page. Use that
+  // spelling for both authorization and exchange, retaining the reached port.
+  return `http://localhost${parsed.port ? `:${parsed.port}` : ""}${OAUTH_LOOPBACK_CALLBACK_PATH}`
 }
 
 /**
@@ -298,10 +300,10 @@ export function resolveLoopbackRedirectUri(hostHeader: string | undefined): stri
  *
  * `Host` proves a loopback redirect will work; its absence proves nothing. A
  * user browsing `https://meridian.example.net` from the very machine Meridian
- * runs on can still be redirected to `http://127.0.0.1:<port>/callback` — the
+ * runs on can still be redirected to `http://localhost:<port>/callback` — the
  * browser is on that host, it simply did not say so. Measured in Chromium: a
  * page on an HTTPS origin may both `fetch` and be navigated to loopback, since
- * `127.0.0.1` is a potentially-trustworthy origin and so is exempt from
+ * `localhost` is a potentially-trustworthy origin and so is exempt from
  * mixed-content blocking.
  *
  * So this returns a CANDIDATE, offered alongside the paste URL rather than
@@ -311,7 +313,7 @@ export function resolveLoopbackRedirectUri(hostHeader: string | undefined): stri
  */
 export function loopbackRedirectUriForPort(port: number | undefined): string | undefined {
   if (!port || !Number.isInteger(port) || port <= 0 || port > 65535) return undefined
-  return `http://127.0.0.1:${port}${OAUTH_LOOPBACK_CALLBACK_PATH}`
+  return `http://localhost:${port}${OAUTH_LOOPBACK_CALLBACK_PATH}`
 }
 
 /**

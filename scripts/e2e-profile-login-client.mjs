@@ -31,10 +31,20 @@ Object.assign(process.env, { MERIDIAN_CONFIG_DIR: join(root, 'proxy-config'), ME
   MERIDIAN_WORKDIR: project, MERIDIAN_TELEMETRY_PERSIST: '0', MERIDIAN_NO_UPDATE_CHECK: '1',
   MERIDIAN_CREDENTIALS_READONLY: '1', MERIDIAN_PASSTHROUGH: '1' })
 const queries = [], servedModels = new Set(), realQuery = sdk.query
+let iteratorsStarted = 0, iteratorsCompleted = 0
 const observer = spyOn(sdk, 'query').mockImplementation(input => {
   queries.push({credentialDirectoryMatched:input.options?.env?.CLAUDE_CONFIG_DIR === credentialDir, resume:!!input.options?.resume,
     executable:input.options?.pathToClaudeCodeExecutable})
-  return observeSdkModels(realQuery(input), servedModels)
+  const query = observeSdkModels(realQuery(input), servedModels)
+  return new Proxy(query, { get(target, key) {
+    if (key === Symbol.asyncIterator) return async function* () {
+      iteratorsStarted++
+      try { for await (const message of target) yield message }
+      finally { iteratorsCompleted++ }
+    }
+    const value = Reflect.get(target, key, target)
+    return typeof value === 'function' ? value.bind(target) : value
+  } })
 })
 const pluginConfigPath = join(root, 'plugins.json')
 writeFileSync(pluginConfigPath, JSON.stringify({plugins:[{path:scrub,enabled:true}]}), {mode:0o600})
@@ -72,20 +82,25 @@ try {
   const firstText=first.events.filter(event=>event.type==='text').map(event=>event.part?.text??'').join('')
   const continued=first.session?await run('continued',['run','--format','json','--session',first.session,'Without tools, repeat the exact account receipt from the previous turn.'],env):null
   const continuedText=continued?.events.filter(event=>event.type==='text').map(event=>event.part?.text??'').join('')??''
+  await proxy.close()
+  const closeJoined = !proxy.server.listening
+  proxy = undefined
   const summary={result:'FAIL',platform:`${process.platform}/${process.arch}`,bun:Bun.version,opencode:version.stdout.trim(),sdk:sdkVersion,
     packagedClaudeCode:cliVersion,claudeCode:selected.stdout.trim(),model,
     firstExit:first.exit,continuedExit:continued?.exit,firstHasSession:!!first.session,
     toolCalls:first.events.filter(event=>event.type==='tool_use').length,firstReceipt:firstText.includes(receipt),continuedReceipt:continuedText.includes(receipt),
-    allQueriesUseNewAccount:queries.length>0&&queries.every(query=>query.credentialDirectoryMatched),
+    allQueriesUseIntendedAccount:queries.length>0&&queries.every(query=>query.credentialDirectoryMatched),
     allQueriesUseReportedExecutable:queries.length>0&&queries.every(query=>query.executable===health.claudeExecutable.path),
     servedModels:[...servedModels],realSdkQueries:queries.length,
+    sdkIteratorsStarted:iteratorsStarted,sdkIteratorsCompleted:iteratorsCompleted,closeJoined,
     resumed:queries.some(query=>query.resume),scrub:plugins.plugins.find(plugin=>plugin.name==='opencode-scrub')?.version,privateArtifacts:root}
   writeFileSync(join(root,'summary.json'),JSON.stringify(summary,null,2),{mode:0o600})
   assert.equal(first.exit,0,`First client failed; private artifacts: ${root}`)
   assert.equal(continued?.exit,0,`Continuation failed; private artifacts: ${root}`)
   assert(summary.toolCalls>0&&summary.firstReceipt&&summary.continuedReceipt,'Actual tool receipt or continuation missing')
-  assert(summary.allQueriesUseNewAccount&&summary.resumed,'The new account was not used for all real SDK queries and resume')
+  assert(summary.allQueriesUseIntendedAccount&&summary.resumed,'The intended account was not used for all real SDK queries and resume')
   assert(summary.allQueriesUseReportedExecutable, 'Health and SDK selected different CLI executables')
+  assert(closeJoined && iteratorsStarted === queries.length && iteratorsCompleted === iteratorsStarted, 'SDK iteration or proxy close did not join')
   assert(servedModels.size>0&&[...servedModels].every(value=>value===model||value.startsWith(model+'-')),'Upstream response did not confirm the implicated model')
   summary.result='PASS';writeFileSync(join(root,'summary.json'),JSON.stringify(summary,null,2),{mode:0o600});console.log(JSON.stringify(summary))
 } finally {await proxy?.close();observer.mockRestore()}

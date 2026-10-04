@@ -420,9 +420,9 @@ describe("profileLogin", () => {
   })
 
   describe("resolveLoopbackRedirectUri", () => {
-    it("builds a callback URL for the two hosts Anthropic registered", () => {
+    it("canonicalizes both registered loopback hosts without changing the port", () => {
       expect(resolveLoopbackRedirectUri("localhost:3457")).toBe("http://localhost:3457/callback")
-      expect(resolveLoopbackRedirectUri("127.0.0.1:3457")).toBe("http://127.0.0.1:3457/callback")
+      expect(resolveLoopbackRedirectUri("127.0.0.1:3457")).toBe("http://localhost:3457/callback")
       // Port 80 — the registered URI verbatim.
       expect(resolveLoopbackRedirectUri("localhost")).toBe("http://localhost/callback")
     })
@@ -451,9 +451,9 @@ describe("profileLogin", () => {
 
   describe("loopbackRedirectUriForPort", () => {
     it("builds the candidate on the registered loopback host", () => {
-      expect(loopbackRedirectUriForPort(3457)).toBe("http://127.0.0.1:3457/callback")
-      expect(loopbackRedirectUriForPort(1)).toBe("http://127.0.0.1:1/callback")
-      expect(loopbackRedirectUriForPort(65535)).toBe("http://127.0.0.1:65535/callback")
+      expect(loopbackRedirectUriForPort(3457)).toBe("http://localhost:3457/callback")
+      expect(loopbackRedirectUriForPort(1)).toBe("http://localhost:1/callback")
+      expect(loopbackRedirectUriForPort(65535)).toBe("http://localhost:65535/callback")
     })
 
     it("has nothing to offer without a real port", () => {
@@ -537,7 +537,7 @@ describe("profileLogin", () => {
 
       expect(result.mode).toBe("redirect")
       expect(new URL(result.authorizeUrl).searchParams.get("redirect_uri"))
-        .toBe("http://127.0.0.1:3457/callback")
+        .toBe("http://localhost:3457/callback")
       expect(new URL(result.pasteAuthorizeUrl).searchParams.get("redirect_uri"))
         .toBe("https://platform.claude.com/oauth/code/callback")
     })
@@ -579,9 +579,9 @@ describe("profileLogin", () => {
 
       // …but the upgrade is offered, for the page to probe.
       expect(new URL(result.loopbackAuthorizeUrl ?? "").searchParams.get("redirect_uri"))
-        .toBe("http://127.0.0.1:3457/callback")
+        .toBe("http://localhost:3457/callback")
       expect(result.loopbackProbeUrl)
-        .toBe(`http://127.0.0.1:3457/profiles/login/status?loginId=${encodeURIComponent(result.loginId)}`)
+        .toBe(`http://localhost:3457/profiles/login/status?loginId=${encodeURIComponent(result.loginId)}`)
     })
 
     it("redirects a browser a proxy placed on this host, without any probe", () => {
@@ -600,7 +600,7 @@ describe("profileLogin", () => {
       expect(result.mode).toBe("redirect")
       expect(result.authorizeUrl).toBe(result.loopbackAuthorizeUrl ?? "")
       expect(new URL(result.authorizeUrl).searchParams.get("redirect_uri"))
-        .toBe("http://127.0.0.1:3457/callback")
+        .toBe("http://localhost:3457/callback")
     })
 
     it.skipIf(!ownExternalAddress)("redirects when the proxy recorded one of this host's own addresses", () => {
@@ -686,7 +686,7 @@ describe("profileLogin", () => {
       const { fetchFn, requests } = okTokenFetch()
       expect(await completeProfileLoginFromCallback({ state, code: "redirected-code", fetchFn }))
         .toMatchObject({ ok: true, profileId: "personal" })
-      expect(requests[0]?.redirect_uri).toBe("http://127.0.0.1:3457/callback")
+      expect(requests[0]?.redirect_uri).toBe("http://localhost:3457/callback")
     })
 
     it.skipIf(skipOnDarwin)("still exchanges a PASTED code against the code-display redirect_uri", async () => {
@@ -725,13 +725,25 @@ describe("profileLogin", () => {
       expect(result).toMatchObject({ ok: true, profileId: "personal" })
       expect(requests[0]).toMatchObject({
         code: "address-bar-code",
-        redirect_uri: "http://127.0.0.1:3457/callback",
+        redirect_uri: "http://localhost:3457/callback",
       })
       expect(credentialsAt(join(tempDir, "personal")).accessToken).toBe("web-login-access-token")
     })
   })
 
   describe("completeProfileLoginFromCallback", () => {
+    it("uses the consent page's canonical redirect when started through IPv4", async () => {
+      const started = startProfileLogin({ profiles, profileId: "personal", hostHeader: "127.0.0.1:3457" })
+      if (!started.ok) throw new Error("expected success")
+      const authorize = new URL(started.authorizeUrl)
+      expect(authorize.searchParams.get("redirect_uri")).toBe("http://localhost:3457/callback")
+      const { fetchFn, requests } = stubTokenFetch(() => Response.json({ error: "invalid_grant" }, { status: 400 }))
+      const result = await completeProfileLoginFromCallback({ state: authorize.searchParams.get("state") ?? "", code: "synthetic-control", fetchFn })
+      expect(result.ok).toBe(false)
+      expect(requests).toHaveLength(1)
+      expect(requests[0]?.redirect_uri).toBe(authorize.searchParams.get("redirect_uri") ?? "")
+    })
+
     it.skipIf(skipOnDarwin)("exchanges against the loopback redirect_uri and writes the credentials", async () => {
       const started = startProfileLogin({ profiles, profileId: "personal", hostHeader: "127.0.0.1:3457" })
       if (!started.ok) throw new Error("expected success")
@@ -743,7 +755,7 @@ describe("profileLogin", () => {
       expect(result).toMatchObject({ ok: true, profileId: "personal" })
       expect(requests[0]).toMatchObject({
         code: "redirect-code",
-        redirect_uri: "http://127.0.0.1:3457/callback",
+        redirect_uri: "http://localhost:3457/callback",
         grant_type: "authorization_code",
       })
       expect(credentialsAt(join(tempDir, "personal")).accessToken).toBe("web-login-access-token")

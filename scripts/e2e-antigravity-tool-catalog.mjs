@@ -134,8 +134,12 @@ try {
     }
   }
   const mcpEvents = (await readFile(lifecycle, 'utf8')).trim().split('\n').map(JSON.parse)
-  assert.equal(mcpEvents.filter(event => event.phase === 'started').length, 2)
-  assert.deepEqual(mcpEvents.filter(event => event.phase === 'exited').map(event => event.pid).sort(), mcpEvents.filter(event => event.phase === 'started').map(event => event.pid).sort())
+  const mcpPids = mcpEvents.filter(event => event.phase === 'started').map(event => event.pid)
+  assert.equal(mcpPids.length, 2)
+  const alive = pid => { try { process.kill(pid, 0); return true } catch (error) { if (error.code === 'ESRCH') return false; throw error } }
+  const mcpDeadline = Date.now() + 5000
+  while (mcpPids.some(alive) && Date.now() < mcpDeadline) await new Promise(resolve => setTimeout(resolve, 50))
+  assert(!mcpPids.some(alive), 'A recorded client MCP process survived frontend exit')
   const state = await (await fetch(upstream + '/health')).json()
   assert.equal(state.processes, 0); assert.equal(state.preparing, 0)
   await proxy.close()

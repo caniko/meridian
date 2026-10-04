@@ -18,7 +18,8 @@ history/authentication claims and reproduced defects.
 | Current integration base | `0369441786b082aadeb31689dcbce41d7e8574d9` |
 | Authored cherry-pick before/after rebase | `ce5967ff1c1b55d1cbc45029177ee2b3aa2f07f0` / `dbcdb01507899d36c058c86ccd3d61e8b955109b` |
 | Separate scope/correction before/after rebase | `5636ea4fbea90b269a413860bea4e200bbbbfd9f` / `c48e838d5dfdaca6cc9854610c5cda0ad848f3b8` |
-| Tested product/harness head | `c48e838d5dfdaca6cc9854610c5cda0ad848f3b8` |
+| Initially tested product/harness head | `c48e838d5dfdaca6cc9854610c5cda0ad848f3b8` |
+| Retained-selection correction | `b26dfce22d6af5602a4ef0e5afad51abf8f7dd3c` |
 
 The source Author and AuthorDate survive the authored cherry-pick. The separate
 maintainer correction removes the unapproved history implementation and fixes
@@ -135,9 +136,19 @@ the totals above. Full `npm test` is queued with the root agent; final-head CI
 and affected-flow live evidence remain required.
 
 After the rebase, two additional focus-recovery controls proved that polling
-resumes after blur on each page: the final facts suite passes 33 tests (85
+resumes after blur on each page: that facts suite passed 33 tests (85
 expectations), and typecheck passes again. These tests and this durable record
-do not alter the tested product or harness blobs.
+did not alter the initial tested product or harness blobs.
+
+The subsequent retained-selection correction passes the expanded facts suite:
+**40 passed, 0 failed, 110 expectations**, with typecheck and build passing
+again. Six new controls fail against `5ae59a16f9e31415fe7d4c7ef61d8b631461ca06`
+(34 passed, six failed, exit 1), because CSS focus selectors miss the retained
+active element in an inactive document. The same controls pass after
+`b26dfce2`. They exercise the actual emitted `infoPopOpen` and refresh functions,
+selected-element `matches`/`closest`, null CSS focus and false `hasFocus`,
+successful/error in-flight updates, resumed polling after blur and the existing
+hover control. Route/exchange harness blobs are unchanged by this correction.
 
 Focused command:
 
@@ -161,6 +172,30 @@ fenced in both harnesses. A final independent pass over these corrections and
 actual browser focus/layout proof remain gates; source-level tests do not
 establish browser appearance or screen-reader behavior.
 
+Root's independent complete production/harness review found no material defect
+in the four-field route/persistence scope. Its production-template browser
+preview at 375 and 1280 pixels showed seven synthetic cards without horizontal
+overflow, warning color `rgb(210, 153, 34)` matching `--yellow`, retained
+authenticated status plus future access expiry after a passed refresh deadline,
+visible cached authentication, and omitted unknown/API/setup expiry facts. The
+home passed-refresh hover overlay fit within the viewport at 1280 pixels.
+These are synthetic UI facts, not native/provider/login proof.
+
+That preview then exposed the material inactive-window selection defect:
+`document.activeElement` identified the selected expiry span while
+`document.hasFocus()` and `matches(':focus')` were false, so CSS-based polling
+guards permitted replacement. `b26dfce2` retains the actual active element
+instead; Profiles checks its fact selector and home checks its `.prof-info`
+ancestor alongside the existing hover/focus detection. This preserves keyboard
+position while switching applications too. Root must recheck retained-element
+polling on the restarted final fixture. The preview's inability to activate
+native document focus leaves visible **keyboard** disclosure proof unavailable;
+it is not evidence that the disclosure CSS failed. Earlier fixture-generated
+409 login-start diagnostics were expected disabled synthetic operations, not a
+product regression or a clean-console result. Root captured local frames/video;
+the session has no artifact-upload facility, so durable attachment links remain
+to be supplied where available.
+
 ## Remaining acceptance gates
 
 Root owns live verification using its selected ready owned Claude profile; no
@@ -170,8 +205,10 @@ new login's metadata.
 
 - Fresh Meridian-managed OAuth login whose actual provider response supplies
   a positive refresh deadline; sanitized native file/Keychain readback and
-  matching `/health` deadline before the first refresh. Absence of provider
-  metadata cannot establish this positive path.
+  matching `/health` deadline before the first refresh. Use a cold/fresh proxy
+  or wait the existing five-minute health credential-facts TTL; this delivery
+  intentionally preserves that cache policy. Absence of provider metadata
+  cannot establish this positive path.
 - Re-authentication replaces old metadata or leaves it unknown when absent,
   with profile identity and observed authentication intact.
 - Actual Profiles/home browser checks at narrow and wide widths: future/past

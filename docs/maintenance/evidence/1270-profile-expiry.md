@@ -132,8 +132,11 @@ Credentialless focused checks on the byte-identical product later rebased to
 (578 test expectations; 224 tests across eight files). The skipped login
 success paths do not prove native writes. `npm run typecheck`, `npm run build`
 and `git diff --check` passed. The two standalone gates passed separately with
-the totals above. Full `npm test` is queued with the root agent; final-head CI
-and affected-flow live evidence remain required.
+the totals above. Full `npm test` subsequently passed at exact head
+`b386b14861d972f803affa2b1277e5728f69ba13`: **5,374 passed, 35 skipped, 0 failed**
+across 19 isolated Bun batches, exit 0, including the pretest typecheck. The
+worktree remained clean throughout that run. Final-head CI and affected-flow
+live evidence remain required; subsequent changes to this record are docs only.
 
 After the rebase, two additional focus-recovery controls proved that polling
 resumes after blur on each page: that facts suite passed 33 tests (85
@@ -168,9 +171,10 @@ The corrected UI evaluates actual emitted render/refresh functions in direct
 tests, including start-of-poll focus, focus gained during success/failure and
 an unfocused positive control and resumed polling after blur for both pages. Escaping, cached labels and
 visible focus descriptions are asserted. All seven Node command APIs are
-fenced in both harnesses. A final independent pass over these corrections and
-actual browser focus/layout proof remain gates; source-level tests do not
-establish browser appearance or screen-reader behavior.
+fenced in both harnesses. The maintainer's independent production/harness
+review is complete. Source-level tests do not establish browser appearance or
+screen-reader behavior; the qualified browser results and remaining gates
+are recorded below.
 
 Root's independent complete production/harness review found no material defect
 in the four-field route/persistence scope. Its production-template browser
@@ -187,14 +191,69 @@ That preview then exposed the material inactive-window selection defect:
 guards permitted replacement. `b26dfce2` retains the actual active element
 instead; Profiles checks its fact selector and home checks its `.prof-info`
 ancestor alongside the existing hover/focus detection. This preserves keyboard
-position while switching applications too. Root must recheck retained-element
-polling on the restarted final fixture. The preview's inability to activate
+position while switching applications too. Root rechecked the actual final
+Profiles template at `b386b148`: with `hasFocus()` and CSS `:focus` false,
+`detailFactFocused()` was true; a changed synthetic deadline and actual page
+refresh retained the same connected active element and its text. Blur followed
+by refresh replaced the old row and updated the countdown. The immutable
+`3afca1f5` template, served separately with identical synthetic JSON, rendered
+zero expiry rows. The final Profiles in-flight success and read-error cases
+also retain the exact connected active element and text with the guard true.
+Home's initial selected-element and blur/refresh controls pass. A first home
+in-flight trial returned disconnected old nodes without establishing selection
+before response completion: its exact timing cause is **unknown**, and it is
+neither a demonstrated focused-polling regression nor positive proof. No source
+changed between that trial and the corrected protocol. The corrected protocol
+selected the current connected node during an observed 1,500 ms delayed actual
+request, asserted `activeElement` and the guard before completion, then retained
+the exact node/text/guard on both success and read error. The raw unqualified
+trial and the controlled assertions are preserved together in the
+[byte-identical browser manifest](1270-browser-b386.json).
+
+The preview's inability to activate
 native document focus leaves visible **keyboard** disclosure proof unavailable;
 it is not evidence that the disclosure CSS failed. Earlier fixture-generated
 409 login-start diagnostics were expected disabled synthetic operations, not a
-product regression or a clean-console result. Root captured local frames/video;
-the session has no artifact-upload facility, so durable attachment links remain
-to be supplied where available.
+product regression or a clean-console result. The restarted fixture uses inert
+local prepared links and performs no OAuth operation. Root captured earlier
+local frames/video, but current screenshot attempts repeatedly fail with
+`PreviewAutomationExecutionError` even while preview status/open works. No
+fallback browser was used. Before/final media, visible focused disclosure and
+screen-reader proof remain open; that tooling failure does not imply a product
+defect. The session has no artifact-upload facility, so durable attachment
+links remain to be supplied where available.
+
+### Disposable production-template fixture
+
+The fixture remains outside the delivery commit, at the recorded local path.
+It imports the final and immutable baseline templates directly, serves them
+byte-for-byte and uses one shared synthetic dataset/control state. It contains
+no copied renderer, store, SDK, OAuth or model implementation. It is review
+support, not the maintained credential/native/provider acceptance harness.
+Its current/baseline HTML hashes are reported by `/__fixture/state`; the final
+hashes are in the committed manifest. Run the session fixture with:
+
+```sh
+MERIDIAN_EXPIRY_FIXTURE_PORT=57352 bun /tmp/meridian-backlog-20261004/profile-expiry-preview.ts
+curl -X POST http://127.0.0.1:57352/__fixture/control -H 'Content-Type: application/json' --data '{"phase":1,"delayMs":1500,"failReads":false}'
+curl -X POST http://127.0.0.1:57352/__fixture/control -H 'Content-Type: application/json' --data '{"phase":0,"delayMs":0,"failReads":false}'
+curl -X POST http://127.0.0.1:57352/__fixture/stop
+```
+
+The final page was `http://127.0.0.1:57352/` and `/profiles`; the separately
+served immutable baseline was `http://127.0.0.1:60832/` and `/profiles`. The
+baseline port is chosen by the OS on restart and printed at startup. Setting
+`failReads` true produces the synthetic JSON-read error control. A selected
+fact must be verified as the current connected `activeElement` with its guard
+true before completing an in-flight response; selecting a stale node does not
+establish this precondition. The fixture's prepared links are inert local URLs,
+and completing/adding/renaming remains disabled. The earlier fixture's expected
+409 login-start diagnostics must not be described as a product failure.
+
+Root stopped both servers through the owned stop endpoint. The implementation
+agent consumed the owning process session (exit 0), confirmed PID 90337 absent
+and both ports closed. No running fixture remains; it created no credential
+state.
 
 ## Remaining acceptance gates
 
@@ -211,12 +270,12 @@ new login's metadata.
   cannot establish this positive path.
 - Re-authentication replaces old metadata or leaves it unknown when absent,
   with profile identity and observed authentication intact.
-- Actual Profiles/home browser checks at narrow and wide widths: future/past
+- Native-data Profiles/home browser checks at narrow and wide widths: future/past
   refresh and access metadata, unknown data, cached authentication, hover and
   keyboard exact-time disclosure, focus retained across polling, warning color
   and reversible fitting. Capture sanitized evidence when timing matters.
 - Supported-client receipt using the actual implicated model/SDK/platform,
-  independently installed package proof, full local suite and final-head CI.
+  independently installed package proof and final-head CI.
 
 Do not close #1260 as fully incorporated, close #1270 as validated, merge or
 release on these synthetic results alone. Preserve the excluded history scope

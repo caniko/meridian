@@ -1,0 +1,125 @@
+{
+  "frozenHead": "b386b14861d972f803affa2b1277e5728f69ba13",
+  "date": "2026-10-04",
+  "fixture": {
+    "path": "/tmp/meridian-backlog-20261004/profile-expiry-preview.ts",
+    "port": 57352,
+    "baselinePort": 60832,
+    "data": "seven synthetic cards; no OAuth/model/store operations",
+    "homeHtmlSha256": "7defec509835543e7089304ccc0b581a45d250b924e125a3fac5be56195cdb1f",
+    "profilesHtmlSha256": "a20b097d6faadb3c7bdc3f825f0dc87de7b3a90749e82dc52607e80a41a724c4"
+  },
+  "profileInflight": {
+    "out": [
+      {
+        "case": "inflight-success",
+        "connected": true,
+        "cssFocus": false,
+        "guard": true,
+        "hasFocus": false,
+        "sameActiveElement": true,
+        "textUnchanged": true
+      },
+      {
+        "case": "inflight-error",
+        "connected": true,
+        "cssFocus": false,
+        "guard": true,
+        "hasFocus": false,
+        "sameActiveElement": true,
+        "textUnchanged": true
+      }
+    ],
+    "source": "exact frozen production HTML b386b148"
+  },
+  "homeInitialAndUnqualifiedTrial": {
+    "out": [
+      {
+        "case": "initial-focus",
+        "connected": true,
+        "cssFocus": false,
+        "cssWithin": true,
+        "guard": true,
+        "hasFocus": false,
+        "sameActiveElement": true,
+        "textUnchanged": true
+      },
+      {
+        "case": "blur-refresh",
+        "guard": false,
+        "oldDisconnected": true,
+        "textChanged": true
+      },
+      {
+        "case": "inflight-success",
+        "connected": false,
+        "cssFocus": false,
+        "guard": false,
+        "hasFocus": false,
+        "sameActiveElement": false,
+        "textUnchanged": true
+      },
+      {
+        "case": "inflight-error",
+        "connected": false,
+        "cssFocus": false,
+        "guard": false,
+        "hasFocus": false,
+        "sameActiveElement": false,
+        "textUnchanged": true
+      }
+    ],
+    "source": "exact frozen production HTML b386b148"
+  },
+  "homeVerifiedInflight": {
+    "out": [
+      {
+        "after": {
+          "connected": true,
+          "cssFocus": false,
+          "guard": true,
+          "hasFocus": false,
+          "sameActiveElement": true,
+          "textUnchanged": true
+        },
+        "before": {
+          "connected": true,
+          "guard": false
+        },
+        "case": "inflight-success",
+        "established": {
+          "connected": true,
+          "guard": true,
+          "sameActiveElement": true
+        }
+      },
+      {
+        "after": {
+          "connected": true,
+          "cssFocus": false,
+          "guard": true,
+          "hasFocus": false,
+          "sameActiveElement": true,
+          "textUnchanged": true
+        },
+        "before": {
+          "connected": true,
+          "guard": false
+        },
+        "case": "inflight-error",
+        "established": {
+          "connected": true,
+          "guard": true,
+          "sameActiveElement": true
+        }
+      }
+    ],
+    "source": "b386b148 exact production home HTML"
+  },
+  "qualification": "The first home in-flight trial returned disconnected old nodes without confirming that focus had been established before response completion. Preserve this trial; its exact timing cause is unknown and it does not establish a focused polling regression. With no source change, the subsequent controlled trial selected the current connected node during an observed delayed request, asserted activeElement and guard before completion, and preserved the same node on success and read error.",
+  "limitations": [
+    "T3 preview available/open but visible=false; document.hasFocus=false. Programmatic DOM focus and guard checks establish retention only, not visible native keyboard/screen-reader disclosure.",
+    "Repeated preview_snapshot capture failed PreviewAutomationExecutionError; no corrected-head screenshot or baseline-before image supplied. Prior same-style screenshots and failed raw video are historical, with scope explicit.",
+    "These are exact production-template browser checks backed by synthetic route data, not actual login, native credential or client/model acceptance."
+  ]
+}

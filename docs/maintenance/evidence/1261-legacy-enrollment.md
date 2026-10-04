@@ -30,8 +30,39 @@ The modern store fixture correction is
 remain unchanged.
 
 The owner authorized this internal correction for exact locators already
-recorded by Meridian. It adds no public plugin/configuration/route interface,
+recorded by Meridian. The product adds no public plugin/configuration/route interface,
 settings switch, shared-root enumeration or native credential operation.
+
+## Current-base delivery and commit map
+
+After the full suite exited, the delivery rebased onto current main
+`d3be0c628ee164d6bb41882c6fa0f9fe97b74a1e`. Its only change from `03694417`
+is the accepted E41 replay harness/helper/test/evidence correction; no production
+module or package changed. `git range-diff` marked all eight delivery commits
+equal. Production modules, both transcript harnesses, all four changed
+transcript/store tests, architecture text and this evidence blob were byte
+identical immediately after replay. The E2E additions replayed unchanged beside
+the new main instructions. Every Author/AuthorDate was preserved; these are
+maintainer implementation commits, without contributor code or coauthor credit.
+
+| Original proof commit | Current-base equivalent |
+| --- | --- |
+| `4d645c7faea42539d86f694758dbcaef37d92008` | `9e73d6245d3597475fc412855f7fc7d91d5f2d69` |
+| `c62fe69151793532711f0936e1090c1d95651d4a` | `de5130a7826c1d42d19697ae322308c8c6238328` |
+| `80d1a482064aa6c8cd8bc2be9908c6cd89ea3646` | `aa9f5c6af114c3b62e4b29515f7238ad1ddec60b` |
+| `d8bd970684bc49042cf641120e0da2412473c123` | `793d19e2d2edabef7d4c006110b946066571c8ad` |
+| `ab9bb9aeccabe312d1339c15343415445d625cb8` | `661da7e7485d21121cb17e4f4e2a1430598cf56c` |
+| `3424de9f492f5e8ce7fe14faa472fe26c3312722` | `ab59d363b0fa3c7890c34ad1957462deb601a33a` |
+| `b20a0e66f55443876dedbb3c0b0d9d38d1228ef0` | `f7b6e20d359fc6ef3cb0a0a67e69ec7e0ebada2b` |
+| `89807b882f34661ec6a76292749c2c0773aa9805` | `21e0523381d29c62f67f7d958f36e501f6e5e69d` |
+
+At rebased `21e05233`, the 67 focused transcript cases plus nine new-base E41
+helper controls passed **76 / 0 fail**, 526 assertions. The separately isolated
+store suite passed **24 / 0 fail**, 105 assertions. Typecheck and build passed
+(certified local build 6). The full suite was not rerun after this unrelated
+harness-only base update; its exact frozen `b20a0e66` result and missing
+final-head CI/native gates remain explicitly distinguished below. The final
+delivery proof update changes this document only.
 
 ## Reproduced gap and controls
 
@@ -305,9 +336,10 @@ executor-PID-reuse control. They do not establish those paths on this host.
 | HTTP admission + existing profile-copy pruning | **25 pass / 0 fail**, 121 assertions, including both streaming modes, corrupt metadata, capacity progress and the two-profile/one-item gate. |
 | Combined final focused run of the three rows above | **67 pass / 0 fail**, 508 assertions across four files. |
 | Existing store suite with real modern ownership fixtures | **24 pass / 0 fail**, 105 assertions; all original movement assertions retained. |
+| Current-main focused transcript checks plus E41 helper controls | **76 pass / 0 fail**, 526 assertions at `21e05233`; separate store suite 24/0 above. |
 | Existing lifecycle/publication/contention/process/Windows-GC suites before the final victim-selection correction | **69 pass / 1 skip / 0 fail**, 374 assertions. The skip requires native Windows PID-reuse behavior. |
 | `npm run typecheck` | Exit 0 after the final harness setup/target-SDK and modern store fixture corrections. |
-| `npm run build` | Exit 0 after the final harness setup/target-SDK corrections; Node entrypoint bundling completed (certified local build 5). |
+| `npm run build` | Exit 0 after the final harness setup/target-SDK corrections (build 5), and again at rebased `21e05233` (build 6); Node entrypoint bundling completed. |
 | `git diff --check`; syntax checks for both committed harnesses | Exit 0. |
 | Full `npm test` | First frozen `ab9bb9ae` run exited 1 on the causal fixture precondition above. Corrected frozen `b20a0e66` rerun passed **5392 / 35 skip / 0 fail**, 27,018 assertions in all 19 batches, exit 0. |
 | Native before/after fixture | Escrowed; not run. Model slot is reserved by another authorized gate. |

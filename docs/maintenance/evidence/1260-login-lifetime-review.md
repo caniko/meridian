@@ -2,7 +2,7 @@
 
 Disposition: **defer pending a new owner API decision; if approved, accept only with maintainer corrections and affected-flow proof**. The per-account renewal deadline is useful for Meridian's account-management product; the current source has material persistence and state-reporting defects.
 
-Source: https://github.com/rynfar/meridian/pull/1260, exact head `99b8f0c46fbf8ce0b7f28cb14d2bdce4929948ef`, parent/current main `f299fe06e72411b786380b5212edea79cd13966a`. One commit, Author `Nowaker <spam@nowaker.net>`, AuthorDate `2026-10-03T19:11:08-05:00`; no reviews, inline comments or issue comments. Six executed source-head CI checks passed, including https://github.com/rynfar/meridian/actions/runs/37189270719/job/111397859092. Source CI does not validate an incorporation/correction head.
+Source: https://github.com/rynfar/meridian/pull/1260, exact head `99b8f0c46fbf8ce0b7f28cb14d2bdce4929948ef`, main/PR base at initial assessment `f299fe06e72411b786380b5212edea79cd13966a`. One commit, Author `Nowaker <spam@nowaker.net>`, AuthorDate `2026-10-03T19:11:08-05:00`; no reviews, inline comments or issue comments. Six executed source-head CI checks passed, including https://github.com/rynfar/meridian/actions/runs/37189270719/job/111397859092. Source CI does not validate an incorporation/correction head.
 
 Detached read-only source worktree: `/Users/rynfar/repos/meridian-review-1260-20261004`. No source edits, model calls, native-store access, browser automation, comments, PR edits, integration, closure or release. `node_modules` is a read-only symlink to the existing checkout's dependency directory. The user's dirty main checkout and earlier worktrees were not changed.
 

@@ -74,23 +74,30 @@ not establish that the native sandbox operation is fixed.
 
 The owner explicitly approved the hostname contract under
 [issue #1259](https://github.com/rynfar/meridian/issues/1259) in this conversation.
-Current #1233 source `322d3af68691eb41552b53c010d1996e9474c130` is being
-incorporated. Default off, authenticated header settings and opt-in hostname
-on unauthenticated health remain the approved scope. Independent product/harness
-review and 10/10 actual Settings/standalone browser combinations pass. Full suite
-at `f33f93a1`: 5,333 pass / 35 skips / 0 failures across 19 stages. Final base
-update, local impact checks and CI remain pending. The October 3 approval-pending
+[Delivery #1268](https://github.com/rynfar/meridian/pull/1268), exact head
+`78ba26a88cff1885c1c3876970543289a0d2278a` on `5bd6b765`, incorporates
+source `322d3af68691eb41552b53c010d1996e9474c130` as authored `3055d6b3`;
+maintainer correction `6fb37564` is separate. Default off, guarded header settings
+and opt-in hostname on public health are verified. Independent final review,
+10/10 actual Settings/standalone browser combinations and full local gates pass:
+5,333 tests / 35 skips / 0 failures at `f33f93a1` on `9d77d8e2`, 19 stages.
+After rebase, identical product/harness blobs, 100 focused checks and standalone
+typecheck/build pass. Final-head CI, exact merged tree/credit and unchanged
+source verification remain integration gates. The October 3 approval-pending
 note is superseded.
 
-Sonnet #1213 source `553fd5c386de5e18e531a1d0101d64ef3a3b1792` is ready;
+Sonnet source `553fd5c386de5e18e531a1d0101d64ef3a3b1792` is prepared in
 [draft delivery #1267](https://github.com/rynfar/meridian/pull/1267), head
-`259b152609269386e8494b8fc277230b0638ad64`, preserves supported Sonnet 5/5.5
-native 1M context and honors inherited SDK context-disable. Full suite at
-`74e50774`: 5,321 pass / 35 skips / 0 failures. Focused checks, typecheck,
-macOS/Linux builds and independent review pass. Actual Linux/OpenCode 2.0.16/
-Sonnet 5.5 native readiness returns expired/401, and the owned macOS credential
-fixture is unavailable. Supported session-import rehearsal is not model
-acceptance. Exact affected-flow proof remains an open live gate.
+`259b152609269386e8494b8fc277230b0638ad64`. Supported Sonnet 5/5.5 native 1M
+context and inherited SDK opt-out have focused coverage and independent review.
+Full suite at `74e50774`: 5,321 pass / 35 skips / 0 failures. Typecheck and
+macOS/Linux builds pass. All six executed final-head CI checks passed, including
+[test](https://github.com/rynfar/meridian/actions/runs/37236867721/job/111537621268).
+Actual installed Linux/OpenCode 2.0.16 catalog/import rehearsal retains all
+15 messages with zero generations. Native readiness remains expired/401;
+the specifically owned macOS credential fixture is absent. Exact affected-model
+before/after generation and resume proof remain open; source #1213/#1212 stay
+open. Recheck base/head/CI before any future integration.
 
 ## Current continuation — 2026-10-03
 

@@ -4,10 +4,10 @@ Disposition: **defer the proposed implementation; accept the disk-growth problem
 
 Source: https://github.com/rynfar/meridian/pull/1261
 
-- Current main / PR base: `f299fe06e72411b786380b5212edea79cd13966a`.
+- Main / PR base at initial assessment: `f299fe06e72411b786380b5212edea79cd13966a`.
 - Exact source head and only contributor commit: `7475d08c652332aa1b9b23cbc525024bef83ab28`.
 - Author: Nowaker `<spam@nowaker.net>`; AuthorDate `2026-10-04T03:36:26-05:00`.
-- Review worktree: `/Users/rynfar/repos/meridian-backlog-transcripts-1261-20261004`, detached at that source head. The original isolated review branch remains based on current main. No source modifications, integration commit, PR message, merge, closure, or release was performed.
+- Review worktree: `/Users/rynfar/repos/meridian-backlog-transcripts-1261-20261004`, detached at that source head. The original isolated review branch remains based on main at initial assessment. No source modifications, integration commit, PR message, merge, closure, or release was performed.
 - Live PR discussion, reviews, and review comments were empty when inspected. No linked issue was supplied in the contribution.
 
 ## Findings

@@ -127,8 +127,8 @@ async function readOwner(lockPath: string): Promise<OwnerRecord | undefined> {
     value = JSON.parse(raw)
   } catch (error) {
     if (!(error instanceof SyntaxError)) throw error
-    // A process may die during its owner write. Keep the incomplete directory
-    // busy until its mtime becomes stale.
+    // A process may die during its owner write. An unreadable owner is
+    // uncertain ownership and remains busy until operator confirmation.
     return undefined
   }
   if (
@@ -196,10 +196,9 @@ function ownerIsDead(owner: OwnerRecord | undefined): boolean {
 function canRecover(snapshot: LockSnapshot, staleAfterMs: number, now = Date.now()): boolean {
   // Never steal from a process that may still be executing: without a fencing
   // token in sessions.json, a stale-but-live owner could later overwrite its
-  // successor. Same-host PID death is authoritative. Ownerless half-created
-  // directories are recoverable only after their quarantine age. Cross-host
-  // locks fail closed and require operator cleanup after the host is confirmed
-  // dead.
+  // successor. Same-host PID death is authoritative. Unreadable owners and
+  // cross-host locks fail closed and require operator cleanup only after the
+  // holder is confirmed dead; elapsed time does not establish its death.
   const lastHeartbeat = snapshot.heartbeatMtimeMs ?? snapshot.mtimeMs
   if (now - lastHeartbeat <= staleAfterMs) return false
   if (snapshot.owner) return ownerIsDead(snapshot.owner)

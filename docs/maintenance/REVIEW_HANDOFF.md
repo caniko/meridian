@@ -24,12 +24,16 @@ Draft #1271 (`7de8cf5f`) retains safe fsync/publication durability, separate
 maintainer corrections and Nowaker credit; historical full suite is
 5,349 pass / 35 skips / 0 failures. Independent review passes, but live/native
 proof and final-head CI remain gates. #1223's excluded recovery stays open.
-SSE #1214 is frozen at `bb33d26d`, independently approved after corrections,
-with full suite running and native proof open. E41 harness `b49defec` and
-approved expiry `5ae59a16` have queued full suites; original #1245/#1220 cause,
-expiry browser/native proof and their final integration gates remain open.
-Transcript enrollment's committed `4d645c7f` has further enrollment/discard
-corrections in progress; actual native/client/Windows acceptance remains open.
+SSE #1214's product `bb33d26d` passes 5,406 tests / 35 skips / 0 failures,
+typecheck/build and independent review; native proof remains open. E41 harness
+`b49defec` now runs its exclusive full suite. Approved expiry `b26dfce2` fixes
+the inactive-window focus gap found in browser review, with discriminating
+controls and typecheck/build; its full suite is queued. Original #1245/#1220
+cause, complete expiry browser/native proof and final integration gates remain
+open. Transcript enrollment's committed `4d645c7f` has further predecessor and
+uncertain-publication ownership corrections in progress; its live harness
+isolates the selected immutable grant. Native/client/Windows acceptance remains
+open.
 
 Sonnet draft #1267 is locally rebased to `dac34820`. The prior default-native
 attempt stopped at read-only 401 with zero SDK queries. Fresh explicitly

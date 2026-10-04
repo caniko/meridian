@@ -21,6 +21,10 @@ implementation commit is `4d645c7faea42539d86f694758dbcaef37d92008`; the
 final safety correction is `c62fe69151793532711f0936e1090c1d95651d4a`.
 It contains the protected-key index, predecessor guards, conservative uncertain
 publication handling and isolated-grant harness authority tests.
+The final harness setup/target-SDK correction is
+`d8bd970684bc49042cf641120e0da2412473c123`; its three files change the native
+harness, its authority tests and E2E instructions. Product source/test blobs
+outside that authority test remain identical to `c62fe691`.
 
 The owner authorized this internal correction for exact locators already
 recorded by Meridian. It adds no public plugin/configuration/route interface,
@@ -207,6 +211,44 @@ age cleanup. See the installed SDK's public declarations and official
 [session storage documentation](https://code.claude.com/docs/en/agent-sdk/session-storage)
 and [automatic cleanup documentation](https://code.claude.com/docs/en/claude-directory#cleaned-up-automatically).
 
+## Final harness authority review
+
+Independent reviewer `preload_cleanup` found two material gaps in the harness at
+`80d1a482064aa6c8cd8bc2be9908c6cd89ea3646`: setup could leave a private runtime
+credential copy if a write or work-directory creation failed before entering the
+cleanup block, and the observer imported the harness checkout's SDK rather than
+the target checkout's separately installed SDK. Neither gap changes the product
+source at `c62fe691`; both needed correction before using the native gate.
+
+The corrected [authority test](../../../src/__tests__/legacy-enrollment-harness.test.ts)
+uses an independently installed synthetic target SDK and a generated, non-auth
+credential-shaped grant. It stops at a deliberate proxy import failure before
+CLI resolution or any query. Two real filesystem fault controls fail after the
+runtime credential copy becomes visible: one after its successful write, the
+other during work-directory setup. Assertions require the selected source to
+remain unchanged, the owned runtime copy to be removed, no synthetic grant bytes
+in output, and the observer to be attached to the exact target SDK.
+
+Copying only that corrected test into an isolated worktree at unchanged `80d1a482`
+and running the following control produced **0 pass / 3 fail / 1 filtered**,
+exit **1**, with 11 assertions reached:
+
+```sh
+bun test src/__tests__/legacy-enrollment-harness.test.ts \
+  --test-name-pattern 'uses an owned copy|injected'
+```
+
+The SDK identity assertion received `false`; both fault arms found their runtime
+copy still present. Test teardown removed only generated roots under the owned
+temporary prefix. With the correction, all four authority cases pass. The
+harness resolves the supported public SDK entry with `createRequire` rooted at
+the selected checkout's `package.json`, checks it against the proxy's resolution,
+and imports that exact entry. All runtime-copy/setup/import operations after
+private-root creation now share initialization cleanup. The reviewer statically
+approved the corrected harness and discriminating controls with no surviving
+material finding. These are credentialless authority checks, not native proof.
+The passing harness is committed at `d8bd970684bc49042cf641120e0da2412473c123`.
+
 ## Verification and open gates
 
 Host: macOS arm64, Bun **1.3.14**, Node **22.22.3**. Focused checks used isolated
@@ -215,18 +257,18 @@ temporary Meridian stores and mocked SDK/custom recording deleters.
 | Check | Result |
 | --- | --- |
 | New direct enrollment/ownership suite | **38 pass / 0 fail**, 362 assertions. |
-| Harness authority with synthetic grants, stopped before CLI/query | **2 pass / 0 fail**, 11 assertions. No real credentials or model calls. |
+| Harness authority with synthetic grants, stopped before CLI/query | **4 pass / 0 fail**, 25 assertions. No real credentials or model calls. |
 | HTTP admission + existing profile-copy pruning | **25 pass / 0 fail**, 121 assertions, including both streaming modes, corrupt metadata, capacity progress and the two-profile/one-item gate. |
-| Combined final focused run of the three rows above | **65 pass / 0 fail**, 494 assertions. |
+| Combined final focused run of the three rows above | **67 pass / 0 fail**, 508 assertions across four files. |
 | Existing lifecycle/publication/contention/process/Windows-GC suites before the final victim-selection correction | **69 pass / 1 skip / 0 fail**, 374 assertions. The skip requires native Windows PID-reuse behavior. |
-| `npm run typecheck` | Exit 0 after all safety corrections and the synthetic harness authority test. |
-| `npm run build` | Exit 0 after all safety corrections; Node entrypoint bundling completed. |
+| `npm run typecheck` | Exit 0 after the final harness setup/target-SDK corrections. |
+| `npm run build` | Exit 0 after the final harness setup/target-SDK corrections; Node entrypoint bundling completed (certified local build 5). |
 | `git diff --check`; syntax checks for both committed harnesses | Exit 0. |
 | Full `npm test` | Queued for the parent's exclusive full-suite slot. Not yet run for this delivery. |
 | Native before/after fixture | Escrowed; not run. Model slot is reserved by another authorized gate. |
 | E41 chain/parallel × streaming/nonstreaming | Not run for this correction. |
 | Actual reported Linux/OpenCode host; native Windows | Not run. No cross-platform/model success claim. |
-| Exact final-head required CI and independent final diff | Root independently reviewed corrected ownership uncertainty and isolated-grant semantics with no surviving material finding; committed metadata/harness/evidence and exact final-head CI remain pending. A separate child re-review could not start because collaboration returned `agent thread limit reached`. |
+| Exact final-head required CI and independent final diff | Root independently reviewed corrected ownership uncertainty and isolated-grant semantics. Independent reviewer `preload_cleanup` approved the final setup/target-SDK corrections and their discriminating controls with no surviving material finding. Exact committed final diff/evidence and final-head CI remain pending. |
 
 The committed
 [native harness](../../../scripts/e2e-legacy-transcript-enrollment.mjs) costs
@@ -239,7 +281,8 @@ SDK/proxy imports. Only that selected file is copied into a distinct, private
 runtime account; SDK writes/refresh may affect that owned copy. Assertions verify
 all real queries use the runtime root, the served model matches, and the source
 bytes, file identity and permissions remain unchanged. No credential bytes,
-tokens or hashes are printed. Cleanup joins all requests, runs fenced GC for
+tokens or hashes are printed. The observer uses the exact target-installed
+public SDK entry; setup faults remove only its owned runtime copy. Cleanup joins all requests, runs fenced GC for
 failed targets not yet published, deletes only exact fixture-created IDs, and
 retains its isolated lifecycle authority if cleanup cannot complete. Retained
 ownership/leases stop cleanup before direct deletion; safe initialization

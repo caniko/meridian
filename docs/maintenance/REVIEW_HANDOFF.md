@@ -50,8 +50,12 @@ source `3a959e12569d72db44be9f868ea25fdf54fde49a`; separate correction
 `c169e46d80cd20689990e5276900f14f6655f215` addresses ownership/deletion and
 harness safety. Historical full suite at `fb795476ef9be300c9be4960c639e003ea3e366c`:
 5,316 pass / 35 skips / 0 failures. Rebased focused checks: 71 pass; standalone
-typecheck/build pass, with zero per-process scratch residue. Fresh final-head CI
-and delivery human-credit verification remain pending.
+typecheck/build pass, with zero per-process scratch residue. Delivery #1265
+merged as `5bd6b765fc7507780e1e9238b6d48a99f3d44810`; exact merged tree
+`e416d35b5b291f11da09f1b8c66d1803381dcac5` matches the validated head. All
+six executed final-head checks passed, including
+[test run 37235880525/job 111534755311](https://github.com/rynfar/meridian/actions/runs/37235880525/job/111534755311).
+Nowaker co-author credit verified; source #1263 refreshed unchanged and closed.
 
 [Process diagnostics #1266](https://github.com/rynfar/meridian/pull/1266) is a
 **diagnostics-only draft** at `9a1793729fa1f09ee643f646ca3221c738d5ab00` on
@@ -69,12 +73,18 @@ The owner explicitly approved the hostname contract under
 [issue #1259](https://github.com/rynfar/meridian/issues/1259) in this conversation.
 Current #1233 source `322d3af68691eb41552b53c010d1996e9474c130` is being
 incorporated. Default off, authenticated header settings and opt-in hostname
-on unauthenticated health remain the approved scope; correction and browser/
-local/CI gates are pending. The October 3 approval-pending note is superseded.
+on unauthenticated health remain the approved scope. Independent product/harness
+review and 10/10 actual Settings/standalone browser combinations pass. Full suite
+at `f33f93a1`: 5,333 pass / 35 skips / 0 failures across 19 stages. Final base
+update, local impact checks and CI remain pending. The October 3 approval-pending
+note is superseded.
 
 Sonnet #1213 source `553fd5c386de5e18e531a1d0101d64ef3a3b1792` is ready;
-a draft delivery with supported Sonnet 5/5.5 native 1M context and inherited
-context-disable corrections is being prepared. Actual Linux/OpenCode 2.0.16/
+[draft delivery #1267](https://github.com/rynfar/meridian/pull/1267), head
+`259b152609269386e8494b8fc277230b0638ad64`, preserves supported Sonnet 5/5.5
+native 1M context and honors inherited SDK context-disable. Full suite at
+`74e50774`: 5,321 pass / 35 skips / 0 failures. Focused checks, typecheck,
+macOS/Linux builds and independent review pass. Actual Linux/OpenCode 2.0.16/
 Sonnet 5.5 native readiness returns expired/401, and the owned macOS credential
 fixture is unavailable. Supported session-import rehearsal is not model
 acceptance. Exact affected-flow proof remains an open live gate.

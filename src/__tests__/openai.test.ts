@@ -1495,6 +1495,12 @@ describe("buildModelList", () => {
     }
   })
 
+  it("advertises 200k for every model when the SDK's 1M window is explicitly disabled", () => {
+    for (const included of [true, false]) {
+      for (const model of buildModelList(included, 0, true)) expect(model.context_window).toBe(200_000)
+    }
+  })
+
   it("Max subscription gets 1M context for all opus variants, 200k for sonnet", () => {
     const models = buildModelList(true)
     const sonnet = models.find(m => m.id === "claude-sonnet-4-6")!

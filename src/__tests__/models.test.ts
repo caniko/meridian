@@ -419,18 +419,21 @@ describe("hasExtendedContext", () => {
 })
 
 describe("sonnetHasNative1mContext (#1212)", () => {
-  it("is true for Sonnet 5 and later, including the canonical pin", () => {
+  it("is true for supported Sonnet 5 and 5.5 ids, including the canonical pin", () => {
     expect(sonnetHasNative1mContext(CANONICAL_SONNET_MODEL)).toBe(true)
     expect(sonnetHasNative1mContext("claude-sonnet-5-5")).toBe(true)
     expect(sonnetHasNative1mContext("claude-sonnet-5")).toBe(true)
     expect(sonnetHasNative1mContext("claude-sonnet-5[1m]")).toBe(true)
-    expect(sonnetHasNative1mContext(" Claude-Sonnet-6-0 ")).toBe(true)
+    expect(sonnetHasNative1mContext(" Claude-Sonnet-5-5 ")).toBe(true)
   })
 
   it("is false for Sonnet 4.x, other tiers, aliases and unknown ids", () => {
     expect(sonnetHasNative1mContext("claude-sonnet-4-6")).toBe(false)
     expect(sonnetHasNative1mContext("claude-sonnet-4-5-20250929")).toBe(false)
     expect(sonnetHasNative1mContext("claude-sonnet-4-20250514")).toBe(false)
+    for (const id of ["claude-sonnet-6-0", "claude-sonnet-5-0", "claude-sonnet-5-99", "claude-sonnet-5.5", "claude-sonnet-5-5-gateway", "claude-sonnet-50", "claude-sonnet-5[unknown]"]) {
+      expect(sonnetHasNative1mContext(id)).toBe(false)
+    }
     expect(sonnetHasNative1mContext("claude-opus-5-5")).toBe(false)
     expect(sonnetHasNative1mContext("sonnet")).toBe(false)
     expect(sonnetHasNative1mContext("")).toBe(false)

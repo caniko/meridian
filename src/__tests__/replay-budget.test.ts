@@ -80,7 +80,7 @@ describe("replay budget", () => {
     expect(replayBudgetFor("sonnet")).toBe(160_000)
   })
 
-  it("budgets plain sonnet at 1M when it resolves to Sonnet 5+ (#1212)", () => {
+  it("budgets plain sonnet at 1M when it resolves to supported Sonnet 5/5.5 (#1212)", () => {
     expect(contextWindowFor("sonnet", "claude-sonnet-5-5")).toBe(1_000_000)
     expect(contextWindowFor("sonnet", "claude-sonnet-5")).toBe(1_000_000)
     expect(replayBudgetFor("sonnet", "claude-sonnet-5-5")).toBe(replayBudgetFor("opus[1m]"))
@@ -92,6 +92,16 @@ describe("replay budget", () => {
     // The resolved id only speaks for the sonnet tier.
     expect(contextWindowFor("opus", "claude-sonnet-5-5")).toBe(200_000)
     expect(contextWindowFor("haiku", "claude-sonnet-5-5")).toBe(200_000)
+    expect(contextWindowFor("sonnet", "claude-sonnet-6-0")).toBe(200_000)
+    expect(contextWindowFor("sonnet", "claude-sonnet-5-99")).toBe(200_000)
+  })
+
+  it("respects the CLI's explicit 1M disable flag even for native Sonnet", () => {
+    for (const model of ["sonnet", "sonnet[1m]", "opus[1m]", "fable[1m]"]) {
+      expect(contextWindowFor(model, "claude-sonnet-5-5", true)).toBe(200_000)
+      expect(replayReserveFor(model, "claude-sonnet-5-5", true)).toBe(20_000)
+      expect(replayBudgetFor(model, "claude-sonnet-5-5", true)).toBe(160_000)
+    }
   })
 
   it("keeps the reserve proportionate to the window", () => {

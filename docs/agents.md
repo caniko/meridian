@@ -172,8 +172,8 @@ For either generation, the plugin enables:
 
 - **Session tracking** — reliable conversation continuity across requests
 - **Safe hidden-agent concurrency** — title and summary work cannot advance the primary lineage
-- **Model defaults** — Opus requests 1M context; Sonnet 5+ has a native 1M window, while Sonnet 4.x uses 200k by default ([defaults and account eligibility](configuration.md#configuration))
-- **Subagent model selection** — subagents use the 200k tier, preserving rate-limit budget
+- **Model defaults** — Opus requests 1M context; supported Sonnet 5/5.5 has a native 1M window, while Sonnet 4.x uses 200k by default ([defaults and account eligibility](configuration.md#configuration))
+- **Subagent model selection** — subagents skip optional `[1m]` tiers, preserving rate-limit budget; native Sonnet 5/5.5 keeps its 1M window unless `CLAUDE_CODE_DISABLE_1M_CONTEXT=1` is set
 
 If the plugin is missing, Meridian warns at request time. Restart OpenCode after
 running setup so it loads the selected plugin.

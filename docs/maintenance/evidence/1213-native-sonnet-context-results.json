@@ -1,0 +1,19 @@
+{
+  "sourceHead": "553fd5c386de5e18e531a1d0101d64ef3a3b1792",
+  "unchangedMain": "f299fe06e72411b786380b5212edea79cd13966a",
+  "sameSyntheticFixtureEstimatedTokens": 261350,
+  "localBefore": { "exit": 1, "budget": 160000, "advertisedWindow": 200000, "ancientRetained": false, "currentRetained": true, "omittedMessages": 7 },
+  "localAfter": { "exit": 0, "budget": 836000, "advertisedWindow": 1000000, "ancientRetained": true, "currentRetained": true, "omittedMessages": 0 },
+  "negativeWindows": { "sonnet46": 200000, "unknownSonnet6": 200000, "explicitCliDisable": 200000 },
+  "readiness": {
+    "linuxNativeStatusLoggedIn": true,
+    "linuxAccessExpired": true,
+    "linuxReadOnlyUsageHttpStatus": 401,
+    "explicitOwnedCustomMacCredentialPresent": false,
+    "explicitOwnedCustomMacExpiryFuture": false,
+    "explicitOwnedCustomMacScopesPresent": false
+  },
+  "supportedImportRehearsal": { "client": "2.0.16", "platform": "linux/x64", "node": "24.21.0", "bun": "1.3.14", "apiStatus": 200, "generationCalls": 0 },
+  "actualAffectedFlow": { "status": "OPEN", "generationCalls": 0, "requiredModel": "claude-sonnet-5-5", "requiredClient": "OpenCode 2.0.16 installed V2 plugin", "requiredSdk": "0.2.141", "requiredPlatform": "linux/x64" },
+  "localChecks": { "focusedPassed": 286, "focusedFailed": 0, "standaloneTypecheck": "PASS", "finalCurrentMainFullSuite": "PENDING", "build": "PENDING", "finalHeadCi": "PENDING" }
+}

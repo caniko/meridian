@@ -110,6 +110,21 @@ describe("cold executable readiness", () => {
 })
 
 describe("/v1/models profile auth context", () => {
+  it("reflects the inherited SDK 1M disable flag in model discovery", async () => {
+    const original = process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT
+    process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT = "1"
+    try {
+      const { app } = createProxyServer({ port: 0, host: "127.0.0.1" })
+      const response = await app.fetch(new Request("http://localhost/v1/models"))
+      const body = await response.json() as { data: Array<{ id: string; context_window: number }> }
+      expect(response.status).toBe(200)
+      for (const model of body.data) expect(model.context_window).toBe(200_000)
+    } finally {
+      if (original === undefined) delete process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT
+      else process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT = original
+    }
+  })
+
   it("uses the legacy auth context when no profiles are configured", async () => {
     const { app } = createProxyServer({ port: 0, host: "127.0.0.1" })
 

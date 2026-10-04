@@ -472,15 +472,16 @@ export function hasExtendedContext(model: ClaudeModel): boolean {
 /**
  * Whether the concrete Sonnet id behind the `sonnet` alias runs with a native
  * 1M window on every plan, with no [1m] variant and no Extra Usage (#1212).
- * Sonnet 5 and later do, per
+ * The supported Sonnet 5 and 5.5 ids do, per
  * https://code.claude.com/docs/en/model-config#extended-context; Sonnet 4.x
  * keeps the MERIDIAN_SONNET_MODEL=sonnet[1m] opt-in. `sonnetModel` is what
  * ANTHROPIC_DEFAULT_SONNET_MODEL resolves to, since the alias alone does not
- * say which generation is served. Any non-Sonnet id returns false.
+ * say which generation is served. Unknown versions stay conservative until
+ * their native window is documented; a future numeric prefix is not evidence.
  */
 export function sonnetHasNative1mContext(sonnetModel?: string): boolean {
-  const match = /^claude-sonnet-(\d+)(?:[-.[]|$)/.exec(sonnetModel?.trim().toLowerCase() ?? "")
-  return match !== null && Number(match[1]) >= 5
+  const id = sonnetModel?.trim().toLowerCase().replace(/\[1m\]$/, "")
+  return id === "claude-sonnet-5" || id === "claude-sonnet-5-5"
 }
 
 /**

@@ -1078,7 +1078,8 @@ const FULL_CAPABILITIES: ModelCapabilities = Object.freeze({
  *   because its 1M variant is billed as Extra Usage, and Haiku has no 1M
  *   variant at all.
  */
-export function buildModelList(extendedContextIncluded: boolean, now = Math.floor(Date.now() / 1000)): OpenAiModel[] {
+export function buildModelList(extendedContextIncluded: boolean, now = Math.floor(Date.now() / 1000), disable1mContext = false): OpenAiModel[] {
+  extendedContextIncluded = extendedContextIncluded && !disable1mContext
   return [
     {
       id: "claude-sonnet-5-5",
@@ -1086,7 +1087,7 @@ export function buildModelList(extendedContextIncluded: boolean, now = Math.floo
       created: now,
       owned_by: "anthropic",
       display_name: "Claude Sonnet 5.5",
-      context_window: 1_000_000,
+      context_window: disable1mContext ? 200_000 : 1_000_000,
       capabilities: FULL_CAPABILITIES,
     },
     {
@@ -1095,7 +1096,7 @@ export function buildModelList(extendedContextIncluded: boolean, now = Math.floo
       created: now,
       owned_by: "anthropic",
       display_name: "Claude Sonnet 5",
-      context_window: 1_000_000,
+      context_window: disable1mContext ? 200_000 : 1_000_000,
       capabilities: FULL_CAPABILITIES,
     },
     {

@@ -23,12 +23,12 @@ async cleanup approval already exists; its implementation evidence stays open.
 Draft #1271 (`7de8cf5f`) retains safe fsync/publication durability, separate
 maintainer corrections and Nowaker credit; historical full suite is
 5,349 pass / 35 skips / 0 failures. Independent review passes, but live/native
-proof and final-head CI remain gates. #1223's excluded recovery stays open.
+proof remains required; submitted-head CI passes. #1223's excluded recovery stays open.
 Draft [SSE #1273](https://github.com/rynfar/meridian/pull/1273), final `8e1bf53b`,
 retains fully tested product `bb33d26d`: 5,406 / 35 skips / 0 failures across
 19 stages. Test-only synchronization at `dabb2165` has discriminating controls
 and typecheck/build; final evidence-only commit preserves product/harness blobs.
-Native flow and final-head CI remain open.
+Native flow evidence remains open; submitted-head CI passes.
 
 E41 [#1272](https://github.com/rynfar/meridian/pull/1272) merged as `d3be0c62`
 from exact reviewed `8a08d3d4` after all six executed CI checks passed, including
@@ -41,7 +41,7 @@ fully tested executable `b386b148`: 5,374 / 35 skips / 0 failures and actual
 inactive-browser DOM retention/blur/in-flight success/failure controls on both
 pages. Visible keyboard and screen-reader proof remain unavailable; current
 native screenshot coverage is limited. Positive native/provider login and
-client/package/CI acceptance remain open.
+client/package acceptance remains open; submitted-head CI passes.
 
 Transcript enrollment's corrected harness observes the exact target-installed
 SDK and cleans setup failures. Its first full run at `ab9bb9ae` failed an
@@ -50,6 +50,12 @@ The fixture now obtains modern locators through actual metadata registration,
 retaining every original assertion and the production guard. The necessary full
 rerun at `b20a0e66` is in progress. Native/client/Windows and final-head CI remain
 open; this does not collect the untracked backlog.
+
+The exact submitted heads of drafts #1271 (`7de8cf5f`), #1273 (`8e1bf53b`)
+and #1275 (`1856ee65`) now have all six executed CI checks passing, including
+test, plus the expected changelog skip. Earlier CI-pending wording is superseded
+for those heads; refresh after any head/base change. Their actual affected-flow
+evidence remains open, so CI alone does not permit landing them.
 
 Sonnet draft #1267's verified local terminal head is `5a8097c3`. Default-native
 401/zero-query and round-two personal 200 followed by one `<synthetic>` query

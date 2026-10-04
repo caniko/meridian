@@ -15,8 +15,9 @@
     await view.document.fonts.ready
     let previous, stable = 0
     for (let i = 0; i < 50; i++) {
-      await new Promise(resolve => view.requestAnimationFrame(() => view.requestAnimationFrame(resolve)))
-      await pause(100)
+      // Timer sampling stays bounded when an offscreen frame/hidden preview
+      // throttles or suspends animation frames.
+      await pause(200)
       const current = { viewport: view.innerWidth, page: view.document.documentElement.scrollWidth,
         header: view.document.querySelector('.meridian-header').getBoundingClientRect().right }
       if (JSON.stringify(current) === JSON.stringify(previous)) stable++

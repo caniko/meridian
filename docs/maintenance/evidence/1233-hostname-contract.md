@@ -141,6 +141,7 @@ Claude health instead of the controlled standalone backend, and bounds were
 sampled immediately after label text arrived, before asynchronous header
 fitting settled. The maintained fixture now dispatches both provider pages'
 requests to standalone with provider facts controlled to forbid subprocesses;
-the probe waits for two stable geometry intervals after fonts/rendering.
+the probe waits for two stable 200ms geometry intervals after fonts/rendering,
+using bounded timers because hidden previews can suspend animation frames.
 These fixture corrections require a fresh probe result before acceptance;
 the unexplained initial rerun is not treated as proof.

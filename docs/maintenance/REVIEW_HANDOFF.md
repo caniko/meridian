@@ -49,8 +49,11 @@ existing third-replacement test that would discard an unfenced predecessor.
 The fixture now obtains modern locators through actual metadata registration,
 retaining every original assertion and the production guard. The necessary full
 rerun at frozen `b20a0e66` passes 5,392 / 35 skips / 0 failures across
-19 batches; the current-main rebase and final evidence are being prepared. Native/client/Windows and final-head CI remain
-open; this does not collect the untracked backlog.
+19 batches. Draft [#1276](https://github.com/rynfar/meridian/pull/1276) is now
+delivered at `e47fbb28` on current main `d3be0c62`, with all eight replayed
+patches and product/harness/test blobs preserved. Focused checks, typecheck and
+build pass; native/client/Windows and final-head CI remain open. The source
+stays open; this does not collect the untracked backlog.
 
 The exact submitted heads of drafts #1271 (`7de8cf5f`), #1273 (`8e1bf53b`)
 and #1275 (`1856ee65`) now have all six executed CI checks passing, including

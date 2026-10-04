@@ -14,6 +14,12 @@ Reviewed source: `537ccad864336a4f4dc25f925e92177cd12fe6b2`, Nowaker
 `<spam@nowaker.net>`, authored `2026-09-30T02:50:36-05:00`.
 Actual authored cherry-pick: `236e35fd981560855f047ae2e93313423c8db855`.
 Separate correction: `f6df52beae0f4f20ed65a974ac3c600cee19e68c`.
+After the documentation-only base advancement to
+`0369441786b082aadeb31689dcbce41d7e8574d9`, their respective incorporated SHAs
+are `0007beb9837415c8c385f19bf2864ba985975406` and
+`90aa8ab173e85cd95f9d292d0eb95463621df240`. Production executable behavior
+and test blobs are unchanged; only the two old explanatory comments differ
+from the fully tested correction. The rebase preserves Author and AuthorDate.
 Author and AuthorDate are preserved; maintainer corrections remove speculative
 ownerless recovery rather than silently incorporating that behavior.
 

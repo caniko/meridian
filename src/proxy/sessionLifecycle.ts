@@ -611,14 +611,17 @@ export async function enrollLegacyMappedTranscripts(
         pruneTombstones(sidecar, options)
         await writeSidecar(paths.sidecar, sidecar)
       }
-      try {
-        const attached = attachLegacyTranscriptGenerations(mappingKey, expectedGeneration, legacy)
-        if (attached === false && changed) await writeSidecar(paths.sidecar, beforeMutation)
-        return attached !== false
-      } catch (error) {
-        if (changed) await writeSidecar(paths.sidecar, beforeMutation)
-        throw error
+      // A throw can happen after the store rename is visible. Its publication
+      // is uncertain: retain issued ownership/fences rather than create a
+      // fenced mapping with no resource or make its generation reusable.
+      const attached = attachLegacyTranscriptGenerations(mappingKey, expectedGeneration, legacy)
+      if (attached === false && changed) {
+        try { await writeSidecar(paths.sidecar, beforeMutation) }
+        catch (error) {
+          throw new SessionLifecycleError("legacy enrollment CAS was rejected; ownership rollback failed", { cause: error })
+        }
       }
+      return attached !== false
     })
     if (published) enrolled++
   }

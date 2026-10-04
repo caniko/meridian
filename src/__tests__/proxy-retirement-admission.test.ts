@@ -80,10 +80,11 @@ afterEach(async () => {
   rmSync(root, { recursive: true, force: true })
 })
 
-async function request(key: string, stream: boolean) {
+async function request(key: string, stream: boolean, profile?: string) {
   if (!proxy) throw new Error("test proxy not initialized")
   return await proxy.app.fetch(new Request("http://localhost/v1/messages", {
-    method: "POST", headers: { "content-type": "application/json", "x-opencode-session": key },
+    method: "POST", headers: { "content-type": "application/json", "x-opencode-session": key,
+      ...(profile ? { "x-meridian-profile": profile } : {}) },
     body: JSON.stringify({ model: "haiku", stream, messages: [{ role: "user", content: key }] }),
   }))
 }
@@ -167,6 +168,40 @@ describe("profile switch admission with bounded retirement", () => {
 })
 
 describe("legacy transcript enrollment admission", () => {
+  it("retries before querying when one-item enrollment leaves a second profile's predecessor pending", async () => {
+    const key = "two-profile-enrollment"
+    for (const profile of ["personal", "work"]) {
+      const target = { configDir: join(root, profile), projectDir: root }
+      for (const suffix of ["previous", "current"]) {
+        const locator = { ...target, sessionId: `${profile}-${suffix}` }
+        storeSharedSession(`${profile}:${key}`, locator.sessionId, 1, undefined, undefined, undefined,
+          undefined, undefined, undefined, undefined, locator)
+      }
+    }
+    const enroll = lifecycle.enrollLegacyMappedTranscripts
+    const bounded = spyOn(lifecycle, "enrollLegacyMappedTranscripts").mockImplementation((settings, keys) =>
+      enroll({ ...settings, maxDeletesPerRun: 1 }, keys))
+    try {
+      const postponed = await request(key, false, "work")
+      expect(postponed.status).toBe(503)
+      expect(postponed.headers.get("Retry-After")).toBe("5")
+      expect(await postponed.json()).toMatchObject({ type: "error", error: { type: "overloaded_error" } })
+      expect(queryProfiles).toEqual([])
+      expect(readSessionStoreSnapshot()[`work:${key}`]?.previousTranscript?.sessionId).toBe("work-previous")
+      await sweep()
+      const response = await request(key, false, "work")
+      expect(response.status, await response.clone().text()).toBe(200)
+      expect(queryProfiles).toEqual([join(root, "work")])
+      const sidecar = JSON.parse(readFileSync(join(root, "sessions", "session-gc.json"), "utf8")) as {
+        resources: Record<string, { locator: { sessionId: string } }>
+      }
+      const predecessor = { sessionId: "work-previous", configDir: join(root, "work"), projectDir: root }
+      expect(sidecar.resources[getTranscriptResourceKey(predecessor)]?.locator.sessionId).toBe(predecessor.sessionId)
+    } finally {
+      bounded.mockRestore()
+    }
+  })
+
   it("frees existing garbage when ownership capacity defers enrollment, then enrolls on the next sweep", async () => {
     const options = { storeDir: join(root, "sessions"), retiredGraceMs: 0 }
     const garbage = { sessionId: "owned-garbage", configDir: join(root, "personal"), projectDir: root }

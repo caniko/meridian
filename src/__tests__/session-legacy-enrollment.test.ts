@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test"
 import { randomUUID } from "node:crypto"
+import * as fs from "node:fs"
+import * as fsAsync from "node:fs/promises"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -110,6 +112,22 @@ describe("legacy mapped transcript enrollment", () => {
   function storePair(key: string, current: TranscriptLocator, previous: TranscriptLocator): void {
     storeMapping(key, previous)
     storeMapping(key, current)
+  }
+
+  function publishPriorityMapping(key: string, entry: TranscriptLocator, messageCount = 7) {
+    const stored = sessionStore.lookupSharedSessionResult(key)
+    const routeKey = `${key}-route`
+    const route = sessionStore.lookupPriorityAssignmentResult(routeKey)
+    if (stored.status === "error") throw stored.error
+    if (route.status === "error") throw route.error
+    if (!stored.generation) throw new Error("fixture mapping lacks its exact generation")
+    return sessionStore.storeSharedSessionAndPriorityAssignment({
+      key, claudeSessionId: entry.sessionId, messageCount,
+      lineageHash: "fixture-lineage", messageHashes: ["fixture-message"], messageBlockHashes: [["fixture-block"]],
+      currentTranscript: entry, expectedMappingGeneration: stored.generation,
+      priority: { routeKey, profileId: "work", lastHumanTurnDigest: "A".repeat(43),
+        lastHumanTurnIssuedAt: 1, expectedAssignmentGeneration: route.generation },
+    })
   }
 
   function durablePins(): TranscriptLocator[] {
@@ -255,7 +273,7 @@ describe("legacy mapped transcript enrollment", () => {
     }
   })
 
-  it("restores existing resources as well as new ownership when mapping attachment throws", async () => {
+  it("retains issued ownership conservatively when mapping attachment throws with uncertain publication", async () => {
     const current = await registerLiveTranscript(locator("throw-existing"), options)
     await abandonFork(current, options)
     const previous = locator("throw-new")
@@ -269,9 +287,73 @@ describe("legacy mapped transcript enrollment", () => {
       await expect(enrollLegacyMappedTranscripts(options)).rejects.toThrow("fixture mapping write failed")
       expect(cas).toHaveBeenCalledTimes(1)
       expect(mapping("throw")).toEqual(beforeMapping)
-      expect(readSidecar()).toEqual(beforeSidecar)
+      const after = readSidecar()
+      expect(after.resources[resourceKey(current)]).toEqual(beforeSidecar.resources[resourceKey(current)])
+      expect(after.resources[resourceKey(previous)]?.state).toBe("live")
+      expect(after.resources[resourceKey(previous)]?.generation).toMatch(/^r:/)
+      expect((await runGc([], options)).deleted).toBe(0)
     } finally {
       cas.mockRestore()
+    }
+  })
+
+  it("retains matching ownership and issued fences after a successful mapping rename reports failure", async () => {
+    const current = locator("rename-current")
+    const previous = locator("rename-previous")
+    storePair("rename", current, previous)
+    const rename = fs.renameSync
+    let fault = true
+    const boundary = spyOn(fs, "renameSync").mockImplementation((source, destination) => {
+      rename(source, destination)
+      if (fault && destination === join(storeDir, "sessions.json")) {
+        fault = false
+        throw new Error("fixture post-rename publication failure")
+      }
+    })
+    try {
+      await expect(enrollLegacyMappedTranscripts(options)).rejects.toThrow("fixture post-rename publication failure")
+      expect(fault).toBe(false)
+      const published = mapping("rename")
+      const sidecar = readSidecar()
+      for (const field of ["currentTranscript", "previousTranscript"] as const) {
+        const attached = published[field]
+        expect(attached?.lifecycleGeneration).toBe(sidecar.resources[resourceKey(attached!)]?.generation)
+        expect(attached?.lifecycleGeneration).toMatch(/^r:/)
+      }
+      expect((await runGc([], options)).deleted).toBe(0)
+      expect(await enrollLegacyMappedTranscripts(options)).toBe(0)
+      expect(readSidecar()).toEqual(sidecar)
+    } finally {
+      boundary.mockRestore()
+    }
+  })
+
+  it("preserves the rollback failure cause and does not retry cleanup after an exact CAS rejection", async () => {
+    const target = locator("rollback-failure")
+    storeMapping("rollback-failure", target)
+    const rename = fsAsync.rename
+    let writes = 0
+    const boundary = spyOn(fsAsync, "rename").mockImplementation(async (source, destination) => {
+      if (destination === join(storeDir, "session-gc.json") && ++writes === 2) {
+        throw new Error("fixture ownership rollback failure")
+      }
+      await rename(source, destination)
+    })
+    const cas = spyOn(sessionStore, "attachLegacyTranscriptGenerations").mockReturnValue(false)
+    try {
+      let rejected: unknown
+      try { await enrollLegacyMappedTranscripts(options) }
+      catch (error) { rejected = error }
+      expect(rejected).toBeInstanceOf(Error)
+      expect((rejected as Error).message).toBe("legacy enrollment CAS was rejected; ownership rollback failed")
+      expect((rejected as Error).cause).toMatchObject({ message: "fixture ownership rollback failure" })
+      expect(writes).toBe(2)
+      expect(mapping("rollback-failure").currentTranscript?.lifecycleGeneration).toBeUndefined()
+      expect(readSidecar().resources[resourceKey(target)]?.generation).toMatch(/^r:/)
+      expect((await runGc([], options)).deleted).toBe(0)
+    } finally {
+      cas.mockRestore()
+      boundary.mockRestore()
     }
   })
 
@@ -710,4 +792,77 @@ describe("legacy mapped transcript enrollment", () => {
     expect((await runGc([], options)).deleted).toBe(1)
     expect(deleted.map(entry => entry.sessionId)).toEqual(["priority-protected-legacy"])
   })
+
+  for (const mode of ["ordinary", "priority"] as const) {
+    const publish = mode === "ordinary" ? publishMapping : publishPriorityMapping
+
+    it(`${mode} publication retains an unenrolled predecessor until ownership enrollment succeeds`, async () => {
+      const key = "work:protected-predecessor"
+      const current = locator("guard-current")
+      const previous = locator("guard-previous")
+      const target = await registerLiveTranscript(locator("guard-new-target"), options)
+      storePair(key, current, previous)
+      expect(publishPriorityMapping(key, current)).not.toBe(false)
+      const before = readFileSync(join(storeDir, "sessions.json"), "utf8")
+      const beforeSidecar = readSidecar()
+
+      expect(publish(key, target, 17)).toBe(false)
+      expect(readFileSync(join(storeDir, "sessions.json"), "utf8")).toBe(before)
+      expect(mapping(key).previousTranscript).toEqual(previous)
+      expect(readSidecar()).toEqual(beforeSidecar)
+
+      expect(await enrollLegacyMappedTranscripts(options)).toBe(1)
+      const enrolled = mapping(key)
+      expect(enrolled.currentTranscript?.lifecycleGeneration).toMatch(/^r:/)
+      expect(enrolled.previousTranscript?.lifecycleGeneration).toMatch(/^r:/)
+      expect(publish(key, target, 17)).not.toBe(false)
+      expect(mapping(key).claudeSessionId).toBe(target.sessionId)
+      expect(mapping(key).messageCount).toBe(17)
+      expect(mapping(key).previousTranscript).toEqual(enrolled.currentTranscript)
+      const route = sessionStore.lookupPriorityAssignmentResult(`${key}-route`)
+      expect(route.status).toBe("found")
+      if (route.status !== "found") throw new Error("fixture priority route disappeared")
+      expect(route.assignment.mappingGeneration).toBe(sessionStore.getStoredSessionGeneration(mapping(key), key))
+      expect((await runGc([], options)).deleted).toBe(1)
+      expect(deleted.map(entry => entry.sessionId)).toEqual([previous.sessionId])
+    })
+
+    it(`${mode} publication still retains the predecessor after enrollment loses its exact mapping CAS`, async () => {
+      const key = "work:cas-lost-predecessor"
+      const current = locator("cas-guard-current")
+      const previous = locator("cas-guard-previous")
+      storePair(key, current, previous)
+      expect(publishPriorityMapping(key, current)).not.toBe(false)
+      const before = readFileSync(join(storeDir, "sessions.json"), "utf8")
+      const beforeSidecar = readSidecar()
+      const cas = spyOn(sessionStore, "attachLegacyTranscriptGenerations").mockImplementation(() => false)
+      try {
+        expect(await enrollLegacyMappedTranscripts(options)).toBe(0)
+        expect(publish(key, locator("cas-guard-new-target"), 17)).toBe(false)
+        expect(readFileSync(join(storeDir, "sessions.json"), "utf8")).toBe(before)
+        expect(readSidecar()).toEqual(beforeSidecar)
+        expect(mapping(key).previousTranscript).toEqual(previous)
+        expect(deleted).toEqual([])
+      } finally {
+        cas.mockRestore()
+      }
+    })
+
+    it(`${mode} same-ID metadata publication preserves an unenrolled predecessor`, () => {
+      const key = "work:same-id-predecessor"
+      const current = locator("same-id-current")
+      const previous = locator("same-id-previous")
+      storePair(key, current, previous)
+      expect(publishPriorityMapping(key, current)).not.toBe(false)
+      const before = mapping(key)
+
+      expect(publish(key, current, 17)).not.toBe(false)
+      expect(mapping(key).claudeSessionId).toBe(current.sessionId)
+      expect(mapping(key).previousClaudeSessionId).toBe(previous.sessionId)
+      expect(mapping(key).previousTranscript).toEqual(before.previousTranscript)
+      expect(mapping(key).previousTranscript?.lifecycleGeneration).toBeUndefined()
+      expect(mapping(key).messageCount).toBe(17)
+      expect(readSidecar().resources).toEqual({})
+    })
+  }
 })

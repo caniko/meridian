@@ -1111,10 +1111,11 @@ export function readLegacyTranscriptEnrollmentSnapshot(
   mappingKeys?: readonly string[],
 ): Record<string, StoredSession> {
   const document = readStoreDocumentCached(getStorePath())
+  const protectedKeys = legacyEnrollmentProtectedKeys(document.meta)
   const candidates: Record<string, StoredSession> = {}
   for (const key of mappingKeys ?? Object.keys(document.sessions)) {
     const session = document.sessions[key]
-    if (session && !isLegacyEnrollmentProtected(document.meta, key)) candidates[key] = session
+    if (session && !protectedKeys.has(key)) candidates[key] = session
   }
   return candidates
 }
@@ -1358,12 +1359,16 @@ function isPriorityRollbackMapping(meta: SessionStoreMeta, key: string): boolean
     && Object.values(meta.priorityRollbackMappings).some((rollback) => rollback.mappingKey === key)
 }
 
-function isLegacyEnrollmentProtected(meta: SessionStoreMeta, key: string): boolean {
-  if (isPriorityRollbackMapping(meta, key)) return true
-  return meta.version === PRIORITY_STORE_META_VERSION
-    && Object.entries(meta.priorityAssignments).some(([routeKey, assignment]) =>
-      assignment.mappingKey === key
-      && (meta.priorityAttempts[routeKey] !== undefined || meta.priorityRollbackMappings[routeKey] !== undefined))
+function legacyEnrollmentProtectedKeys(meta: SessionStoreMeta): Set<string> {
+  const protectedKeys = new Set<string>()
+  if (meta.version !== PRIORITY_STORE_META_VERSION) return protectedKeys
+  for (const rollback of Object.values(meta.priorityRollbackMappings)) protectedKeys.add(rollback.mappingKey)
+  for (const [routeKey, assignment] of Object.entries(meta.priorityAssignments)) {
+    if (meta.priorityAttempts[routeKey] !== undefined || meta.priorityRollbackMappings[routeKey] !== undefined) {
+      protectedKeys.add(assignment.mappingKey)
+    }
+  }
+  return protectedKeys
 }
 
 /** Automatic eviction must retain the only recorded proof of a legacy target
@@ -1422,6 +1427,10 @@ export function storeSharedSession(
     // to be abandoned — the old ID still identifies the full conversation
     // through the supported Agent SDK session APIs.
     const sessionIdChanged = existing !== undefined && existing.claudeSessionId !== claudeSessionId
+    // An identity-scoped enrollment batch can still be deferred or lose its
+    // CAS. Publishing must not discard the predecessor's only ownership proof.
+    if (sessionIdChanged && existing.previousTranscript !== undefined
+      && existing.previousTranscript.lifecycleGeneration === undefined) return false
     if (sourceTranscript !== undefined) {
       if (!sessionIdChanged || sourceTranscript.sessionId !== existing?.claudeSessionId) {
         throw new Error("sourceTranscript.sessionId must match the replaced claudeSessionId")
@@ -1754,6 +1763,8 @@ export function storeSharedSessionAndPriorityAssignment(
     }
 
     const sessionIdChanged = existing !== undefined && existing.claudeSessionId !== options.claudeSessionId
+    if (sessionIdChanged && existing.previousTranscript !== undefined
+      && existing.previousTranscript.lifecycleGeneration === undefined) return false
     if (options.sourceTranscript !== undefined) {
       if (!sessionIdChanged || options.sourceTranscript.sessionId !== existing?.claudeSessionId) {
         throw new Error("sourceTranscript.sessionId must match the replaced claudeSessionId")
@@ -2116,7 +2127,7 @@ export function attachLegacyTranscriptGenerations(
   mutateStore(({ sessions, meta }) => {
     const existing = sessions[key]
     if (!existing || getStoredSessionGeneration(existing, key) !== expectedGeneration
-      || isLegacyEnrollmentProtected(meta, key)) return false
+      || legacyEnrollmentProtectedKeys(meta).has(key)) return false
     const fields = ["currentTranscript", "previousTranscript"] as const
     for (const field of fields) {
       const attached = locators[field]

@@ -3,42 +3,89 @@
 // account. SDK transcripts are created/inspected/deleted only through supported
 // APIs; only disposable Meridian metadata is downgraded to its legacy shape.
 import assert from 'node:assert/strict'
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
-import { homedir, tmpdir } from 'node:os'
+import { existsSync, lstatSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import * as sdk from '@anthropic-ai/claude-agent-sdk'
+import { spyOn } from 'bun:test'
+import { observeSdkModels } from './lib/observe-sdk-models.mjs'
 
 const checkout = resolve(process.env.E2E_MERIDIAN_ROOT ?? fileURLToPath(new URL('..', import.meta.url)))
 const model = process.env.E2E_MODEL ?? 'claude-haiku-4-5'
-const accountRoot = process.env.E2E_CLAUDE_CONFIG_DIR
+const selectedRoot = process.env.E2E_CLAUDE_CONFIG_DIR
+assert(selectedRoot, 'Select an immutable ready grant with E2E_CLAUDE_CONFIG_DIR; no native-account fallback')
+const sourceRoot = realpathSync(resolve(selectedRoot))
+const sourceGrant = join(sourceRoot, '.credentials.json')
+const sourceInfo = lstatSync(sourceGrant)
+assert(sourceInfo.isFile() && !sourceInfo.isSymbolicLink(), 'Select an ordinary read-only credential snapshot file')
+assert.equal(sourceInfo.mode & 0o222, 0, 'The source grant must be an immutable read-only snapshot')
+const sourceBytes = readFileSync(sourceGrant)
+assert(sourceBytes.length > 0, 'Selected credential snapshot is empty')
 const initialSdkRoot = process.env.CLAUDE_CONFIG_DIR
-const querySdkRoot = accountRoot === undefined ? initialSdkRoot
-  : resolve(accountRoot) === join(homedir(), '.claude') ? undefined : resolve(accountRoot)
-if (querySdkRoot === undefined) delete process.env.CLAUDE_CONFIG_DIR
-else process.env.CLAUDE_CONFIG_DIR = querySdkRoot
 const baselineExpected = process.argv.includes('--expect-unfixed')
-const root = mkdtempSync(join(tmpdir(), 'meridian-legacy-transcript-e2e-'))
+const root = realpathSync(mkdtempSync(join(tmpdir(), 'meridian-legacy-transcript-e2e-')))
+const runtimeRoot = join(root, 'owned-runtime-account')
+mkdirSync(runtimeRoot, { mode: 0o700 })
+assert.notEqual(realpathSync(runtimeRoot), sourceRoot, 'Runtime account must be a separate owned directory')
+writeFileSync(join(runtimeRoot, '.credentials.json'), sourceBytes, { mode: 0o600, flag: 'wx' })
+const querySdkRoot = runtimeRoot
 const state = join(root, 'state')
 const work = join(root, 'project')
 mkdirSync(work)
 for (const key of Object.keys(process.env)) {
-  if (key.startsWith('MERIDIAN_') || key.startsWith('CLAUDE_PROXY_')) delete process.env[key]
+  if (/^(MERIDIAN_|CLAUDE_PROXY_|CLAUDE_|ANTHROPIC_)/.test(key) || key === 'CLAUDECODE') delete process.env[key]
 }
 Object.assign(process.env, {
   MERIDIAN_CONFIG_DIR: join(root, 'settings'), MERIDIAN_SESSION_DIR: state,
+  MERIDIAN_CREDENTIALS_READONLY: '1', MERIDIAN_NO_UPDATE_CHECK: '1',
+  CLAUDE_CONFIG_DIR: runtimeRoot,
   MERIDIAN_WORKDIR: work, MERIDIAN_TELEMETRY_PERSIST: '0',
   MERIDIAN_SESSION_GC_GRACE_MS: '0', MERIDIAN_SESSION_PROFILE_COPY_PRUNE: '0',
   MERIDIAN_ROUTING: 'manual', MERIDIAN_PASSTHROUGH: '0',
 })
+let sdk, proxy, store, clearSessionCache, observer
+const queries = [], servedModels = new Set()
 const moduleAt = path => import(pathToFileURL(join(checkout, path)).href)
-const { createProxyServer, clearSessionCache } = await moduleAt('src/proxy/server.ts')
-const store = await moduleAt('src/proxy/sessionStore.ts')
-const { resolveClaudeExecutableAsync } = await moduleAt('src/proxy/models.ts')
-await resolveClaudeExecutableAsync()
-const profiles = accountRoot && resolve(accountRoot) !== join(homedir(), '.claude')
-  ? [{ id: 'owned-e2e', claudeConfigDir: resolve(accountRoot) }] : undefined
-const proxy = createProxyServer({ silent: true, profiles, defaultProfile: profiles?.[0].id })
+try {
+  sdk = await import('@anthropic-ai/claude-agent-sdk')
+  const realQuery = sdk.query
+  observer = spyOn(sdk, 'query').mockImplementation(input => {
+    queries.push({ runtimeMatched: input.options?.env?.CLAUDE_CONFIG_DIR === runtimeRoot })
+    return observeSdkModels(realQuery(input), servedModels)
+  })
+  const serverModule = await moduleAt('src/proxy/server.ts')
+  clearSessionCache = serverModule.clearSessionCache
+  store = await moduleAt('src/proxy/sessionStore.ts')
+  const { resolveClaudeExecutableAsync } = await moduleAt('src/proxy/models.ts')
+  await resolveClaudeExecutableAsync()
+  proxy = serverModule.createProxyServer({ silent: true,
+    profiles: [{ id: 'owned-e2e', claudeConfigDir: runtimeRoot }], defaultProfile: 'owned-e2e' })
+} catch (error) {
+  observer?.mockRestore()
+  try {
+    assertSourceUnchanged()
+    assertNoPendingOwnership()
+    rmSync(root, { recursive: true, force: true })
+  } catch (cleanupError) {
+    console.error(`Fixture initialization failed; retained ownership metadata at ${state}`)
+    throw new AggregateError([error, cleanupError], 'Fixture initialization failed and cleanup is incomplete')
+  }
+  throw error
+}
+function assertSourceUnchanged() {
+  const current = lstatSync(sourceGrant)
+  assert(sourceBytes.equals(readFileSync(sourceGrant)), 'Source credential grant changed')
+  for (const field of ['dev', 'ino', 'size', 'mode', 'mtimeMs', 'ctimeMs']) {
+    assert.equal(current[field], sourceInfo[field], 'Source credential snapshot identity changed')
+  }
+}
+function assertNoPendingOwnership() {
+  const path = join(state, 'session-gc.json')
+  const sidecar = existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : { resources: {} }
+  const pending = Object.values(sidecar.resources).filter(resource =>
+    resource.state !== 'deleted' || Object.keys(resource.activeLeases ?? {}).length > 0)
+  assert.equal(pending.length, 0, 'Cleanup is incomplete; retain the fixture lifecycle authority')
+}
 const created = []
 const original = new Map()
 let result
@@ -79,6 +126,7 @@ async function request(key) {
     const mappings = store.readSessionStoreSnapshot()
     const candidate = Object.values(mappings).find(entry => !created.some(prior => prior.claudeSessionId === entry.claudeSessionId))
     assert(candidate?.currentTranscript, 'Real proxy did not publish a transcript locator')
+    assert.equal(candidate.currentTranscript.configDir, runtimeRoot, 'Proxy used an unselected account root')
     created.push(candidate)
     // Standalone SDK history helpers use this process's config root. This
     // inspection has no credential or CLI/model side effects.
@@ -121,7 +169,11 @@ try {
   }
   assert(remains(created[2].claudeSessionId), 'Unknown shared-root control was deleted')
   assert.deepEqual(await inSdkRoot(created[2].currentTranscript.configDir, () => sdk.getSessionMessages(created[2].claudeSessionId, { dir: created[2].currentTranscript.projectDir })), original.get(created[2].claudeSessionId))
-  result = { result: 'PASS', expected: baselineExpected ? 'unfixed' : 'corrected',
+  assert.equal(queries.length, 3, 'Expected exactly three real SDK fixture queries')
+  assert(queries.every(query => query.runtimeMatched), 'Every SDK query must use the owned runtime store')
+  assert(servedModels.size > 0 && [...servedModels].every(value => value === model || value.startsWith(model + '-')), 'Upstream did not confirm the selected model')
+  assertSourceUnchanged()
+  result = { result: 'PASS', sourceGrantUnchanged: true, ownedRuntimeAccount: true, allQueriesUseOwnedRuntime: true, servedModels: [...servedModels], expected: baselineExpected ? 'unfixed' : 'corrected',
     checkout, platform: process.platform, model, client: 'real HTTP/SDK fixture',
     currentAndPreviousPinnedUnchanged: true, generationAttached,
     trackedLegacyCollected: !baselineExpected, unknownSessionPreserved: true }
@@ -135,6 +187,9 @@ try {
     clearSessionCache()
     store.clearSharedSessions()
     await proxy.sweepSessionGc()
+    // Never bypass a retained writer/publication/deletion fence with direct
+    // SDK deletion, even for an ID created by this fixture.
+    assertNoPendingOwnership()
     // The deliberately unowned control and baseline legacy targets cannot be
     // recovered by GC. These exact IDs were created by this fixture, so only
     // they are eligible for direct supported SDK cleanup.
@@ -147,13 +202,11 @@ try {
       })
     }
     await proxy.sweepSessionGc()
-    const sidecarPath = join(state, 'session-gc.json')
-    const sidecar = existsSync(sidecarPath) ? JSON.parse(readFileSync(sidecarPath, 'utf8')) : { resources: {} }
-    const pending = Object.values(sidecar.resources).filter(resource =>
-      resource.state !== 'deleted' || Object.keys(resource.activeLeases ?? {}).length > 0)
-    assert.equal(pending.length, 0, 'Cleanup is incomplete; retain the fixture lifecycle authority')
+    assertNoPendingOwnership()
+    assertSourceUnchanged()
     cleanupComplete = true
   } finally {
+    observer.mockRestore()
     store.setSessionStoreDir(null)
     if (initialSdkRoot === undefined) delete process.env.CLAUDE_CONFIG_DIR
     else process.env.CLAUDE_CONFIG_DIR = initialSdkRoot

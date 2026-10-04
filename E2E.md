@@ -7399,7 +7399,7 @@ gap; it does not mean the original disk-growth report is resolved. The HTTP
 regression must fail on unchanged main when the recorded predecessor is lost
 before ownership enrollment, in both streaming modes.
 
-With an explicitly selected ready account, the escrowed native harness costs
+With an explicitly selected immutable, read-only ready credential snapshot, the escrowed native harness costs
 three real HTTP/SDK model turns per arm. Use the same model, platform and account
 for baseline and corrected runs. It joins all requests, creates native sessions
 through the SDK, downgrades only its disposable Meridian metadata, inspects
@@ -7408,17 +7408,24 @@ retain unchanged history. After eviction, the corrected arm must delete exactly
 the two recorded sessions while preserving the unknown shared-root control.
 
 ```sh
-E2E_CLAUDE_CONFIG_DIR=/absolute/path/to/ready-account \
+E2E_CLAUDE_CONFIG_DIR=/absolute/path/to/read-only-ready-grant \
   E2E_MODEL=claude-haiku-4-5 E2E_MERIDIAN_ROOT=/absolute/path/to/unchanged-main \
   bun scripts/e2e-legacy-transcript-enrollment.mjs --expect-unfixed
-E2E_CLAUDE_CONFIG_DIR=/absolute/path/to/the-same-ready-account \
+E2E_CLAUDE_CONFIG_DIR=/absolute/path/to/the-same-read-only-ready-grant \
   E2E_MODEL=claude-haiku-4-5 \
   bun scripts/e2e-legacy-transcript-enrollment.mjs
 ```
 
-Selecting the normal `~/.claude` root explicitly clears an inherited alternate
-`CLAUDE_CONFIG_DIR` for model queries. Cleanup joins writers and uses fenced GC
-for all fixture-owned targets, including failed turns. It directly deletes only
+The source directory must contain an ordinary read-only `.credentials.json`
+snapshot. The harness requires this explicit source and never falls back to the
+native account. It forces `MERIDIAN_CREDENTIALS_READONLY=1`, clears inherited auth
+overrides before SDK/proxy imports, and copies only the selected credential file
+into its own private runtime account. SDK refresh may write that owned copy;
+source bytes, identity and permissions must remain unchanged. Query/model
+observations assert the selected runtime and actual served model without logging
+credentials. Cleanup joins writers and uses fenced GC
+for all fixture-owned targets, including failed turns. Unresolved ownership or
+leases stop cleanup before any direct SDK deletion. It directly deletes only
 exact sessions created by the fixture through supported APIs. Incomplete
 cleanup retains the isolated Meridian ownership metadata and exits nonzero.
 The harness uses a real proxy HTTP/SDK fixture; it does not establish actual

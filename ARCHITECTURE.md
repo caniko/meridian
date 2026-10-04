@@ -519,15 +519,18 @@ remain synchronous; same-context recursive acquisition is rejected explicitly.
 Older durable Meridian mappings can carry exact current and direct-predecessor
 locators without lifecycle generations. `enrollLegacyMappedTranscripts` journals
 only those recorded identities and attaches their generations with one mapping
-CAS under the lifecycle lock. A lost CAS restores newly allocated ownership and
-fence counters. Existing writer/publication leases and ownership states stay
+CAS under the lifecycle lock. An exact CAS rejection restores newly allocated ownership and
+fence counters. A throwing publication retains issued ownership/fences because
+its store rename may already be visible. Existing writer/publication leases and ownership states stay
 intact; deleting and deleted targets are never resurrected. Pending priority
 publication and rollback authorities are skipped until finalization.
 
 Maintenance attempts a bounded batch and advances a process-local cursor even
 when a target is skipped; restarting resets that scheduling hint, not ownership.
 Identity-bearing requests join only their selected mapping enrollment before
-capturing arrival generations. Automatic count eviction retains unfenced
+capturing arrival generations; remaining eligible legacy mappings cause a bounded
+retry before SDK launch. Publication also refuses to discard an unfenced
+predecessor if enrollment is deferred or its CAS loses. Automatic count eviction retains unfenced
 locators until enrollment makes them eligible, and profile-copy pruning verifies
 that each released locator already has a matching, safe lifecycle resource.
 At a full count cap, a new publication can retry while maintenance progresses;

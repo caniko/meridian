@@ -195,6 +195,7 @@ import {
   listStoredSessions,
   readSessionStoreSnapshot,
   readSessionStoreGenerationSnapshot,
+  readLegacyTranscriptEnrollmentSnapshot,
   type StoredSessionGeneration,
   DEFAULT_PROFILE_COPY_GRACE_MS,
 } from "./sessionStore"
@@ -7897,10 +7898,16 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
           // competing turn. Cancellation affects lock admission, never a
           // transaction already running or the shared GC's cleanup.
           try {
+            const enrollmentMappingKeys = Object.keys(readSessionStoreGenerationSnapshot(agentSessionId, [...arrivalProfileIds]))
             await enrollLegacyMappedTranscripts(
               { ...sessionGcOptions, admissionSignal: requestAbortLink.controller.signal },
-              Object.keys(readSessionStoreGenerationSnapshot(agentSessionId, [...arrivalProfileIds])),
+              enrollmentMappingKeys,
             )
+            if (Object.values(readLegacyTranscriptEnrollmentSnapshot(enrollmentMappingKeys)).some(session =>
+              [session.currentTranscript, session.previousTranscript].some(locator =>
+                locator !== undefined && locator.lifecycleGeneration === undefined))) {
+              throw new SessionLifecycleError("Recorded transcript enrollment is still pending; retry after maintenance")
+            }
           } catch (error) {
             const cancelled = requestAbortLink.controller.signal.aborted
             claudeLog("session.legacy_enrollment_failed", { requestId,

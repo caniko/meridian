@@ -5,6 +5,15 @@ import { parseRetryAfterMs } from "./retryAfter"
 // larger than this is never sufficient evidence to replay another account.
 const CLASSIFICATION_MAX_BYTES = 64 * 1024
 
+/** Internal authority signal: a completed SDK response does not prove that a
+ * failed reader retirement released its effects. The caller must fence it. */
+export class SseReaderRetirementError extends Error {
+  constructor(cause: unknown) {
+    super("Upstream response reader retirement failed", { cause })
+    this.name = "SseReaderRetirementError"
+  }
+}
+
 /**
  * SSE prelude scanning and transport for priority account failover.
  * Content-free comments and ping events do not decide an account verdict.
@@ -87,14 +96,15 @@ export function classifySseFrame(frame: string): SseFrameClass {
     if (line === "" || line.startsWith(":")) continue
     sawField = true
     const colonAt = line.indexOf(":")
-    // A colonless line names a field with no value and is ignored per spec.
-    if (colonAt === -1) continue
-    const field = line.slice(0, colonAt)
+    // A colonless line names a field with an EMPTY value. In particular,
+    // `event: ping` followed by bare `event` resets the type to message.
+    const field = colonAt === -1 ? line : line.slice(0, colonAt)
+    const value = colonAt === -1 ? "" : fieldValue(line, colonAt)
     if (field === "event") {
       // Last `event` field wins, per spec.
-      eventType = fieldValue(line, colonAt)
+      eventType = value
     } else if (field === "data") {
-      dataJoined = dataJoined === null ? fieldValue(line, colonAt) : `${dataJoined}\n${fieldValue(line, colonAt)}`
+      dataJoined = dataJoined === null ? value : `${dataJoined}\n${value}`
     }
   }
   if (!sawField) return { kind: "keepalive" }
@@ -282,6 +292,17 @@ export async function relayStreamAttempt(
   if (!reader) return { kind: "relayed" }
   let transferred = false
   let terminalErrorForwarded = false
+  let bodySettled = false
+  const read = async () => {
+    try {
+      const result = await reader.read()
+      if (result.done) bodySettled = true
+      return result
+    } catch (error) {
+      bodySettled = true
+      throw error
+    }
+  }
   let cancellation: Promise<{ ok: true } | { ok: false; error: unknown }> | undefined
   const cancelReader = (reason?: unknown) => {
     // A second reader.cancel() on a closed stream resolves immediately even
@@ -297,8 +318,14 @@ export async function relayStreamAttempt(
   const discard = (): Promise<void> => {
     discardCompletion ??= (async () => {
       try {
-        const result = await cancelReader()
-        if (!result.ok) throw result.error
+        // An errored stream's cancel() rejects with its stored read error,
+        // without invoking underlying cancellation. Preserve that read error;
+        // EOF/error already settled the body. An existing cancellation still
+        // must join, even if it has just made a pending read report EOF.
+        if (cancellation || !bodySettled) {
+          const result = await cancelReader()
+          if (!result.ok) throw new SseReaderRetirementError(result.error)
+        }
       } finally {
         reader.releaseLock()
         opts.registerCancel(() => {})
@@ -310,7 +337,7 @@ export async function relayStreamAttempt(
   try {
     const copyRest = async (enqueue: (chunk: Uint8Array) => Promise<boolean>): Promise<void> => {
       while (!opts.isCancelled()) {
-        const { done, value } = await reader.read()
+        const { done, value } = await read()
         if (done) return
         if (value && !await enqueue(value)) { await discard(); return }
       }
@@ -323,7 +350,7 @@ export async function relayStreamAttempt(
       const bytes = new Uint8Array(CLASSIFICATION_MAX_BYTES)
       let byteLength = 0
       while (!opts.isCancelled()) {
-        const { done, value } = await reader.read()
+        const { done, value } = await read()
         if (done) break
         if (!value || value.byteLength === 0) continue
         if (value.byteLength > CLASSIFICATION_MAX_BYTES - byteLength) {
@@ -380,7 +407,7 @@ export async function relayStreamAttempt(
       heldBytes = 0
     }
     while (!opts.isCancelled()) {
-      const { done, value } = await reader.read()
+      const { done, value } = await read()
       if (done) {
         // EOF is not permission to lose a partial frame or undecoded UTF-8.
         await forwardHeld()

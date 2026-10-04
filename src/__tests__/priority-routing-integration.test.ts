@@ -24,12 +24,13 @@ import * as relayExports from "../proxy/sseFailureSniff"
 // and framing; the narrow seam injects abnormal provider Response boundaries
 // and delays reader retirement without adding a product configuration hook.
 const actualRelayExports = { ...relayExports }
-let substituteRelayResponse: ((inner: Response) => Response) | null = null
+let substituteRelayResponse: ((inner: Response) => Response | Promise<Response>) | null = null
 let beforeSuppressedDiscard: (() => Promise<void>) | null = null
 mock.module("../proxy/sseFailureSniff", () => ({
   ...actualRelayExports,
   relayStreamAttempt: async (inner: Response, opts: relayExports.SseRelaySink) => {
-    const verdict = await actualRelayExports.relayStreamAttempt(substituteRelayResponse?.(inner) ?? inner, opts)
+    const response = substituteRelayResponse ? await substituteRelayResponse(inner) : inner
+    const verdict = await actualRelayExports.relayStreamAttempt(response, opts)
     if (verdict.kind !== "suppressed" || !beforeSuppressedDiscard) return verdict
     const beforeDiscard = beforeSuppressedDiscard
     return { ...verdict, discard: async () => { await beforeDiscard(); await verdict.discard() } }
@@ -2070,6 +2071,48 @@ describe("priority routing", () => {
     const events = await (await app.fetch(new Request("http://localhost/profiles/events"))).json() as { events: Array<{ kind: string }> }
     expect(events.events.some(event => event.kind === "failover")).toBe(false)
     expect(capturedPriorityEvents.includes("priority.reader_retirement_fenced")).toBe(retirement === "rejected")
+  }, 5_000)
+
+  it("retains the exact trusted turn claim when a suppressed SSE reader cannot retire", async () => {
+    const app = createTestApp()
+    const sessionId = "rejected-suppressed-reader"
+    await (await post(app, trustedOpenCodeTurnHeaders(sessionId, "seed"), OPENING_MESSAGE)).json()
+    capturedEnvs = []
+    failureMessage = SUBSCRIPTION_REFUSAL
+    failingDirs.add("prof-work")
+    substituteRelayResponse = async inner => {
+      // Let the original mocked SDK refusal reach EOF first, so its completion
+      // can resolve. Only the response-reader retirement boundary is faulty.
+      await inner.text()
+      return new Response(new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('event: error\ndata: {"error":{"type":"billing_error","message":"inactive"}}\n\n'))
+        },
+        cancel() { return Promise.reject(new Error("suppressed reader cancellation rejected")) },
+      }), { headers: { "content-type": "text/event-stream" } })
+    }
+    const headers = trustedOpenCodeTurnHeaders(sessionId, "refused-turn")
+    const res = await postStream(app, {
+      headers,
+      content: [
+        { role: "user", content: OPENING_MESSAGE },
+        { role: "assistant", content: [{ type: "text", text: "ok from /tmp/meridian-test-prof-work" }] },
+        { role: "user", content: "retirement must preserve this exact claim" },
+      ],
+    })
+    const body = await res.text()
+    // The original SDK response completes normally; reader retirement failure
+    // is nevertheless not authority to release or replay this logical turn.
+    await Bun.sleep(50)
+    expect(body.split("event: error").length - 1).toBe(1)
+    expect(capturedEnvs).toHaveLength(1)
+    expect(capturedEnvs[0]).toContain("prof-work")
+    const route = lookupPriorityAssignmentResult(`opencode:${sessionId}`)
+    if (route.status !== "found") throw new Error(`expected durable route, received ${route.status}`)
+    expect(route.attempt?.ownerToken).toBeString()
+    expect(route.attempt?.pendingTurnDigest).toBeString()
+    expect(route.attempt?.pendingTurnIssuedAt).toBe(testTurnClock.get(sessionId)!.issuedAt)
+    expect(capturedPriorityEvents).toContain("priority.reader_retirement_fenced")
   }, 5_000)
 
   it("surfaces the refusal's own status when every account is refused", async () => {

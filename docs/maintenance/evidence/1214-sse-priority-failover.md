@@ -161,3 +161,48 @@ proof only. Root must also preserve exact affected-client failover, cancellation
 and continuation evidence; synthetic Messages HTTP or another model/client
 cannot satisfy that gate. Required final-head CI and independent adversarial
 review remain before landing. This candidate is not yet a completed fix.
+
+## Independent review and additional corrections
+
+An independent agent reviewed complete frozen head `1a1060f0` and found three
+actionable gaps. The in-progress `npm test` was stopped with exit 130 before any
+product edit; this is an interrupted gate, not a test-failure or full-pass claim.
+The [provenance record](1214-sse-priority-failover/interrupted-full-run.json) and
+[complete compressed log](1214-sse-priority-failover/npm-test-1a1060f0-interrupted.log.gz)
+are retained.
+
+- Rejected retirement of a suppressed/nonterminal SSE reader could still release
+  a trusted turn claim after a resolving SDK completion. The relay now brands
+  actual cancellation failure with an internal `SseReaderRetirementError`, and
+  dispatch retains authority/session fences for it. A body that already reached
+  EOF or errored needs no fresh cancellation: canceling an errored stream merely
+  rejects with its stored read error. Any already-started cancellation still
+  joins its original promise. The [trusted HTTP control before correction](1214-sse-priority-failover/rejected-sse-retirement-before.log)
+  observes the exact attempt owner missing after the original mocked SDK refusal
+  completes; after correction the owner, pending turn digest and issue time
+  persist, with one terminal frame and one account attempt. The fixture drains
+  the original SDK response before injecting the retirement failure, so this
+  assertion distinguishes retirement from aborted pre-launch preparation.
+- SSE recognized colonless fields have an empty value. A bare final `event` now
+  resets a preceding ping/error to the default message event. Otherwise a real
+  data frame could be mislabeled as keepalive and a later account error replayed.
+  [Both classification and actual-relay controls failed before](1214-sse-priority-failover/colonless-before.log);
+  the corrected relay preserves all bytes and does not suppress the later error.
+- The packaged harness now requires its unique receipt in the answering text and
+  one successful complete stream envelope (`message_stop`, `end_turn`), rather
+  than accepting any nonempty answer. It remains unexecuted; syntax validation
+  does not establish receipt/model/client behavior.
+
+Post-review focused checks: [59 transport/idle tests, 264 assertions](1214-sse-priority-failover/transport-review-fixed.log)
+and [four HTTP controls, 31 assertions](1214-sse-priority-failover/http-negative-controls-review-fixed.log)
+pass. Typecheck passes. Final full local gates must use the new frozen head.
+
+The reviewer also identified quadratic scanning when a single incomplete frame
+is supplied one byte at a time (up to roughly 2.15 billion character visits at
+64 KiB). Current Messages inner producers enqueue complete encoded SSE frames
+in-process; network/SDK fragmentation does not feed this relay directly, and no
+current production path establishing that regression was found. This remains
+CPU hardening, not an observed affected-client defect or a bounded-CPU claim.
+Revisit if a provider begins passing fragmented/raw SSE into this helper or a
+current inner producer is observed emitting prolonged partial frames. Correct
+fragment framing and memory limits do not constitute a CPU performance bound.

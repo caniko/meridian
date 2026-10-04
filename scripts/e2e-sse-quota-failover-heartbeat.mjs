@@ -219,11 +219,17 @@ try {
     const served = rows.filter(row => row.error === null)
     let reply = ''
     if (stream) {
+      let messageStops = 0
+      let stopReason
       for (const line of body.split('\n')) {
         if (!line.startsWith('data:')) continue
         const event = JSON.parse(line.slice(5))
         if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') reply += event.delta.text
+        if (event.type === 'message_delta' && event.delta?.stop_reason) stopReason = event.delta.stop_reason
+        if (event.type === 'message_stop') messageStops++
       }
+      assert.equal(messageStops, 1, 'the successful fallback must finish exactly one message envelope')
+      assert.equal(stopReason, 'end_turn', 'the successful fallback cannot be a truncated or failed turn')
     } else {
       const parsed = JSON.parse(body)
       assert.equal(response.status, 200, 'non-stream failover keeps its status contract')
@@ -246,6 +252,7 @@ try {
     assert.equal(served[0].profileId, 'working')
     assert.equal(response.status, 200)
     assert(reply.trim().length > 0, 'the real Claude Max fallback must produce visible text')
+    assert(reply.includes(receipt), 'the answering account must deliver this run\'s unique receipt')
   }
   console.log(JSON.stringify({ result: 'PASS', pkgRoot, serverModule, refusedCalls, model: MODEL, refusalDelayMs: REFUSAL_DELAY_MS, workingLeg: WORKING_FIXTURE ? 'local-fixture' : 'real-claude-max' }))
 } catch (error) {

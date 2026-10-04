@@ -11,7 +11,7 @@
  * terminators.
  */
 import { describe, it, expect } from "bun:test"
-import { nextSseFrame, classifySseFrame, SsePreludeScanner, relayStreamAttempt, createSseRelayStream, hasIncompleteUtf8Tail, type SseRelaySink } from "../proxy/sseFailureSniff"
+import { nextSseFrame, classifySseFrame, SsePreludeScanner, relayStreamAttempt, createSseRelayStream, hasIncompleteUtf8Tail, SseReaderRetirementError, type SseRelaySink } from "../proxy/sseFailureSniff"
 
 const RATE_LIMIT = 'event: error\ndata: {"type":"error","error":{"type":"rate_limit_error","message":"limit"}}\n\n'
 const BILLING = 'event: error\ndata: {"type":"error","error":{"type":"billing_error","message":"inactive"}}\n\n'
@@ -98,6 +98,13 @@ describe("classifySseFrame verdicts", () => {
 
   it("a forwarded ping event is keepalive, not content", () => {
     expect(classifySseFrame('event: ping\ndata: {"type":"ping"}')).toEqual({ kind: "keepalive" })
+  })
+
+  it("applies empty values for recognized colonless fields and lets the last event win", () => {
+    for (const event of ["ping", "error"]) {
+      expect(classifySseFrame(`event: ${event}\nevent\ndata: {"error":{"type":"billing_error"}}`)).toEqual({ kind: "content" })
+    }
+    expect(classifySseFrame('event: error\ndata')).toEqual({ kind: "error", errorType: null, payload: null })
   })
 
   it("error frames expose the parsed type and payload", () => {
@@ -277,6 +284,16 @@ describe("stream transport (actual relay, not a duplicate scan loop)", () => {
     for (let split = 1; split < input.length; split++) {
       const output: Uint8Array[] = []
       await relayStreamAttempt(response([input.slice(0, split), input.slice(split)]), sink(output))
+      expect(Buffer.concat(output)).toEqual(Buffer.from(input))
+    }
+  })
+
+  it("never suppresses an account error after a colonless event resets a preceding ping or error", async () => {
+    for (const event of ["ping", "error"]) {
+      const input = encoder.encode(`event: ${event}\nevent\ndata: {"error":{"type":"billing_error"}}\n\n${BILLING}`)
+      const output: Uint8Array[] = []
+      const verdict = await relayStreamAttempt(response([input]), sink(output))
+      expect(verdict.kind).toBe("relayed")
       expect(Buffer.concat(output)).toEqual(Buffer.from(input))
     }
   })
@@ -559,8 +576,28 @@ describe("stream transport (actual relay, not a duplicate scan loop)", () => {
       cancel() { return Promise.reject(failure) },
     }), { status: 429 })
     const verdict = await relayStreamAttempt(inner, sink(output))
-    expect(verdict).toEqual({ kind: "relayed", terminalError: true, cleanupFailure: { error: failure } })
+    expect(verdict.kind).toBe("relayed")
+    if (verdict.kind !== "relayed") throw new Error("expected terminal relay")
+    expect(verdict.terminalError).toBe(true)
+    expect(verdict.cleanupFailure?.error).toBeInstanceOf(SseReaderRetirementError)
+    const retirementError = verdict.cleanupFailure?.error
+    if (!(retirementError instanceof SseReaderRetirementError)) throw new Error("expected retirement failure")
+    expect(retirementError.cause).toBe(failure)
     expect(text(output).split("event: error").length - 1).toBe(1)
+    expect(inner.body!.locked).toBe(false)
+  })
+
+  it("brands rejected nonterminal SSE cancellation so its authority owner can fence it", async () => {
+    const failure = new Error("nonterminal cancellation failed")
+    const inner = new Response(new ReadableStream<Uint8Array>({
+      start(controller) { controller.enqueue(encoder.encode(MESSAGE_START)) },
+      cancel() { return Promise.reject(failure) },
+    }), { headers: { "content-type": "text/event-stream" } })
+    const opts = sink([])
+    let stopped = false
+    opts.isCancelled = () => stopped
+    opts.enqueue = async () => { stopped = true; return false }
+    await expect(relayStreamAttempt(inner, opts)).rejects.toBeInstanceOf(SseReaderRetirementError)
     expect(inner.body!.locked).toBe(false)
   })
 })

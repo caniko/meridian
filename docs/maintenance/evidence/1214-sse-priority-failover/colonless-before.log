@@ -1,0 +1,42 @@
+bun test v1.3.14 (0d9b296a)
+
+src/__tests__/sse-failure-sniff.test.ts:
+100 |     expect(classifySseFrame('event: ping\ndata: {"type":"ping"}')).toEqual({ kind: "keepalive" })
+101 |   })
+102 | 
+103 |   it("applies empty values for recognized colonless fields and lets the last event win", () => {
+104 |     for (const event of ["ping", "error"]) {
+105 |       expect(classifySseFrame(`event: ${event}\nevent\ndata: {"error":{"type":"billing_error"}}`)).toEqual({ kind: "content" })
+                                                                                                         ^
+error: expect(received).toEqual(expected)
+
+  {
+-   "kind": "content",
++   "kind": "keepalive",
+  }
+
+- Expected  - 1
++ Received  + 1
+
+      at <anonymous> (/Users/rynfar/repos/meridian-sse-priority-incorporation-1214-20261004/src/__tests__/sse-failure-sniff.test.ts:105:100)
+(fail) classifySseFrame verdicts > applies empty values for recognized colonless fields and lets the last event win [1.42ms]
+291 |   it("never suppresses an account error after a colonless event resets a preceding ping or error", async () => {
+292 |     for (const event of ["ping", "error"]) {
+293 |       const input = encoder.encode(`event: ${event}\nevent\ndata: {"error":{"type":"billing_error"}}\n\n${BILLING}`)
+294 |       const output: Uint8Array[] = []
+295 |       const verdict = await relayStreamAttempt(response([input]), sink(output))
+296 |       expect(verdict.kind).toBe("relayed")
+                                 ^
+error: expect(received).toBe(expected)
+
+Expected: "relayed"
+Received: "suppressed"
+
+      at <anonymous> (/Users/rynfar/repos/meridian-sse-priority-incorporation-1214-20261004/src/__tests__/sse-failure-sniff.test.ts:296:28)
+(fail) stream transport (actual relay, not a duplicate scan loop) > never suppresses an account error after a colonless event resets a preceding ping or error [1.41ms]
+
+ 0 pass
+ 43 filtered out
+ 2 fail
+ 2 expect() calls
+Ran 2 tests across 1 file. [26.00ms]

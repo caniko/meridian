@@ -1,0 +1,13 @@
+{
+  "head": "1a1060f00ccdc33cf2e51b55a826b865dd600dc2",
+  "command": "npm test",
+  "exit_code": 130,
+  "status": "interrupted_after_independent_review_found_material_retirement_and_framing_gaps",
+  "test_failure_claim": false,
+  "completed_gate_claim": false,
+  "original_log_sha256": "82a3f7c07aa8dea8ab48eda9ae933746b9476927d232e21b8b5aabdf9dca5162",
+  "original_log_bytes": 547735,
+  "durable_log": "npm-test-1a1060f0-interrupted.log.gz",
+  "artifact_sha256": "bfefb9548ce7916ed8baaf7eb9716fbbaea39593bedb6ae71bd3ae1d6b421e46",
+  "inspection": "gzip -dc docs/maintenance/evidence/1214-sse-priority-failover/npm-test-1a1060f0-interrupted.log.gz"
+}

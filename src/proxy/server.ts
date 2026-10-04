@@ -68,7 +68,7 @@ import { telemetryStore, diagnosticLog, createTelemetryRoutes, landingHtml, rend
 import { detectSupervision } from "./supervision"
 import type { RequestMetric } from "../telemetry"
 import { canRecoverCapturedToolUses, canRecoverUncapturedToolUses, isStreamedToolBlockComplete, unavailableToolResults, type StreamedToolBlockRecord, classifyError, extractSdkTermination, formatSdkTermination, classifyResumeRefusal, isRateLimitError, isExtraUsageRequiredError, isExpiredTokenError, isAccountFailoverError, isQuotaRefusal, isOutputTokenCapExceeded } from "./errors"
-import { createSseRelayStream, relayStreamAttempt } from "./sseFailureSniff"
+import { createSseRelayStream, relayStreamAttempt, SseReaderRetirementError } from "./sseFailureSniff"
 import { refreshOAuthToken, ensureFreshToken, startBackgroundRefresh, stopBackgroundRefresh, createPlatformCredentialStore, readStoredCredentialPresence, getAuthRenewalStatus, getStoredPlanFields, resolveRenewalWarnDays, type CredentialStore, type StoredPlanFields } from "./tokenRefresh"
 import { planAllowance } from "./planAllowance"
 import { isCredentialsReadOnly, logCredentialsModeBanner } from "./credentialsMode"
@@ -1562,6 +1562,11 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
           }
         } catch (error) {
           failedUnexpectedly = true
+          if (error instanceof SseReaderRetirementError) {
+            cleanupFailed = true
+            options.requestMeta.retainSessionTurnFence?.()
+            claudeLog("priority.reader_retirement_fenced", { error: String(error.cause) })
+          }
           // Headers are already sent: classify as the route's own handler
           // would, but deliver the verdict as a stream error frame.
           const errMsg = error instanceof Error ? error.message : String(error)

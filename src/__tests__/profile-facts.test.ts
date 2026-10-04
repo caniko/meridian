@@ -221,7 +221,7 @@ describe("expiry fact focus survives automatic refresh", () => {
         source + "\nreturn refresh;")(document, fetch, () => { renders++ }, { adopt: () => {} }, () => focused) as () => Promise<void>
       return {
         refresh, resolve: () => resolve(response), reject: () => reject(new Error("fixture unavailable")),
-        focus: () => { focused = true }, content,
+        focus: () => { focused = true }, blur: () => { focused = false }, content,
         requests: () => requests, renders: () => renders,
       }
     }
@@ -261,6 +261,18 @@ describe("expiry fact focus survives automatic refresh", () => {
       f.resolve()
       await poll
       expect(f.requests()).toBeGreaterThan(0)
+      expect(f.renders()).toBe(1)
+    })
+
+    test(`${page}: polling resumes after focus leaves the retained facts`, async () => {
+      const f = fixture()
+      const poll = f.refresh()
+      f.focus()
+      f.resolve()
+      await poll
+      expect(f.renders()).toBe(0)
+      f.blur()
+      await f.refresh()
       expect(f.renders()).toBe(1)
     })
   }

@@ -6,8 +6,9 @@ also ignored `thinking_delta` and `signature_delta`. OpenCode's adapter supports
 thinking, so this could make the verification client differ from the response it
 actually received. Correct the harness before using a thinking run as evidence.
 
-This is an internal verification correction based on
-`3afca1f5a0d51d74f8c7437b90f43d5686cf4163`. It does not incorporate contributor
+This is an internal verification correction initially based on
+`3afca1f5a0d51d74f8c7437b90f43d5686cf4163`, then rebased onto the documentation-only
+main advancement `0369441786b082aadeb31689dcbce41d7e8574d9`. It does not incorporate contributor
 code or change proxy behavior, exported contracts, billing, or cache thresholds.
 The original #1245/#1220 200-token cache-read discrepancy remains unexplained.
 
@@ -33,16 +34,28 @@ creates a signature or fills in missing thinking fields. Tool JSON parsing and
 usage merging retain their existing behavior. No parser is copied into the
 current live harness or the fault control.
 
-Focused validation: nine tests pass, 18 assertions; standalone typecheck and
-build pass. The offline failure control passes with three expected baseline
-failures and three corrected successes. Full `npm test` is queued behind the
-other backlog branch. Final-head CI remains required. No live generation was
-run for this correction; root is coordinating the available native profile.
+At frozen executable head `b49defeccf2be9dcae30863689b35b3a6e0d42fd`, full
+`npm test` exits 0: **5,354 pass / 35 existing skips / 0 fail**, across 19 isolated
+stages with 26,623 assertions and its pretest typecheck. Focused validation is
+nine tests / 18 assertions; standalone typecheck and build pass. The offline
+failure control passes with three expected baseline failures and three corrected
+successes. The only later change is this evidence update. Final-head CI remains
+required. No live generation was used or needed for this harness-only correction;
+the original native Opus cache observation retains its separate evidence gate.
 
 Adversarial controls cover fragmented signatures, mixed thinking/redacted/text/
 tool responses, preserved citations and nested tool input, detached replay
 objects, unchanged usage, wrong-block deltas, and malformed tool JSON. The same
 helper is directly exercised instead of testing a second implementation.
+
+An independent reviewer inspected the complete helper, all nine tests, the
+immutable-baseline escrow expression, E41 integration and report scope at
+`b49defec`. JSON retains opaque/full received fields; streaming thinking and
+signature deltas append only to their matching block type; tool parsing and
+usage remain intact; replay copies are detached. The controls discriminate the
+original fidelity loss from corrected preservation and cover ordinary/tool/cache
+traffic and wrong-block deltas. No material finding survived. The review
+explicitly keeps the original 200-token causal gate open.
 
 ## What this establishes about #1245/#1220
 

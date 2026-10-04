@@ -8,14 +8,19 @@ import { once } from 'node:events'
 import { randomBytes, randomUUID } from 'node:crypto'
 import { mkdtempSync, mkdirSync, readFileSync, realpathSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { resolve, join } from 'node:path'
+import { resolve, join, dirname } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { createRequire } from 'node:module'
 import { spyOn } from 'bun:test'
-import * as sdk from '@anthropic-ai/claude-agent-sdk'
 import { sonnetContextFixture } from './e2e-sonnet-context-fixture.mjs'
 
 assert.equal(process.platform, 'linux', 'Run this affected-platform gate on Linux')
 const repo = realpathSync(resolve(process.env.E2E_MERIDIAN_ROOT ?? '.'))
+// Observe the exact external module resolved by the selected server bundle,
+// including a baseline/package with its own dependency installation.
+const sdkPath = createRequire(join(repo, 'dist/server.js')).resolve('@anthropic-ai/claude-agent-sdk')
+const sdkVersion = JSON.parse(readFileSync(join(dirname(sdkPath), 'package.json'))).version
+assert.equal(sdkVersion, '0.2.141', 'This acceptance gate requires the implicated SDK version')
 const client = realpathSync(process.env.E2E_OPENCODE_BIN)
 const importOnly = process.env.E2E_IMPORT_ONLY === '1'
 const owned = importOnly ? undefined : realpathSync(process.env.E2E_PROFILE_CLAUDE_DIR)
@@ -26,36 +31,40 @@ const project = join(root, 'project'), config = join(root, 'client-config'), aut
 for (const directory of [project, config, auth]) mkdirSync(directory, { mode: 0o700 })
 const fixture = sonnetContextFixture()
 const facts = { platform: `${process.platform}/${process.arch}`, model: 'claude-sonnet-5-5', client: '2.0.16',
-  sdk: JSON.parse(readFileSync(new URL('../node_modules/@anthropic-ai/claude-agent-sdk/package.json', import.meta.url))).version,
-  root, readiness: {}, wire: [], queries: [], resumed: false, result: 'INCOMPLETE' }
+  sdk: sdkVersion,
+  root, readiness: {}, catalogRequests: 0, wire: [], queries: [], resumed: false, result: 'INCOMPLETE' }
 const savedConsole = { log: console.log, warn: console.warn, error: console.error, debug: console.debug }
 let logCount = 0
 for (const key of Object.keys(savedConsole)) console[key] = () => { logCount++ }
-let proxy, relay, server, serverOutput, observer
+let proxy, relay, server, serverOutput, observer, sdk
 const writeFacts = () => writeFileSync(join(proof, 'sonnet-context-results.json'), JSON.stringify({ ...facts, suppressedLogLines: logCount }, null, 2), { mode: 0o600 })
 try {
   if (!importOnly) {
-  // The source mount remains read-only. Only this private disposable copy can
-  // be used by a native SDK runtime; it is deleted even when readiness fails.
-  let credentials
-  try { credentials = JSON.parse(readFileSync(join(owned, '.credentials.json'), 'utf8')) }
-  catch { throw new Error('Owned native credential fixture is unavailable or unreadable') }
-  const grant = credentials.claudeAiOauth
-  facts.readiness = { credentialPresent: typeof grant?.accessToken === 'string', expiryFuture: grant?.expiresAt > Date.now() }
-  assert(facts.readiness.credentialPresent && facts.readiness.expiryFuture, 'Owned native fixture is absent or expired')
-  const ready = await fetch('https://api.anthropic.com/api/oauth/usage', {
-    headers: { authorization: `Bearer ${grant.accessToken}`, 'anthropic-beta': 'oauth-2025-04-20' }, signal: AbortSignal.timeout(10_000),
-  })
-  facts.readiness.status = ready.status
-  await ready.body?.cancel()
-  assert(ready.ok, 'Owned native OAuth readiness failed; no generation started')
-  writeFileSync(join(auth, '.credentials.json'), JSON.stringify(credentials), { mode: 0o600 })
+    // The source mount remains read-only. Only this private disposable copy can
+    // be used by a native SDK runtime; it is deleted even when readiness fails.
+    let credentials
+    try { credentials = JSON.parse(readFileSync(join(owned, '.credentials.json'), 'utf8')) }
+    catch { throw new Error('Owned native credential fixture is unavailable or unreadable') }
+    const grant = credentials.claudeAiOauth
+    facts.readiness = { credentialPresent: typeof grant?.accessToken === 'string', expiryFuture: grant?.expiresAt > Date.now() }
+    assert(facts.readiness.credentialPresent && facts.readiness.expiryFuture, 'Owned native fixture is absent or expired')
+    const ready = await fetch('https://api.anthropic.com/api/oauth/usage', {
+      headers: { authorization: `Bearer ${grant.accessToken}`, 'anthropic-beta': 'oauth-2025-04-20' }, signal: AbortSignal.timeout(10_000),
+    })
+    facts.readiness.status = ready.status
+    await ready.body?.cancel()
+    assert(ready.ok, 'Owned native OAuth readiness failed; no generation started')
+    writeFileSync(join(auth, '.credentials.json'), JSON.stringify(credentials), { mode: 0o600 })
   }
   for (const key of Object.keys(process.env)) if (/^(MERIDIAN_|CLAUDE_|CLAUDE_PROXY_|ANTHROPIC_|OPENAI_)/.test(key)) delete process.env[key]
   const attestation = randomBytes(32).toString('base64url')
   Object.assign(process.env, { MERIDIAN_CONFIG_DIR: join(root, 'proxy-config'), MERIDIAN_SESSION_DIR: join(root, 'sessions'),
     MERIDIAN_WORKDIR: project, MERIDIAN_PASSTHROUGH: '1', MERIDIAN_CREDENTIALS_READONLY: '1', MERIDIAN_NO_UPDATE_CHECK: '1',
     MERIDIAN_TELEMETRY_PERSIST: '0', MERIDIAN_OPENCODE_ATTESTATION_KEY: attestation, CLAUDE_CONFIG_DIR: join(root, 'unlinked-default') })
+  process.env.HOME = join(root, 'proxy-home')
+  mkdirSync(process.env.HOME, { mode: 0o700 })
+  for (const kind of ['CONFIG', 'DATA', 'CACHE', 'STATE']) process.env[`XDG_${kind}_HOME`] = join(root, `proxy-${kind.toLowerCase()}`)
+  sdk = await import(pathToFileURL(sdkPath).href)
   const actualQuery = sdk.query
   observer = spyOn(sdk, 'query').mockImplementation(input => {
     const text = typeof input.prompt === 'string' ? input.prompt : undefined
@@ -86,14 +95,28 @@ try {
   })
   const { startProxyServer } = await import(pathToFileURL(join(repo, 'dist/server.js')).href)
   proxy = await startProxyServer({ port: 0, host: '127.0.0.1', silent: true,
+    pluginDir: join(root, 'isolated-plugins'), pluginConfigPath: join(root, 'isolated-plugins.json'),
     profiles: [{ id: 'owned-native-sonnet', claudeConfigDir: auth }], defaultProfile: 'owned-native-sonnet' })
   if (!proxy.server.listening) await once(proxy.server, 'listening')
   const upstream = `http://127.0.0.1:${proxy.server.address().port}`
+  if (!importOnly) {
+    const healthResponse = await fetch(`${upstream}/health`)
+    const health = await healthResponse.json()
+    facts.readiness.nativeCliLoggedIn = health.auth?.loggedIn === true
+    const executable = health.claudeExecutable?.path
+    assert(healthResponse.ok && facts.readiness.nativeCliLoggedIn && typeof executable === 'string', 'Native CLI readiness failed before generation')
+    const version = Bun.spawnSync([executable, '--version'], { env: process.env })
+    const match = /^(\d+)\.(\d+)\.(\d+) \(Claude Code\)/.exec(new TextDecoder().decode(version.stdout).trim())
+    facts.claudeCode = match ? `${match[1]}.${match[2]}.${match[3]}` : undefined
+    assert(version.exitCode === 0 && match && (Number(match[1]) > 2 || (Number(match[1]) === 2 && (Number(match[2]) > 1 || (Number(match[2]) === 1 && Number(match[3]) >= 284)))), 'Native CLI does not support the implicated Sonnet 5.5')
+  }
   const catalog = await fetch(`${upstream}/v1/models`).then(response => response.json())
   facts.proxyWindow = catalog.data.find(row => row.id === facts.model)?.context_window
+  assert(Number.isSafeInteger(facts.proxyWindow) && facts.proxyWindow > 0, 'Proxy did not advertise the actual Sonnet model')
   relay = Bun.serve({ hostname: '127.0.0.1', port: 0, async fetch(request) {
     const url = new URL(request.url)
     const body = request.method === 'GET' ? undefined : await request.arrayBuffer()
+    if (url.pathname === '/v1/models' && request.method === 'GET') facts.catalogRequests++
     if (url.pathname === '/v1/messages' && body) {
       const input = JSON.parse(new TextDecoder().decode(body))
       const text = JSON.stringify(input.messages)
@@ -140,6 +163,7 @@ try {
     await Bun.sleep(100)
   }
   assert.equal(facts.clientWindow, facts.proxyWindow, 'Installed V2 client did not adopt the advertised catalog')
+  assert(facts.catalogRequests > 0, 'Installed V2 plugin never fetched the proxy catalog')
   const created = await api('/api/session', { location: { directory: project }, title: 'Native Sonnet context proof', agent: 'build', model: { providerID: 'anthropic', id: facts.model } })
   const info = { ...created.data, id: `ses_${randomUUID().replaceAll('-', '')}` }
   let time = Date.now()
@@ -159,15 +183,20 @@ try {
     assert.equal(facts.wire.length, 0, 'Import rehearsal started a client model request')
     facts.result = 'IMPORT_REHEARSAL_PASS'
   } else {
-  async function prompt(text) {
-    await api(`/api/session/${info.id}/prompt`, { text })
-    await api(`/api/experimental/session/${info.id}/wait`, {})
-    return api(`/api/session/${info.id}/message?order=desc&limit=4`)
+    async function prompt(text) {
+      await api(`/api/session/${info.id}/prompt`, { text })
+      await api(`/api/experimental/session/${info.id}/wait`, {})
+      return api(`/api/session/${info.id}/message?order=desc&limit=4`)
+  }
+  function assistantText(response) {
+    return response.data.filter(row => row.type === 'assistant' && row.agent === 'build'
+      && row.model.id === facts.model && row.finish === 'stop' && !row.error)
+      .flatMap(row => row.content.filter(block => block.type === 'text').map(block => block.text)).join('\n')
   }
   const answer = await prompt(fixture.prompt)
   const fresh = facts.queries.find(row => !row.resumed && row.currentRetained)
   facts.sameAncientNoTrimAssertion = Boolean(fresh?.ancientRetained && !fresh.omitted)
-  facts.receiptDelivered = JSON.stringify(answer).includes(fixture.current)
+  facts.receiptDelivered = assistantText(answer).includes(`console.log("${fixture.current}");`)
   writeFacts()
   assert(facts.wire.some(row => row.model === facts.model && row.agent === 'build' && row.mode === 'primary' && row.attested && row.ancientRetained), 'Actual V2 primary request did not carry the imported history and signed identity')
   assert(fresh?.credentialDirectoryMatched && fresh.nativeModels.includes(facts.model) && fresh.completed, 'Wrong native account/model or incomplete SDK query')
@@ -178,7 +207,7 @@ try {
   const start = facts.queries.length
   const resumed = await prompt(`For the follow-up coding task, return only console.log("${fixture.current}_RESUMED"); Do not call tools.`)
   facts.resumed = facts.queries.slice(start).some(row => row.resumed && row.nativeModels.includes(facts.model) && row.completed)
-    && JSON.stringify(resumed).includes(`${fixture.current}_RESUMED`)
+    && assistantText(resumed).includes(`console.log("${fixture.current}_RESUMED");`)
   assert(facts.resumed, 'Minimal actual V2/SDK resume control failed')
   facts.result = 'PASS'
   }

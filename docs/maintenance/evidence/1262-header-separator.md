@@ -51,8 +51,7 @@ Inspected before/after images are retained by T3 Code's browser artifact store:
 
 - Before branch: `browser-screenshot-127-0-0-1-muuaxocn-9eae98f3.png`.
 - After branch: `browser-screenshot-127-0-0-1-muub41g0-5fef4c0d.png`.
-- After commit and long-branch control:
-  `browser-screenshot-127-0-0-1-muuaz60a-fc7c7158.png`.
+- After commit: `browser-screenshot-127-0-0-1-muub5zd7-859ab8a5.png`.
 
 These media supplement this reproducible repository record. No GitHub media
 upload facility was available; images are not committed to source. No secrets,

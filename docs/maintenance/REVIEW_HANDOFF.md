@@ -30,20 +30,26 @@ retains fully tested product `bb33d26d`: 5,406 / 35 skips / 0 failures across
 and typecheck/build; final evidence-only commit preserves product/harness blobs.
 Native flow and final-head CI remain open.
 
-Ready normal [E41 #1272](https://github.com/rynfar/meridian/pull/1272), final
-`8a08d3d4`, retains executable `b49defec`: 5,354 / 35 skips / 0 failures across
-19 stages, focused/typecheck/build and independent review pass. Its last change
-is evidence only; required CI remains. Original #1245/#1220 causality stays open.
-Approved expiry `b386b148` passes 5,374 / 35 skips / 0 failures and actual
+E41 [#1272](https://github.com/rynfar/meridian/pull/1272) merged as `d3be0c62`
+from exact reviewed `8a08d3d4` after all six executed CI checks passed, including
+test, plus the expected changelog skip. Merge tree `56d1b172` exactly matches
+reviewed content; human authorship and blank squash body were verified. Local
+proof: 5,354 / 35 skips / 0 failures, typecheck/build and independent review.
+Original #1245/#1220 causality stays open. Approved expiry draft
+[#1275](https://github.com/rynfar/meridian/pull/1275), final `1856ee65`, retains
+fully tested executable `b386b148`: 5,374 / 35 skips / 0 failures and actual
 inactive-browser DOM retention/blur/in-flight success/failure controls on both
 pages. Visible keyboard and screen-reader proof remain unavailable; current
 native screenshot coverage is limited. Positive native/provider login and
 client/package/CI acceptance remain open.
 
-Transcript enrollment is committed at frozen `80d1a482`, not a working draft.
-Installed-SDK identity and setup/cleanup review requires a further harness
-correction now in progress before its full suite. Native/client/Windows and
-final review/CI remain open; this is not collection of the untracked backlog.
+Transcript enrollment's corrected harness observes the exact target-installed
+SDK and cleans setup failures. Its first full run at `ab9bb9ae` failed an
+existing third-replacement test that would discard an unfenced predecessor.
+The fixture now obtains modern locators through actual metadata registration,
+retaining every original assertion and the production guard. The necessary full
+rerun at `b20a0e66` is in progress. Native/client/Windows and final-head CI remain
+open; this does not collect the untracked backlog.
 
 Sonnet draft #1267's verified local terminal head is `5a8097c3`. Default-native
 401/zero-query and round-two personal 200 followed by one `<synthetic>` query
@@ -57,7 +63,12 @@ required-model completions. Package/client identities and each arm's 409
 installed dist files match; credentialless/syntax/privacy/content checks pass. Root verified
 terminal completion, zero owned children and removal of owned runtime/container
 with source unchanged. Native acceptance and fresh local/base/head/CI remain
-open; controller owns the requested working-login follow-up. Refresh active
+open; controller owns the requested working-login follow-up. Independent review
+approved the production/harness; local evidence head `73b2d122` clarifies actual
+package-installed Meridian V2 plugin execution through setup/config assertions,
+catalog discovery and the plugin-generated attested primary request. It records
+later controller snapshot cleanup without claiming successful inference. The
+fresh Sonnet full suite is queued after GC. Refresh active
 source/delivery evidence before integration; this checkpoint does not itself
 refresh the entire queue.
 

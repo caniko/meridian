@@ -362,10 +362,12 @@ function infoIcon(entry,type){
     +'</span></span>';
 }
 
-// An open overlay is the hovered or focused element, so this needs no state of
-// its own and cannot be left stuck by an event that never arrives.
+// Retain the active element across a switch to another application too:
+// activeElement survives that switch even when CSS :focus-within does not.
 function infoPopOpen(){
-  return !!document.querySelector('.prof-info:hover, .prof-info:focus-within');
+  var active=document.activeElement;
+  return !!document.querySelector('.prof-info:hover, .prof-info:focus-within')
+    || !!(active && active.closest('.prof-info'));
 }
 
 function profileSection(q,s,pl,h){

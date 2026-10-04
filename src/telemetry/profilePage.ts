@@ -482,7 +482,10 @@ async function commitRename(from) {
 }
 
 function detailFactFocused() {
-  return !!document.querySelector('.detail-value[tabindex]:focus');
+  // CSS :focus stops matching when the browser loses window focus, while
+  // activeElement still identifies the keyboard position to preserve.
+  var active = document.activeElement;
+  return !!(active && active.matches('.detail-value[tabindex]'));
 }
 
 async function refresh() {

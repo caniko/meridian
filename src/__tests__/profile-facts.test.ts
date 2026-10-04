@@ -199,8 +199,9 @@ describe("qualified current credential expiry facts", () => {
 
 describe("expiry fact focus survives automatic refresh", () => {
   for (const page of ["profiles", "home"] as const) {
-    function fixture(initialFocus = false) {
+    function fixture(initialFocus = false, windowFocused = true) {
       let focused = initialFocus
+      let hovered = false
       let requests = 0
       let renders = 0
       const content = { innerHTML: "original focused facts" }
@@ -212,16 +213,29 @@ describe("expiry fact focus survives automatic refresh", () => {
         requests++
         return requests === 1 ? pending : Promise.resolve(response)
       }
-      const document = { querySelector: () => focused ? {} : null, getElementById: () => content }
+      const factElement = {
+        matches: (selector: string) => selector === ".detail-value[tabindex]",
+        closest: (selector: string): object | null => selector === ".prof-info" ? factElement : null,
+      }
+      const bodyElement = { matches: () => false, closest: () => null }
+      const document = {
+        get activeElement() { return focused ? factElement : bodyElement },
+        hasFocus: () => windowFocused,
+        querySelector: (selector: string) => (
+          (selector.includes(":hover") && hovered) || (selector.includes(":focus") && windowFocused && focused)
+        ) ? factElement : null,
+        getElementById: () => content,
+      }
       const source = page === "profiles"
         ? "var editingProfile = null, lastQuota = null, lastProfiles = null;\n"
           + profilePageHtml.slice(profilePageHtml.indexOf("function detailFactFocused()"), profilePageHtml.indexOf("function esc(s)"))
-        : landingHtml.slice(landingHtml.indexOf("async function refresh(){"), landingHtml.indexOf("function tokens(v)"))
-      const refresh = new Function("document", "fetch", "render", "meridianReorder", "infoPopOpen",
-        source + "\nreturn refresh;")(document, fetch, () => { renders++ }, { adopt: () => {} }, () => focused) as () => Promise<void>
+        : landingHtml.slice(landingHtml.indexOf("function infoPopOpen(){"), landingHtml.indexOf("function profileSection(q,s,pl,h)"))
+          + landingHtml.slice(landingHtml.indexOf("async function refresh(){"), landingHtml.indexOf("function tokens(v)"))
+      const refresh = new Function("document", "fetch", "render", "meridianReorder",
+        source + "\nreturn refresh;")(document, fetch, () => { renders++ }, { adopt: () => {} }) as () => Promise<void>
       return {
         refresh, resolve: () => resolve(response), reject: () => reject(new Error("fixture unavailable")),
-        focus: () => { focused = true }, blur: () => { focused = false }, content,
+        focus: () => { focused = true }, blur: () => { focused = false }, hover: () => { hovered = true }, content, document,
         requests: () => requests, renders: () => renders,
       }
     }
@@ -274,6 +288,50 @@ describe("expiry fact focus survives automatic refresh", () => {
       f.blur()
       await f.refresh()
       expect(f.renders()).toBe(1)
+    })
+
+    test(`${page}: a retained active fact prevents polling even in an inactive document`, async () => {
+      const f = fixture(true, false)
+      expect(f.document.hasFocus()).toBe(false)
+      expect(f.document.querySelector(":focus")).toBeNull()
+      f.resolve()
+      await f.refresh()
+      expect(f.requests()).toBe(0)
+      expect(f.renders()).toBe(0)
+      expect(f.content.innerHTML).toBe("original focused facts")
+    })
+
+    test(`${page}: an inactive document retains a fact selected during a successful poll until blur`, async () => {
+      const f = fixture(false, false)
+      const poll = f.refresh()
+      f.focus()
+      f.resolve()
+      await poll
+      expect(f.document.querySelector(":focus")).toBeNull()
+      expect(f.renders()).toBe(0)
+      expect(f.content.innerHTML).toBe("original focused facts")
+      f.blur()
+      await f.refresh()
+      expect(f.renders()).toBe(1)
+    })
+
+    test(`${page}: an inactive document retains a selected fact during a failing poll`, async () => {
+      const f = fixture(false, false)
+      const poll = f.refresh()
+      f.focus()
+      f.reject()
+      await poll
+      expect(f.renders()).toBe(0)
+      expect(f.content.innerHTML).toBe("original focused facts")
+    })
+
+    if (page === "home") test("home: hover still prevents polling without an active fact", async () => {
+      const f = fixture(false, false)
+      f.hover()
+      await f.refresh()
+      expect(f.document.hasFocus()).toBe(false)
+      expect(f.requests()).toBe(0)
+      expect(f.renders()).toBe(0)
     })
   }
 })

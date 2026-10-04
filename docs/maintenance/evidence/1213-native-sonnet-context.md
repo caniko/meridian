@@ -285,7 +285,15 @@ Cleanup joined proxy/client/native children with **zero owned residuals**,
 removed runtime auth, the scoped copy, all fixture runtimes and only the owned
 round-3 container. The shared pinned image was preserved. Before/after digest
 comparison proves the controller's immutable WORK copy unchanged; it remains
-available to its owner. The user's root checkout and other worktrees were not
+available to its owner at that child-round completion. After the terminal
+result, the controller verified and removed all three exact, private
+default-native/personal/work snapshot copies. Each owned 0700 directory held
+only its owned ordinary 0600 credential file; all three paths are now absent.
+Native source stores were untouched. The later controller cleanup is recorded
+separately in the acceptance JSON and does not change the earlier round's
+source-unchanged facts. Private credential-file fingerprints have been removed
+from the proposed public artifact; immutable package/source/executable hashes
+remain. The user's root checkout and other worktrees were not
 written. No push, PR
 mutation, merge, issue/source closure, external comment or release occurred.
 
@@ -318,7 +326,18 @@ tree's exact SDK 0.2.141, isolated parent/client HOME/XDG/plugin paths,
 bounded shutdown and tracked Linux PID/start-time identities with zero owned
 residuals. Native generation is fenced in rehearsal and bounded to at most
 two queries per history arm or one entitlement-control query. The round-3
-harness additions still require the controller's independent final review.
+harness additions were independently reviewed at exact `5a8097c3`, including
+the complete production/test diff, all seven replay/fallback sites, supported
+ID/override/opt-out boundaries, the full live harness and structured evidence.
+No material production or harness finding remained. Review found a stale JSON
+claim that the critical harness was unchanged from `dac34820`, unnecessary
+credential fingerprints and current wording that failed to distinguish the
+child's historical copy availability from later controller cleanup. These
+evidence-only corrections preserve the reviewed production/harness blobs. The
+critical harness did change after `dac34820`: its tiny-control mode and original
+error capture have syntax, credentialless rehearsal and one refused-query
+proof, without large-context acceptance. A fresh local full suite remains
+queued with the controller.
 Exact final-head CI and the real affected-flow
 before/after remain required before acceptance; no merge, closure or release
 is authorized by these local results.

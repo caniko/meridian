@@ -235,13 +235,10 @@
         "directoryMode": 448,
         "fileMode": 384,
         "refreshTokenAbsent": true,
-        "usageStatus": 200,
-        "snapshotDigest": "acf49058834dcae2ea805191b9d0555d46b8afb6198fe8d54798433c3d2abbdd"
+        "usageStatus": 200
       },
       "credentialProvenance": {
         "selectedProfile": "personal",
-        "rootSnapshotDigestBefore": "68ebff403fd1c69b980c6155a3836b699f5bd5f7d395230570cdad90457251d5",
-        "scopedSnapshotDigestBefore": "acf49058834dcae2ea805191b9d0555d46b8afb6198fe8d54798433c3d2abbdd",
         "sourceSnapshotUnchanged": true,
         "hostDirectoryMode": 448,
         "hostFileMode": 384,
@@ -546,7 +543,6 @@
         "futureExpiry": true,
         "inferenceScope": true,
         "scopePresent": true,
-        "rootSnapshotDigestBefore": "a3138c50f9e7f6f3ff914b33add06a1eb203d111e2c5c60ec307f8a22a0cc968",
         "sourceReadOnly": true,
         "rootDirectoryMode": 448,
         "rootFileMode": 384,
@@ -871,7 +867,6 @@
       "cleanup": {
         "rootPrivateCopyUnchanged": true,
         "rootPrivateCopyPreserved": true,
-        "rootSnapshotDigestAfter": "a3138c50f9e7f6f3ff914b33add06a1eb203d111e2c5c60ec307f8a22a0cc968",
         "scopedRuntimeCredentialRemoved": true,
         "allOwnedFixtureRuntimeRemoved": true,
         "ownedResidualProcesses": 0,
@@ -918,12 +913,11 @@
       ]
     }
   },
-  "finalEvidenceChangeScope": "Evidence only; production source, tests and committed critical harness unchanged from testedHead. Root owns current-head npm test, independent adversarial review and CI.",
+  "finalEvidenceChangeScope": "Production sources, tests and installed distributions remain unchanged from testedHead. The critical live harness changed after testedHead to add the tiny inference control and sanitized original-error capture; round3 records its exact harness hash, credentialless rehearsal and one refused query, not large-context acceptance. Root owns current-head npm test, independent adversarial review and CI.",
   "lastEvidenceSourceHead": "cabc390fa9cf599225e505e9a8fcef3580db995d",
   "latestCleanup": {
     "rootPrivateCopyUnchanged": true,
     "rootPrivateCopyPreserved": true,
-    "rootSnapshotDigestAfter": "a3138c50f9e7f6f3ff914b33add06a1eb203d111e2c5c60ec307f8a22a0cc968",
     "scopedRuntimeCredentialRemoved": true,
     "allOwnedFixtureRuntimeRemoved": true,
     "ownedResidualProcesses": 0,
@@ -942,5 +936,13 @@
     "ownedContainerRemoved": true,
     "ownedContainerId": "ed853ba500b7fbce99e55477f05cfb001c6e62eac4b0e1ec59b16965cfc7f3e2",
     "pinnedSharedBaseImagePreserved": true
+  },
+  "controllerSnapshotCleanup": {
+    "controllerOwnedPrivateSnapshotsRemoved": 3,
+    "allSelectedCopyPathsAbsent": true,
+    "nativeSourceStoreMutation": false,
+    "credentialBytesPrinted": false,
+    "afterRound3TerminalCleanup": true,
+    "scope": "Later controller cleanup, after round3 terminal completion; child-round rootPrivateCopyPreserved facts describe the earlier child completion. All three controller-created copies are now absent; native source stores were not changed."
   }
 }

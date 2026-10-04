@@ -72,19 +72,25 @@ macOS 27.0.1 / nono 0.79.0 / OpenCode 2.0.21 / plugin 1.11.1 native/client/model
 installed-package proof remain open. #1229 stays open; synthetic denial does
 not establish that the native sandbox operation is fixed.
 
-The owner explicitly approved the hostname contract under
-[issue #1259](https://github.com/rynfar/meridian/issues/1259) in this conversation.
-[Delivery #1268](https://github.com/rynfar/meridian/pull/1268), exact head
-`78ba26a88cff1885c1c3876970543289a0d2278a` on `5bd6b765`, incorporates
-source `322d3af68691eb41552b53c010d1996e9474c130` as authored `3055d6b3`;
-maintainer correction `6fb37564` is separate. Default off, guarded header settings
-and opt-in hostname on public health are verified. Independent final review,
-10/10 actual Settings/standalone browser combinations and full local gates pass:
-5,333 tests / 35 skips / 0 failures at `f33f93a1` on `9d77d8e2`, 19 stages.
-After rebase, identical product/harness blobs, 100 focused checks and standalone
-typecheck/build pass. Final-head CI, exact merged tree/credit and unchanged
-source verification remain integration gates. The October 3 approval-pending
-note is superseded.
+The owner-approved hostname contract under
+[issue #1259](https://github.com/rynfar/meridian/issues/1259) is delivered through
+[#1268](https://github.com/rynfar/meridian/pull/1268). Validated head
+`78ba26a88cff1885c1c3876970543289a0d2278a` merged as
+`3afca1f5a0d51d74f8c7437b90f43d5686cf4163`; exact tree
+`852b4e66d06f93d62b8a32f80f2ded364859a6d6` and Nowaker co-author verified.
+All ten executed final-head checks passed, including
+[test](https://github.com/rynfar/meridian/actions/runs/37237523641/job/111539518710);
+two workflow-conditional checks skipped as expected. Source #1233 was refreshed
+unchanged at `322d3af68691eb41552b53c010d1996e9474c130` and closed;
+approval issue #1259 closed through the validated merge. Authored incorporation
+`3055d6b3` preserves Author/AuthorDate; correction `6fb37564` remains separate.
+Default-off settings/health/shared header behavior has independent final review,
+10/10 actual Settings/standalone browser controls and local proof: 5,333 tests /
+35 skips / 0 failures at `f33f93a1` on `9d77d8e2`, across 19 stages. After
+rebase, identical product/harness blobs, 100 focused checks and standalone
+typecheck/build pass. [Durable proof](evidence/1233-hostname-contract.md).
+The October 3 approval-pending note is superseded. The owned fixture stopped;
+consent was confirmed off before removing its exact private configuration.
 
 Sonnet source `553fd5c386de5e18e531a1d0101d64ef3a3b1792` is prepared in
 [draft delivery #1267](https://github.com/rynfar/meridian/pull/1267), head
@@ -98,6 +104,14 @@ Actual installed Linux/OpenCode 2.0.16 catalog/import rehearsal retains all
 the specifically owned macOS credential fixture is absent. Exact affected-model
 before/after generation and resume proof remain open; source #1213/#1212 stay
 open. Recheck base/head/CI before any future integration.
+
+The post-hostname paginated queue refresh at 22:00 UTC found 25 open PRs /
+11 issues, including [checkpoint #1269](https://github.com/rynfar/meridian/pull/1269).
+No new issue, unexpected PR or contributor head change appeared. Prepared drafts
+#1266/#1267 remain unchanged; held release #1202 now leads at
+`0b50bedabb1887297c63e562f425374c1dcd5030`. All six API coverages succeeded.
+Separate release authorization remains absent. The checkpoint is rebased onto
+`3afca1f5`; fresh final-head CI remains its own integration gate.
 
 ## Current continuation — 2026-10-03
 

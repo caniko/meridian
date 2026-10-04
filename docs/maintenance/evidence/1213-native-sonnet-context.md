@@ -102,6 +102,19 @@ isolates HOME/XDG, package-installed plugin/config, ports, projects and
 sessions. It uses supported V2 import/prompt/wait APIs, observes public SDK
 arguments/results without substituting them, and never reads SDK files.
 
+The test uses Meridian's actual package-installed **OpenCode V2 plugin**.
+Before starting OpenCode, it runs `node <installed-meridian>/dist/cli.js setup
+--v2 --opencode-bin <actual-client>` and asserts that the sole configured plugin
+resolves to that installation's `dist/meridian-v2`. The round-three inference
+control reached the native-query stage only after this assertion passed. Its
+actual client made one catalog request through the forwarding relay and emitted
+the `build`/`primary` request with `x-meridian-opencode-turn` present. The relay
+forwards those client headers unchanged to Meridian's real proxy; it does not
+create a plugin request or call the provider directly. This establishes plugin
+execution on the refused inference path, without establishing successful model
+generation. The classic scrub plugin is a separate client path; OpenCode 2.0.16
+uses the V2 integration under test here.
+
 After building the intended source/package on Linux:
 
 ```sh

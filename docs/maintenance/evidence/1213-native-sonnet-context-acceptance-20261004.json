@@ -960,5 +960,27 @@
     "credentialBytesPrinted": false,
     "afterRound3TerminalCleanup": true,
     "scope": "Later controller cleanup, after round3 terminal completion; child-round rootPrivateCopyPreserved facts describe the earlier child completion. All three controller-created copies are now absent; native source stores were not changed."
+  },
+  "actualMeridianOpenCodePluginEvidence": {
+    "integration": "Package-installed Meridian OpenCode V2 plugin, dist/meridian-v2",
+    "client": "Actual released OpenCode 2.0.16 on Linux x64",
+    "installer": [
+      "node",
+      "<installed-meridian>/dist/cli.js",
+      "setup",
+      "--v2",
+      "--opencode-bin",
+      "<actual-client>"
+    ],
+    "configurationAssertion": "The sole configured plugin realpath equals the selected package installation dist/meridian-v2; passed before native-query-1",
+    "observedCatalogRequests": 1,
+    "observedClientRequest": {
+      "agent": "build",
+      "mode": "primary",
+      "model": "claude-sonnet-5-5",
+      "signedTurnHeaderPresent": true
+    },
+    "transport": "Actual client -> forwarding relay (unchanged headers/body) -> installed Meridian proxy -> real observed SDK query",
+    "scope": "Proves actual V2 plugin execution on the refused tiny inference path; no successful required-model completion, capacity or resume proof. Classic scrub is a separate integration."
   }
 }

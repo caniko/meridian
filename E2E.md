@@ -7365,3 +7365,33 @@ their own auth status. A synthetic API key recognition is not inference-key
 validation. The separately isolated HTTP regression file checks supplied setup
 tokens and preserves stored subscription plan, renewal and missing-token rules.
 See [bounded proof](docs/maintenance/evidence/1257-profile-credential-isolation.md).
+
+## Current profile expiry and login deadline persistence (#1270)
+
+Run `bun scripts/e2e-login-deadline-persistence.mjs` for the credentialless
+shared token-exchange gate. It injects provider responses, emulates the file
+backend and checks actual writes to owned temporary files, including absolute/
+relative deadlines, absent/malformed replacement metadata and read-only/failed
+writes. Native commands and SDK queries are fenced. Set `E2E_SOURCE_ROOT` to an
+unchanged checkout with dependencies to repeat the same missing-deadline
+assertion before the correction. This is simulated exchange evidence.
+
+Run `bun scripts/e2e-profile-expiry-fields.mjs` for current-store HTTP controls:
+own/shared store, API/setup-token isolation, unknown versus empty reads,
+validated timestamps, rounding/warning window and changed/absent deadlines.
+Use the same unchanged source root for its before assertion. The maintained
+tests invoke these gates in fresh processes to isolate global mocks.
+
+Actual acceptance also requires a fresh Meridian-managed provider login with a
+reported refresh deadline, native file/Keychain readback and unchanged `/health`
+deadline before any refresh. Re-authentication must replace the previous
+deadline or leave it unknown if metadata is absent. Preserve supported-client/
+actual-model receipt and independently installed-package proof. Do not print
+tokens, codes, authorization URLs, PKCE material or raw provider bodies.
+
+Root owns the native browser proof: Profiles and home at narrow/wide widths,
+future/past refresh and access expiry, unknown data, cached-auth qualification,
+hover/focus exact-time descriptions, warning color and reversible fitting.
+Expiry must never create logout/new-login-age facts or remove future access
+expiry. Synthetic controls do not complete fresh login/native/model proof.
+See [approved scope and evidence](docs/maintenance/evidence/1270-profile-expiry.md).

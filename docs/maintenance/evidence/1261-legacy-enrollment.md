@@ -1,0 +1,253 @@
+# Recorded legacy transcript enrollment — partial response to #1261
+
+## Scope and provenance
+
+Contributor PR [#1261](https://github.com/rynfar/meridian/pull/1261) remains open and
+unincorporated at `7475d08c652332aa1b9b23cbc525024bef83ab28`, authored by
+Nowaker `<spam@nowaker.net>` on `2026-10-04T03:36:26-05:00`, with source base
+`f299fe06e72411b786380b5212edea79cd13966a`. Live GitHub was rechecked on
+2026-10-04 at delivery preparation: source head unchanged, state OPEN. Its purpose is accepted: bound disk growth without destroying native
+resume history. The original CLI age-sweep implementation remains deferred for
+ownership, admission, pin and process-lifetime reasons recorded in the
+[source review](1261-transcript-sweep-review.md).
+
+This is an independent maintainer correction, prompted by that assessment.
+**No contributor source hunks were retained or cherry-picked.** It does not
+claim to incorporate or fully resolve #1261. Implementation started from
+`3afca1f5a0d51d74f8c7437b90f43d5686cf4163` and rebased onto
+`0369441786b082aadeb31689dcbce41d7e8574d9`; that base update changes only four
+maintenance documents, so source/harness proof is unaffected. The initial
+implementation commit is `4d645c7faea42539d86f694758dbcaef37d92008`; the
+final safety correction is `c62fe69151793532711f0936e1090c1d95651d4a`.
+It contains the protected-key index, predecessor guards, conservative uncertain
+publication handling and isolated-grant harness authority tests.
+
+The owner authorized this internal correction for exact locators already
+recorded by Meridian. It adds no public plugin/configuration/route interface,
+settings switch, shared-root enumeration or native credential operation.
+
+## Reproduced gap and controls
+
+On unchanged main, a durable mapping can contain exact `currentTranscript` and
+`previousTranscript` locators without lifecycle generations. GC has no ownership
+resource to collect when that mapping is evicted. A fresh HTTP turn can replace
+the predecessor before periodic maintenance enrolls it, permanently losing that
+recorded location. Modern pre-journaled targets already collect correctly.
+
+The committed credentialless
+[ownership probe](../../../scripts/probe-legacy-transcript-enrollment.mjs)
+creates only disposable Meridian metadata and injects a recording deleter. It
+uses no SDK transcript, CLI, credentials or model calls. The exact baseline
+command exited **0**, asserting all four arms:
+
+```sh
+E2E_MERIDIAN_ROOT=/absolute/path/to/unchanged-3afca1f5 \
+  bun scripts/probe-legacy-transcript-enrollment.mjs
+```
+
+| Arm | Baseline observation |
+| --- | --- |
+| Unjournaled legacy mapping | Pinned deletion count 0; eviction deletion count 0; ownership remains absent. |
+| Modern journaled mapping | Pinned deletion count 0; eviction deletes exactly its owned target. |
+| Existing enrollment/CAS primitive | Exact mapping remains pinned, then eviction deletes exactly its target. |
+| Stale enrollment CAS | Attachment returns false; new ownership rolls back; deletion count stays 0. |
+
+The probe's `PASS` means it reproduced these distinctions, including the gap.
+It does not mean the baseline is fixed. The third arm establishes existing
+internal enrollment authority; the new regression suite exercises the actual
+bounded coordinator.
+
+For an independently falsifiable HTTP failure, copy the corrected
+[admission test](../../../src/__tests__/proxy-retirement-admission.test.ts) into a
+new detached baseline worktree and run the same three original new assertions
+with the SDK mocked. Source remained unchanged at exact `3afca1f5`:
+
+```sh
+git worktree add --detach /absolute/path/to/baseline \
+  3afca1f5a0d51d74f8c7437b90f43d5686cf4163
+cd /absolute/path/to/baseline
+# Install the unchanged lockfile's dependencies without postinstall side effects.
+bun install --frozen-lockfile --ignore-scripts
+cp /absolute/path/to/correction/src/__tests__/proxy-retirement-admission.test.ts \
+  /absolute/path/to/baseline/src/__tests__/proxy-retirement-admission.test.ts
+bun test src/__tests__/proxy-retirement-admission.test.ts \
+  --test-name-pattern 'journals the recorded predecessor|refuses unsafe enrollment'
+```
+
+Observed baseline result: **0 pass / 3 fail / 8 filtered** (exit **1**). The
+streaming and nonstreaming cases expected the predecessor resource's session ID
+`legacy-previous` and received `undefined`. The corrupt-sidecar case expected
+503 and received 500. The test file has since gained capacity and two-profile
+controls; the narrowed pattern above still selects those same three assertions.
+The corresponding corrected HTTP cases pass with their assertions preserved.
+The observed baseline reused the same locked dependencies through a read-only
+node_modules symlink; the commands above reproduce it with an independent
+postinstall-free install. It exercised the metadata loss through real proxy HTTP
+admission and mocked SDK queries; it is not a reproduction of the reported 35 GiB Linux host.
+
+## Correction and safety boundaries
+
+`sessionLifecycle.ts` takes a bounded batch of current/predecessor locators from
+existing durable mappings. Under the existing lifecycle lock it journals only
+the exact recorded session/root/project tuple and attaches both generations
+through one exact mapping CAS. An exact CAS rejection restores newly added resources and fence counters.
+A throwing publication conservatively retains issued resources/fences because
+its store rename may already be visible. Canonical physical identities share resources,
+while durable locators retain their recorded aliases.
+
+Existing prepared/retired ownership states, writer leases, publication leases,
+process-incarnation fencing and SDK deletion authority remain intact. In-flight
+`deleting` targets are skipped so normal executor recovery can run; `deleted`
+tombstones fail closed. Fenced mappings with missing ownership are not recreated.
+There is no best-guess adoption of native sessions from a shared root.
+
+The first prototype exposed a priority rollback hazard: advancing a pending
+route's mapping generation would invalidate the request's finalizer. The
+correction excludes both rollback source mappings and pending route mappings in
+the initial snapshot and again in the locked CAS. The negative control proves
+that the pending request still finalizes with its captured mapping/assignment
+CAS, unchanged pins stay protected, and both mappings enroll afterward.
+Protected route keys are indexed once per snapshot, avoiding a mapping × route
+scan before the bounded batch.
+
+Identity-bearing HTTP admission joins only a bounded pass for that identity's
+selected mappings before capturing arrival generations. It does not await
+completion of global metadata enrollment. Remaining eligible identity mappings
+produce a bounded retry before SDK launch. Both ordinary and priority durable
+publication independently refuse to replace an unfenced predecessor; a lost
+enrollment CAS cannot bypass this guard. Cancellation stops queued/external
+lock admission, never an already-running durable transaction. Unsafe enrollment
+returns the existing structured 503/`Retry-After: 5` contract (499 if cancelled).
+
+Independent review found three additional progress hazards and they were fixed:
+
+- A 16-mapping enrollment batch could be followed by eviction of a later legacy
+  mapping. Count-cap victim selection now retains mappings containing an exact
+  unfenced current or predecessor locator. Ordinary/new priority publication
+  rejects through its existing false-CAS authority when no safe victim exists.
+  An already-pending finalizer can retain preexisting protected overflow without
+  invalidating its exact authority. Profile-copy pruning checks each released
+  locator against a safe, matching sidecar resource under the lifecycle lock;
+  unenrolled later victims remain pinned until a later pass can enroll them.
+- Enrollment capacity failure could prevent GC from freeing capacity forever.
+  Maintenance now skips pruning on enrollment failure, still runs supported GC
+  for already-owned garbage, and records the enrollment deferral. The next sweep
+  can enroll the legacy locator. A process-local scheduling cursor advances even
+  on skipped or CAS-losing mappings so those cannot starve later candidates. The
+  cursor is not an ownership/deletion fence and resets on restart.
+
+- A one-item identity batch with two profile mappings could leave the selected
+  second profile unenrolled and discard its predecessor during in-place
+  replacement. Admission now checks its bounded pass's postcondition and returns
+  503 before querying while enrollment remains pending. Both store publication
+  paths also return false if a new ID would discard an unfenced predecessor.
+  Same-ID updates remain allowed. The two-profile/one-item HTTP control requires
+  no initial SDK query, preserved predecessor authority and a successful retry
+  after maintenance; direct tests cover stale enrollment CAS and both publication
+  paths.
+
+At a full mapping cap, retaining the only remaining ownership proof can briefly
+refuse a new publication until bounded maintenance progresses. No unlimited
+admission wait, guard bypass or silent deletion of that proof was introduced.
+Explicit mapping deletion can still discard proof; sessions whose locator was
+already forgotten, mappings containing only IDs, and unknown shared-root
+sessions remain outside this correction. It does not collect the contributor's
+reported 49,436 already-untracked sessions / 35 GiB.
+
+## Publication uncertainty fault proof
+
+Root review found that a throwing store publication can already have made a new
+mapping visible. Rolling back ownership on every throw could leave that mapping
+fenced to a missing resource and reuse an issued generation. Current baseline
+`fsyncParentDirectory` swallows parent-flush errors; this correction does not
+change that separate store durability contract. The discriminating control
+executes the actual `sessions.json` rename, then injects a publication error at
+that visibility boundary. It checks both persisted authorities, not a mocked
+successful result.
+
+On the initial correction `4d645c7f`, copying the current direct test into an
+isolated worktree and running the same assertion failed **0 pass / 1 fail /
+37 filtered**, exit **1**: the mapping carried `r:<resource-key>:1` while the
+corresponding sidecar resource was absent. The corrected suite passes it.
+
+```sh
+bun test src/__tests__/session-legacy-enrollment.test.ts \
+  --test-name-pattern 'successful mapping rename reports failure'
+```
+
+Unknown throwing publication now retains the issued ownership and original
+error; no cleanup attempt can mask it. An exact false CAS still rolls back. A
+separate rollback-failure control proves one cleanup attempt, preserved error
+cause, retained safe ownership if cleanup fails, and no deletion of its still
+pinned target.
+
+The two-profile/one-item admission assertion also failed on `4d645c7f` (expected
+503, received 200; **0 pass / 1 fail / 12 filtered**, exit **1**) and passes with
+the corrected postcondition and independent store guards:
+
+```sh
+bun test src/__tests__/proxy-retirement-admission.test.ts \
+  --test-name-pattern 'one-item enrollment leaves a second profile'
+```
+
+## SDK authority
+
+Installed SDK **0.2.141**, Claude Code **2.1.284**. Existing production GC uses
+supported `deleteSession(sessionId, { dir })` in an owned, joined Node child with
+an exact per-child config root. Its lifecycle publication/writer/executor fence
+remains the deletion authority. Supported `listSessions` metadata has no immutable
+creator, writer incarnation or ownership generation; it cannot authorize
+adopting forgotten sessions. `persistSession: false` prevents durable resume.
+
+The existing CLI cleanup mechanism cannot accept Meridian pins or publication
+leases. With an enabled real settings source, omitting a retention override
+cannot prove cleanup is disabled; `cleanupPeriodDays: 0` is invalid in the
+installed supported schema. The correction does not change settings sources or
+age cleanup. See the installed SDK's public declarations and official
+[session storage documentation](https://code.claude.com/docs/en/agent-sdk/session-storage)
+and [automatic cleanup documentation](https://code.claude.com/docs/en/claude-directory#cleaned-up-automatically).
+
+## Verification and open gates
+
+Host: macOS arm64, Bun **1.3.14**, Node **22.22.3**. Focused checks used isolated
+temporary Meridian stores and mocked SDK/custom recording deleters.
+
+| Check | Result |
+| --- | --- |
+| New direct enrollment/ownership suite | **38 pass / 0 fail**, 362 assertions. |
+| Harness authority with synthetic grants, stopped before CLI/query | **2 pass / 0 fail**, 11 assertions. No real credentials or model calls. |
+| HTTP admission + existing profile-copy pruning | **25 pass / 0 fail**, 121 assertions, including both streaming modes, corrupt metadata, capacity progress and the two-profile/one-item gate. |
+| Combined final focused run of the three rows above | **65 pass / 0 fail**, 494 assertions. |
+| Existing lifecycle/publication/contention/process/Windows-GC suites before the final victim-selection correction | **69 pass / 1 skip / 0 fail**, 374 assertions. The skip requires native Windows PID-reuse behavior. |
+| `npm run typecheck` | Exit 0 after all safety corrections and the synthetic harness authority test. |
+| `npm run build` | Exit 0 after all safety corrections; Node entrypoint bundling completed. |
+| `git diff --check`; syntax checks for both committed harnesses | Exit 0. |
+| Full `npm test` | Queued for the parent's exclusive full-suite slot. Not yet run for this delivery. |
+| Native before/after fixture | Escrowed; not run. Model slot is reserved by another authorized gate. |
+| E41 chain/parallel × streaming/nonstreaming | Not run for this correction. |
+| Actual reported Linux/OpenCode host; native Windows | Not run. No cross-platform/model success claim. |
+| Exact final-head required CI and independent final diff | Root independently reviewed corrected ownership uncertainty and isolated-grant semantics with no surviving material finding; committed metadata/harness/evidence and exact final-head CI remain pending. A separate child re-review could not start because collaboration returned `agent thread limit reached`. |
+
+The committed
+[native harness](../../../scripts/e2e-legacy-transcript-enrollment.mjs) costs
+three real HTTP/SDK model turns per arm and is documented in
+[E2E.md](../../../E2E.md#legacy-recorded-transcript-enrollment). It uses supported
+SDK history/list/delete APIs only, proves pinned history unchanged, and contrasts
+exact recorded collection with an unknown shared-root control. It requires an explicit immutable read-only `.credentials.json` grant,
+forces `MERIDIAN_CREDENTIALS_READONLY=1` and clears inherited auth overrides before
+SDK/proxy imports. Only that selected file is copied into a distinct, private
+runtime account; SDK writes/refresh may affect that owned copy. Assertions verify
+all real queries use the runtime root, the served model matches, and the source
+bytes, file identity and permissions remain unchanged. No credential bytes,
+tokens or hashes are printed. Cleanup joins all requests, runs fenced GC for
+failed targets not yet published, deletes only exact fixture-created IDs, and
+retains its isolated lifecycle authority if cleanup cannot complete. Retained
+ownership/leases stop cleanup before direct deletion; safe initialization
+failure removes only its owned runtime residue. Syntax
+validation is not native proof.
+
+Disposition: **accept this bounded internal purpose and correction subject to
+remaining verification; keep source #1261 open/deferred for the broader unowned
+backlog.** Root integration authority owns final CI, affected-flow evidence,
+PR/merge decisions and external communication. This child has not changed
+GitHub, searched credentials, run model calls or published a release.

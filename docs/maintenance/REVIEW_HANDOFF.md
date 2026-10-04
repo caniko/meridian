@@ -48,7 +48,8 @@ SDK and cleans setup failures. Its first full run at `ab9bb9ae` failed an
 existing third-replacement test that would discard an unfenced predecessor.
 The fixture now obtains modern locators through actual metadata registration,
 retaining every original assertion and the production guard. The necessary full
-rerun at `b20a0e66` is in progress. Native/client/Windows and final-head CI remain
+rerun at frozen `b20a0e66` passes 5,392 / 35 skips / 0 failures across
+19 batches; the current-main rebase and final evidence are being prepared. Native/client/Windows and final-head CI remain
 open; this does not collect the untracked backlog.
 
 The exact submitted heads of drafts #1271 (`7de8cf5f`), #1273 (`8e1bf53b`)
@@ -74,7 +75,8 @@ approved the production/harness; local evidence head `73b2d122` clarifies actual
 package-installed Meridian V2 plugin execution through setup/config assertions,
 catalog discovery and the plugin-generated attested primary request. It records
 later controller snapshot cleanup without claiming successful inference. The
-fresh Sonnet full suite is queued after GC. Refresh active
+fresh Sonnet full suite is running at frozen `73b2d122` after GC released
+the slot. Refresh active
 source/delivery evidence before integration; this checkpoint does not itself
 establish whole-stack acceptance. A single paginated post-E41 queue/discovery
 refresh at 23:38:04 UTC found the same six managed repositories and permissions,

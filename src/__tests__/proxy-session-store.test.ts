@@ -22,6 +22,7 @@ import {
 import { join } from "node:path"
 import { mkdtempSync, readFileSync, renameSync, rmSync, unlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
+import { registerLiveTranscript } from "../proxy/sessionLifecycle"
 
 describe("Shared session store", () => {
   let tmpDir: string
@@ -272,9 +273,18 @@ describe("Shared session store", () => {
     expect(getSessionStoreDir()).toBe(tmpDir)
   })
 
-  it("moves the exact transcript locator when the Claude session ID changes", () => {
-    const original = { sessionId: "claude-old", configDir: "/config-a", projectDir: "/project-a" }
-    const replacement = { sessionId: "claude-new", configDir: "/config-b" }
+  it("moves the exact transcript locator when the Claude session ID changes", async () => {
+    // Modern callers journal ownership before publication. Legacy predecessor
+    // replacement must first enroll its recorded locators; separate coordinator
+    // and HTTP controls cover that rejection and bounded retry.
+    const original = await registerLiveTranscript(
+      { sessionId: "claude-old", configDir: "/config-a", projectDir: "/project-a" },
+      { storeDir: tmpDir },
+    )
+    const replacement = await registerLiveTranscript(
+      { sessionId: "claude-new", configDir: "/config-b" },
+      { storeDir: tmpDir },
+    )
     storeSharedSession(
       "located-session", "claude-old", undefined, undefined, undefined,
       undefined, undefined, undefined, undefined, undefined, original

@@ -33,9 +33,9 @@ empty. The earlier `c609e8d1` checkpoint is obsolete. The current source is
 one actual authored commit with responsive-header rebasing, and contains no
 changes from adjacent #1232.
 
-| Source commit | Initial authored cherry-pick | Rebased authored cherry-pick | Author / AuthorDate |
-| --- | --- | --- | --- |
-| `322d3af68691eb41552b53c010d1996e9474c130` | `9939c6d585fbaf22e7b50f8a7e0a612571fe88c3` | `ae6bf5e4441d31c872315de11bb2e7a71e6782bb` | Nowaker `<spam@nowaker.net>` / `2026-10-01T22:40:02Z` |
+| Source commit | Initial authored cherry-pick | Browser/full-suite rebase on `9d77d8e2` | Final authored rebase on `5bd6b765` | Author / AuthorDate |
+| --- | --- | --- | --- | --- |
+| `322d3af68691eb41552b53c010d1996e9474c130` | `9939c6d585fbaf22e7b50f8a7e0a612571fe88c3` | `ae6bf5e4441d31c872315de11bb2e7a71e6782bb` | `3055d6b3ac988807316d14735a3c761966d4871a` | Nowaker `<spam@nowaker.net>` / `2026-10-01T17:40:02-05:00` (same instant as `2026-10-01T22:40:02Z`) |
 
 The contributor commit was cherry-picked without conflict from then-current
 main and rebased onto `9d77d8e282cb9c58d99b8962b900777e9f4b0803` after the
@@ -44,6 +44,15 @@ separate in `a6be2cd3d5c3a168610c5a94a67adfa1d1dabba7`. Local final-head
 checks and browser evidence are recorded below before
 handoff to the queue owner. No push, PR creation, merge, closure, community
 comment or release is performed by this implementation agent.
+
+After verified test-preload cleanup #1265 landed, the branch was rebased again
+onto `5bd6b765fc7507780e1e9238b6d48a99f3d44810`. The contributor's git Author
+and AuthorDate match the source exactly. The rebased maintainer product commit
+is `6fb37564d4b7c141ded9d7751670eb522d25d592`; the bounded browser harness
+commit is `2fa3ce708eee87d5b81cac967dbcfd09f7385bd0`. Product and both harness
+file blobs were compared to `f33f93a1` and are identical, so existing browser
+evidence remains applicable. The only intervening main changes are preload
+helpers, their tests and evidence; they do not change the application.
 
 ## Adversarial findings and corrections
 
@@ -108,6 +117,14 @@ isolated header HTTP stage passed 24 tests / 240 assertions. Standalone
 darwin/arm64, Bun 1.3.14, Node v22.22.3. These are exact-head local results,
 not final-head CI claims. The [local gate record](1233-hostname-local-gates.json)
 preserves command/count/head provenance.
+
+After the second rebase, exact head
+`a4c60935eb239ac9c008b753f41cdae49cdc8bb4` passed the isolated hostname HTTP
+stage (24 tests / 240 assertions), then preload-cleanup/shared-header/pure
+host/build-badge checks (76 tests / 306 assertions), standalone typecheck and
+build, all exit 0. The full suite was not redundantly rerun: its exact
+`f33f93a1` provenance stays explicit, and final-head CI remains required.
+The subsequent evidence-only commit is content/link/diff checked.
 
 The maintained [HTTP/browser fixture](../../../scripts/e2e-hostname-header.mjs)
 serves actual app pages, routes and settings writes in isolated configuration;

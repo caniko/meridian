@@ -188,7 +188,7 @@ are retained.
 - SSE recognized colonless fields have an empty value. A bare final `event` now
   resets a preceding ping/error to the default message event. Otherwise a real
   data frame could be mislabeled as keepalive and a later account error replayed.
-  [Both classification and actual-relay controls failed before](1214-sse-priority-failover/colonless-before.log);
+  [Both classification and actual-relay controls failed before](1214-sse-priority-failover/colonless-before.log.gz);
   the corrected relay preserves all bytes and does not suppress the later error.
 - The packaged harness now requires its unique receipt in the answering text and
   one successful complete stream envelope (`message_stop`, `end_turn`), rather
@@ -245,3 +245,9 @@ tests are unchanged from the fully tested and reviewed `bb33d26d` blobs listed i
 the gate record. Only test synchronization and durable evidence changed, so the
 full local suite was not repeated; required final-head CI including `test`
 remains a merge gate. There were **zero live model generations** in this work.
+
+After the synchronization test and evidence were committed as
+`dabb2165cf991a4e27868914e7f67080aa4d0967`, standalone typecheck and build both
+passed again on that frozen head (verified local build 4). Their complete logs
+and hashes are included in the gate record. The subsequent commit records only
+those results and artifacts; it changes no source, test or harness behavior.

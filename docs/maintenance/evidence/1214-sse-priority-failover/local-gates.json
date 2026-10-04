@@ -123,6 +123,39 @@
       "original_log_sha256": "f3ee564b221a59aac9669c92ff23e0a79e321269cf3006b04b7bf52f70e96c4c",
       "artifact_bytes": 73,
       "artifact_sha256": "1905b8ae56bcefe04bdd15b065faf630cfdc90c622e604f279ea647d03eef6e0"
+    },
+    "typecheck-dabb2165.log.gz": {
+      "original_log_bytes": 53,
+      "original_log_sha256": "f3ee564b221a59aac9669c92ff23e0a79e321269cf3006b04b7bf52f70e96c4c",
+      "artifact_bytes": 73,
+      "artifact_sha256": "1905b8ae56bcefe04bdd15b065faf630cfdc90c622e604f279ea647d03eef6e0"
+    },
+    "build-dabb2165.log.gz": {
+      "original_log_bytes": 2237,
+      "original_log_sha256": "f29ce009ef5f0e7b1a511c223a784802418c83fb05f4a275d04b0ae54fcccef6",
+      "artifact_bytes": 813,
+      "artifact_sha256": "b214329dd9cfd231197383665080b629ff61342f03f97e2331c77ddb83b186d5"
+    },
+    "colonless-before.log.gz": {
+      "original_log_bytes": 1974,
+      "original_log_sha256": "930c40fe9ef073633dbd480320a3726de3f96488b61684417dadb4846a760710",
+      "artifact_bytes": 800,
+      "artifact_sha256": "d95608a0e160cc61e6331588dd8aca32f91763aad1e6e62eb34c1dfe0f06a9a4"
     }
+  },
+  "post_test_synchronization_gates": {
+    "head": "dabb2165cf991a4e27868914e7f67080aa4d0967",
+    "standalone_typecheck": {
+      "command": "npm run typecheck",
+      "exit_code": 0,
+      "log": "typecheck-dabb2165.log.gz"
+    },
+    "standalone_build": {
+      "command": "npm run build",
+      "exit_code": 0,
+      "log": "build-dabb2165.log.gz",
+      "certification": "verified local build 4"
+    },
+    "later_delta": "durable gate evidence only; no source/test/harness changes"
   }
 }

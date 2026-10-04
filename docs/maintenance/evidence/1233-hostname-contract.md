@@ -99,10 +99,15 @@ and provider account checks and is isolated in the npm test script because
 Bun module mocks are process-global.
 
 After correction, the focused HTTP plus pure-label command passed 28 tests,
-249 assertions, exit 0. Standalone `npm run typecheck` and `npm run build`
-passed on darwin/arm64, Bun 1.3.14, Node v22.22.3 before rebasing. The final
-rebased full `npm test`, typecheck and build gates remain pending until
-recorded on the final code tree.
+249 assertions, exit 0. At exact code/harness head
+`f33f93a1acfd93fdd73db89b3b1f05ac7a91b65e` on main `9d77d8e2`, full
+`npm test` passed **5333 / 35 skipped / 0 failed**, 26558 assertions over 19
+isolated process stages, exit 0, including pretest typechecking. The new
+isolated header HTTP stage passed 24 tests / 240 assertions. Standalone
+`npm run typecheck` and `npm run build` also passed on this head, on
+darwin/arm64, Bun 1.3.14, Node v22.22.3. These are exact-head local results,
+not final-head CI claims. The [local gate record](1233-hostname-local-gates.json)
+preserves command/count/head provenance.
 
 The maintained [HTTP/browser fixture](../../../scripts/e2e-hostname-header.mjs)
 serves actual app pages, routes and settings writes in isolated configuration;
@@ -121,11 +126,22 @@ are explicitly synthetic stress controls;
 ordinary settings and health use the actual OS name. It restores consent off.
 
 The visual baseline fixture is exact main
-`9d77d8e282cb9c58d99b8962b900777e9f4b0803`. Browser assertions, before/after
-media, final source mapping, full local gates and required final-head CI are
-pending from the queue owner. No live model E2E is implicated: this feature
-changes header/settings/health only. Do not describe the visual acceptance
-or integration as complete until those evidence fields are supplied.
+`9d77d8e282cb9c58d99b8962b900777e9f4b0803`. The queue owner ran the final
+frozen timer-bounded probe at `f33f93a1` in native T3 Code Electron 44.4.2 /
+Chromium 152.0.7977.130 on macOS 26.6.2 arm64. All **10 rows passed**:
+Settings and standalone provider at 320/375/414/768/1280px. Every Settings
+row passed single-save, old-poll and failed-poll controls; both pages passed
+actual settings persistence, DNS/IP labels, full tooltips, clipping, intact
+update notices and no added overflow. Long DNS labels clip at 97px on phones
+and 166.289px on desktop. Consent ended off after every row and SDK generation
+count stayed zero. Complete results are in the committed
+[browser matrix](1233-hostname-browser-matrix.json).
+
+The independent final reviewer approved exact product head `a6be2cd3`,
+harness head `f33f93a1` and the 10-row matrix without material findings.
+No live model E2E is implicated: this changes header/settings/health only.
+Required final-head CI, source-head freshness and integration remain gates
+owned by the queue owner.
 
 At 320px, native browser inspection found a pre-existing Settings feature-row
 overflow: baseline and corrected off-state both have document width 323px
@@ -143,5 +159,25 @@ fitting settled. The maintained fixture now dispatches both provider pages'
 requests to standalone with provider facts controlled to forbid subprocesses;
 the probe waits for two stable 200ms geometry intervals after fonts/rendering,
 using bounded timers because hidden previews can suspend animation frames.
-These fixture corrections require a fresh probe result before acceptance;
-the unexplained initial rerun is not treated as proof.
+The fresh frozen full-matrix result above establishes acceptance after those
+fixture corrections; the unexplained initial rerun is not treated as proof.
+
+## Native visual evidence availability
+
+The queue owner inspected matching native 375px before/after application
+frames, a current Settings row showing “shown” with its checkbox checked,
+and a 2.952-second 750x1600 native toggle recording. Three extracted video
+frames show actual OS label Mac -> hidden -> Mac; current DOM rows and actual
+PUT/GET responses show shown/true -> hidden/false -> shown/true. A detached
+checkbox reference initially retained old row text because settings reload
+replaces the row; re-querying the current DOM confirmed the correct state.
+No product correction was indicated. The recording contains no secrets and
+consent ended off.
+
+The [native media record](1233-hostname-native-media.json) preserves exact
+local artifact paths, byte sizes and SHA-256 identities. These are native
+userdata artifacts, **not uploaded PR/CI media**; no upload facility was
+available. The committed fixture/probe and full matrix are the durable,
+shareable proof. Preliminary blank/unsettled captures are excluded. Matching
+frame captures include an outer-wrapper scrollbar and do not claim zero
+application overflow; application bounds come from the measured matrix.

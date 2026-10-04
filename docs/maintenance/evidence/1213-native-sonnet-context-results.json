@@ -79,5 +79,7 @@
   },
   "retainedFailedControls": [
     "Fresh isolated Linux image lacked machine-id; startup guard refused before any generation. A machine-id was generated only in that private disposable container; the same full rehearsal then passed."
-  ]
+  ],
+  "recordRole": "Historical earlier-base fixture/preparation checkpoint; retain its original heads, author maps, failures and zero-query count",
+  "currentAcceptanceRecord": "1213-native-sonnet-context-acceptance-20261004.json"
 }

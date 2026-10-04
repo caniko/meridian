@@ -1,0 +1,531 @@
+{
+  "schemaVersion": 2,
+  "date": "2026-10-04",
+  "testedHead": "dac34820653253da8a69fe81cad5cb2d7e5dc0ab",
+  "unchangedBase": "0369441786b082aadeb31689dcbce41d7e8574d9",
+  "originalHead": "259b152609269386e8494b8fc277230b0638ad64",
+  "sourceHead": "553fd5c386de5e18e531a1d0101d64ef3a3b1792",
+  "contributorMappings": {
+    "179257b96c1e1d591d0c5d2ed28ccff1af1ae85e": "c6991b05f48a96401d1df9e35a1c5ef1d540bef8",
+    "553fd5c386de5e18e531a1d0101d64ef3a3b1792": "390c45d593e5189e84bfd9a2225abc8bc2353f88"
+  },
+  "contributorAuthor": "robertn702 <8119609+robertn702@users.noreply.github.com>",
+  "contributorAuthorDates": [
+    "2026-10-01T16:28:37Z",
+    "2026-10-01T17:40:04Z"
+  ],
+  "rebaseConflicts": 0,
+  "platform": {
+    "os": "Linux",
+    "architecture": "x86_64",
+    "node": "24.21.0",
+    "bun": "1.3.14",
+    "client": "OpenCode 2.0.16",
+    "sdk": "0.2.141",
+    "nativeCliPackage": "2.1.284",
+    "requiredModel": "claude-sonnet-5-5",
+    "nativeCliObserved": "2.1.284 (Claude Code)"
+  },
+  "packageProvenance": {
+    "fixed": {
+      "sdk": "0.2.141",
+      "cli": "2.1.284",
+      "tarballSha256": "1afa42e0bf20ca81a51740510ce532e68f555ad9a74ea684f31a68fe72109bc7",
+      "bundleMatchesSource": true,
+      "allDistFilesMatchSource": true,
+      "distFileCount": 409
+    },
+    "baseline": {
+      "sdk": "0.2.141",
+      "cli": "2.1.284",
+      "tarballSha256": "2bd75b4a18caba8534be7d9fe052722fece8179d3e730de4c8ea2fac4f8043ed",
+      "bundleMatchesSource": true,
+      "allDistFilesMatchSource": true,
+      "distFileCount": 409
+    }
+  },
+  "authMapping": {
+    "selectedProfile": "default-native",
+    "selectionReadinessStatus": 200,
+    "sourceSnapshotPrivate": true,
+    "sourceMountedReadOnly": true,
+    "runtimeProfile": "owned-native-sonnet",
+    "runtimeCredentialDirectory": "private disposable copy",
+    "comparison": {
+      "rootSnapshotUnchanged": true,
+      "scopedSnapshotUnchanged": true,
+      "sourceMountedReadOnly": true,
+      "hostReadinessStatus": 401,
+      "linuxReadinessStatus": 401,
+      "errorCategory": "invalid-or-expired-token"
+    }
+  },
+  "importRehearsals": {
+    "fixed": {
+      "platform": "linux/x64",
+      "model": "claude-sonnet-5-5",
+      "client": "2.0.16",
+      "sdk": "0.2.141",
+      "readiness": {},
+      "catalogRequests": 1,
+      "wire": [],
+      "queries": [],
+      "resumed": false,
+      "result": "IMPORT_REHEARSAL_PASS",
+      "proxyWindow": 1000000,
+      "clientWindow": 1000000,
+      "importedMessages": 15,
+      "importedHistoryCharacters": 931634,
+      "ownedResidualProcesses": 0,
+      "privateCredentialCopyRemoved": true,
+      "cleanupJoined": true,
+      "suppressedLogLines": 1
+    },
+    "baseline": {
+      "platform": "linux/x64",
+      "model": "claude-sonnet-5-5",
+      "client": "2.0.16",
+      "sdk": "0.2.141",
+      "maxGenerations": 2,
+      "readiness": {},
+      "catalogRequests": 1,
+      "wire": [],
+      "queries": [],
+      "resumed": false,
+      "result": "IMPORT_REHEARSAL_PASS",
+      "proxyWindow": 200000,
+      "clientWindow": 200000,
+      "importedMessages": 15,
+      "importedHistoryCharacters": 931634,
+      "ownedResidualProcesses": 0,
+      "privateCredentialCopyRemoved": true,
+      "cleanupJoined": true,
+      "suppressedLogLines": 1
+    }
+  },
+  "localBefore": {
+    "exit": 1,
+    "estimatedHistoryTokens": 261350,
+    "budget": 160000,
+    "advertisedWindow": 200000,
+    "ancientRetained": false,
+    "currentRetained": true,
+    "omittedMessages": 7,
+    "sonnet46Window": 200000,
+    "unknownSonnetWindow": 200000,
+    "explicitlyDisabledWindow": 200000
+  },
+  "localAfter": {
+    "exit": 0,
+    "estimatedHistoryTokens": 261350,
+    "budget": 836000,
+    "advertisedWindow": 1000000,
+    "ancientRetained": true,
+    "currentRetained": true,
+    "omittedMessages": 0,
+    "sonnet46Window": 200000,
+    "unknownSonnetWindow": 200000,
+    "explicitlyDisabledWindow": 200000
+  },
+  "focusedChecks": {
+    "models": 97,
+    "replayBudget": 15,
+    "catalogConversion": 121,
+    "httpReplay": 41,
+    "healthCatalog": 12,
+    "totalPassed": 286,
+    "totalFailed": 0,
+    "typecheck": "PASS macOS and Linux",
+    "build": "PASS macOS and Linux",
+    "fullSuite": "ROOT_COORDINATION_PENDING",
+    "finalHeadCi": "ROOT_DELIVERY_PENDING"
+  },
+  "liveAttempt": {
+    "exit": 1,
+    "platform": "linux/x64",
+    "model": "claude-sonnet-5-5",
+    "client": "2.0.16",
+    "sdk": "0.2.141",
+    "maxGenerations": 1,
+    "readiness": {
+      "credentialPresent": true,
+      "expiryFuture": true,
+      "status": 401
+    },
+    "catalogRequests": 0,
+    "wire": [],
+    "queries": [],
+    "resumed": false,
+    "result": "FAIL",
+    "failure": "Owned native OAuth readiness failed; no generation started",
+    "ownedResidualProcesses": 0,
+    "privateCredentialCopyRemoved": true,
+    "cleanupJoined": true,
+    "suppressedLogLines": 0
+  },
+  "actualAffectedFlow": {
+    "status": "OPEN",
+    "generationCalls": 1,
+    "generationCallMeaning": "One SDK query attempt; no observed valid required-model completion",
+    "requiredModel": "claude-sonnet-5-5",
+    "requiredClient": "OpenCode 2.0.16 installed V2 plugin",
+    "requiredSdk": "0.2.141",
+    "requiredNativeCli": "2.1.284",
+    "requiredPlatform": "linux/x64",
+    "reason": "Personal readiness 200, then baseline SDK synthetic response/client subscription-billing error; fixed and resume not run",
+    "baselineNoTrim": "NOT_ESTABLISHED_ON_REAL_MODEL: request argument ancient/no-trim fact false, but native model/completion assertion failed first",
+    "fixedAllHistory": "NOT_RUN",
+    "actualNativeInputOver200k": "NOT_RUN",
+    "nativeModelAndAccount": "NOT_ESTABLISHED",
+    "codingReceipt": "NOT_DELIVERED_ON_BASELINE",
+    "sameSessionMinimalResume": "NOT_RUN"
+  },
+  "preparatoryReviewCorrections": [
+    "Observe every fixture message, keeping the unchanged ancient-marker/no-trim assertion",
+    "Compare public native session IDs without storing them; require resumed auth/executable, small delta, native model and successful iterator",
+    "Enforce baseline one-query / fixed two-query limits; record native tool turns",
+    "Assert Linux x64 and bound readiness/catalog/setup/startup stages"
+  ],
+  "retainedPreparationFailures": [
+    "Plain source npm ci failed in bun2nix because the archive has no bun.lock; scripts-disabled locked dependency installation plus explicit official native CLI installer succeeded",
+    "The source image had no machine-id; generated one only in the disposable container"
+  ],
+  "cleanup": {
+    "runtimeAuthCopyRemoved": true,
+    "ownedResidualProcesses": 0,
+    "proxyAndClientJoined": true,
+    "scopedHostCopyRemoval": "DONE both disposable rounds",
+    "ownedContainerRemoval": "DONE",
+    "temporaryOwnedImageRemoval": "DONE exclusive task image",
+    "rootPrivateCopyPreserved": true,
+    "rootPrivateCopyUnchanged": true
+  },
+  "independentFinalReview": "ROOT_TO_ASSIGN",
+  "testedSourceTree": "d6b2b7595d919910c56ac5e632cf08abf6aa753b",
+  "baselineSourceTree": "e6ea7edcea9a81aeba9dd7b13cfed32f60eef4a2",
+  "priorLiveAttemptRole": "round1 default-native OAuth prerequisite failure; retained unchanged",
+  "liveRounds": {
+    "round1": {
+      "selectedProfile": "default-native",
+      "status": "STOPPED_BEFORE_QUERY",
+      "readinessFailureStatuses": [
+        401,
+        401
+      ],
+      "classification": "invalid-or-expired-token",
+      "generationQueries": 0,
+      "record": "liveAttempt/authMapping"
+    },
+    "round2": {
+      "selectedProfile": "personal",
+      "authorization": "Controller selected configured profile under owner instruction: pick whatever works",
+      "hostReadiness": {
+        "present": true,
+        "futureExpiry": true,
+        "scopePresent": true,
+        "usageStatus": 200,
+        "directoryMode": "0700",
+        "fileMode": "0600"
+      },
+      "linuxReadiness": {
+        "selectedProfile": "personal",
+        "present": true,
+        "futureExpiry": true,
+        "scopePresent": true,
+        "directoryMode": 448,
+        "fileMode": 384,
+        "refreshTokenAbsent": true,
+        "usageStatus": 200,
+        "snapshotDigest": "acf49058834dcae2ea805191b9d0555d46b8afb6198fe8d54798433c3d2abbdd"
+      },
+      "credentialProvenance": {
+        "selectedProfile": "personal",
+        "rootSnapshotDigestBefore": "68ebff403fd1c69b980c6155a3836b699f5bd5f7d395230570cdad90457251d5",
+        "scopedSnapshotDigestBefore": "acf49058834dcae2ea805191b9d0555d46b8afb6198fe8d54798433c3d2abbdd",
+        "sourceSnapshotUnchanged": true,
+        "hostDirectoryMode": 448,
+        "hostFileMode": 384,
+        "refreshTokenAbsentFromScopedCopy": true,
+        "generationCalls": 0
+      },
+      "readOnlyBeforeImportsAndProxy": true,
+      "sourceStoreWrites": 0,
+      "rootSnapshotWrites": 0,
+      "refreshCalls": 0,
+      "loginCalls": 0,
+      "otherStoreSearches": 0,
+      "privateSdkTranscriptAccesses": 0,
+      "exactBaselineCommand": [
+        "docker",
+        "exec",
+        "-w",
+        "/owned/fixed-source",
+        "-e",
+        "MERIDIAN_CREDENTIALS_READONLY=1",
+        "-e",
+        "TMPDIR=/owned/tmp",
+        "-e",
+        "E2E_MERIDIAN_ROOT=/owned/baseline-install/node_modules/@rynfar/meridian",
+        "-e",
+        "E2E_OPENCODE_BIN=/opt/e2e/node_modules/.bin/opencode",
+        "-e",
+        "E2E_PROFILE_CLAUDE_DIR=/owned/round2-native-source",
+        "-e",
+        "E2E_MAX_GENERATIONS=1",
+        "-e",
+        "E2E_PROOF_DIR=/owned/proof/round2-before",
+        "meridian-sonnet-live-1267-20261004",
+        "bun",
+        "scripts/e2e-sonnet-context-v2-live.mjs"
+      ],
+      "baseline": {
+        "platform": "linux/x64",
+        "model": "claude-sonnet-5-5",
+        "client": "2.0.16",
+        "sdk": "0.2.141",
+        "maxGenerations": 1,
+        "readiness": {
+          "credentialPresent": true,
+          "expiryFuture": true,
+          "status": 200,
+          "nativeCliLoggedIn": true
+        },
+        "catalogRequests": 1,
+        "wire": [
+          {
+            "model": "claude-sonnet-5-5",
+            "agent": "build",
+            "mode": "primary",
+            "attested": true,
+            "ancientRetained": true,
+            "currentRetained": true,
+            "characters": 929661,
+            "sessionHeaderPresent": true
+          }
+        ],
+        "queries": [
+          {
+            "credentialDirectoryMatched": true,
+            "resolvedSonnet": "claude-sonnet-5-5",
+            "sdkModel": "sonnet",
+            "nativeExecutableMatched": true,
+            "resumed": false,
+            "promptCharacters": 458019,
+            "resumeMatchesFirstSession": false,
+            "historyMessagesRetained": 7,
+            "ancientRetained": false,
+            "currentRetained": true,
+            "omitted": true,
+            "nativeModels": [
+              "<synthetic>"
+            ],
+            "inputTokens": 0,
+            "toolUseBlocks": 0,
+            "completed": false,
+            "nativeSessionMatchesFirst": true,
+            "resultSubtype": "success",
+            "nativeTurns": 1
+          }
+        ],
+        "resumed": false,
+        "result": "FAIL",
+        "claudeCode": "2.1.284",
+        "proxyWindow": 200000,
+        "clientWindow": 200000,
+        "importedMessages": 15,
+        "stage": "native-query-1",
+        "sameAncientNoTrimAssertion": false,
+        "receiptDelivered": false,
+        "failure": "Wrong native account/model or incomplete SDK query",
+        "ownedResidualProcesses": 0,
+        "privateCredentialCopyRemoved": true,
+        "cleanupJoined": true,
+        "suppressedLogLines": 1,
+        "exit": 1
+      },
+      "supportedClientHistoryClassification": {
+        "api": "supported OpenCode session message GET",
+        "modelQueries": 0,
+        "assistantMessages": [
+          {
+            "agent": "build",
+            "model": "claude-sonnet-5-5",
+            "finish": "error",
+            "hasError": true,
+            "textCharacters": 0,
+            "textCategories": [],
+            "errorCategories": [
+              "billing"
+            ]
+          },
+          {
+            "agent": "build",
+            "model": "claude-sonnet-5-5",
+            "finish": "stop",
+            "hasError": false,
+            "textCharacters": 27,
+            "textCategories": [],
+            "errorCategories": []
+          },
+          {
+            "agent": "build",
+            "model": "claude-sonnet-5-5",
+            "finish": "stop",
+            "hasError": false,
+            "textCharacters": 27,
+            "textCategories": [],
+            "errorCategories": []
+          }
+        ],
+        "apiStatus": 200,
+        "result": "HISTORY_RECOVERED",
+        "clientJoined": true
+      },
+      "supportedClientHistoryDiagnosis": {
+        "api": "supported OpenCode session message GET",
+        "modelQueries": 0,
+        "startupPollFailed": true,
+        "apiStatus": 200,
+        "errorSchema": [
+          {
+            "path": "error.type",
+            "type": "string"
+          },
+          {
+            "path": "error.message",
+            "type": "string"
+          },
+          {
+            "path": "error.status",
+            "type": "number",
+            "number": 200
+          }
+        ],
+        "errorSignals": [
+          "subscription",
+          "billing"
+        ],
+        "knownReasonFragments": [],
+        "result": "HISTORY_DIAGNOSED",
+        "clientJoined": true
+      },
+      "supportedClientSanitizedError": {
+        "api": "supported OpenCode session message GET",
+        "modelQueries": 0,
+        "startupPollFailed": true,
+        "errorStatus": 200,
+        "errorType": "redacted-other",
+        "noActiveSubscription": false,
+        "result": "SANITIZED_HISTORY_ERROR",
+        "clientJoined": true,
+        "sanitizedNormalizedMessage": "Claude Max subscription issue. Check your subscription status at [redacted]."
+      },
+      "causeClassification": "Meridian normalized a billing/subscription refusal; precise upstream billing or entitlement cause unproven",
+      "fixed": {
+        "result": "NOT_RUN",
+        "generationQueries": 0
+      },
+      "resume": {
+        "result": "NOT_RUN",
+        "generationQueries": 0
+      },
+      "stopReason": "Unexpected subscription/billing error with only synthetic SDK assistant; no real-model baseline proof. Stop without fallback or rerun.",
+      "generationQueries": 1,
+      "observedValidRequiredModelCompletions": 0,
+      "giantPreparatoryQueries": 0,
+      "unchangedFixture": {
+        "userAssistantHistoryMessages": 14,
+        "importedRecordsIncludingIdle": 15,
+        "rehearsedSerializedCharacters": 931634
+      },
+      "exactPackageAndToolProvenance": {
+        "container": "meridian-sonnet-live-1267-20261004",
+        "platform": "linux/x64",
+        "node": "v24.21.0",
+        "sourceHead": "dac34820653253da8a69fe81cad5cb2d7e5dc0ab",
+        "sourceTree": "d6b2b7595d919910c56ac5e632cf08abf6aa753b",
+        "baselineHead": "0369441786b082aadeb31689dcbce41d7e8574d9",
+        "baselineTree": "e6ea7edcea9a81aeba9dd7b13cfed32f60eef4a2",
+        "arms": {
+          "baseline": {
+            "installedPackage": "/owned/baseline-install/node_modules/@rynfar/meridian",
+            "sourcePackage": "/owned/baseline-source",
+            "sourceArchiveSha256": "1e5583e731a6981f0a6937f85997d0c7b03f09c8a9d4e6e09ddfd995a47677ab",
+            "tarballSha256": "2bd75b4a18caba8534be7d9fe052722fece8179d3e730de4c8ea2fac4f8043ed",
+            "distFileCount": 409,
+            "allDistFilesMatch": true,
+            "distManifestSha256": "71394ba74ad40d3ba8d0d8884226aa2a9c2f9c9aafc644059bf79ace401de440",
+            "serverSha256": "2c819d3cd7bb387539869d77c5d23aaa106f0b4a58f2a0b5c67f797c54bfff6e",
+            "sdkVersion": "0.2.141",
+            "sdkModuleSha256": "48bde6aeabf7e71ad5528bf52c8feb1642c21f505ea2495c70f39db7df226d97",
+            "cliVersion": "2.1.284",
+            "nativeExecutable": {
+              "path": "/owned/baseline-install/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+              "sha256": "5cd90aabd83f8a15136c35aa37bb1d92b348993573316643dc3fe4e04afbf88f"
+            }
+          },
+          "fixed": {
+            "installedPackage": "/owned/fixed-install/node_modules/@rynfar/meridian",
+            "sourcePackage": "/owned/fixed-source",
+            "sourceArchiveSha256": "e7d0ab777ee2030a20d875d3d6a28f57681798a32dbc8873b67dc331ac48f201",
+            "tarballSha256": "1afa42e0bf20ca81a51740510ce532e68f555ad9a74ea684f31a68fe72109bc7",
+            "distFileCount": 409,
+            "allDistFilesMatch": true,
+            "distManifestSha256": "d2123a74a4a58cce938669b89f3c34d460db604bfe88bc5efcb514113ac1c695",
+            "serverSha256": "f8e8f3d3ddae29a68ba312739a57e45d89f065e0ec0fac53977b407f5279d208",
+            "sdkVersion": "0.2.141",
+            "sdkModuleSha256": "48bde6aeabf7e71ad5528bf52c8feb1642c21f505ea2495c70f39db7df226d97",
+            "cliVersion": "2.1.284",
+            "nativeExecutable": {
+              "path": "/owned/fixed-install/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+              "sha256": "5cd90aabd83f8a15136c35aa37bb1d92b348993573316643dc3fe4e04afbf88f"
+            }
+          }
+        },
+        "client": {
+          "path": "/opt/e2e/node_modules/@opencode/cli/bin/opencode.exe",
+          "version": "2.0.16",
+          "sha256": "ed875f18429bd3ee346792b50e6e4bb74f1b6e7695ded7e6abe4448fe76322de"
+        },
+        "harnessSha256": "523b1442a50f154ca9063ea0f2d937de55c2607293433d5e1a04091603700dca",
+        "fixtureSha256": "2f3be87d311acda8dfc559fb8db035a8707aea8c7a92dec1f799fada3d9706b9"
+      },
+      "frozenSourceHeadVerification": {
+        "baseline": {
+          "sourceHead": "0369441786b082aadeb31689dcbce41d7e8574d9",
+          "sourceTree": "e6ea7edcea9a81aeba9dd7b13cfed32f60eef4a2",
+          "productionSourceFileCount": 534,
+          "allProductionSourceMatchesExactHead": true,
+          "mismatches": []
+        },
+        "fixed": {
+          "sourceHead": "dac34820653253da8a69fe81cad5cb2d7e5dc0ab",
+          "sourceTree": "d6b2b7595d919910c56ac5e632cf08abf6aa753b",
+          "productionSourceFileCount": 534,
+          "allProductionSourceMatchesExactHead": true,
+          "mismatches": []
+        }
+      },
+      "cleanup": {
+        "ownedResidualProcesses": 0,
+        "runtimeCredentialCopyRemoved": true,
+        "modelQueries": 1,
+        "supportedHistoryReadersJoined": true,
+        "linuxScopedSnapshotUnchanged": true,
+        "linuxScopedCredentialRemoved": true,
+        "ownedRuntimeRemoved": true,
+        "rootSnapshotUnchanged": true,
+        "hostScopedSnapshotUnchanged": true,
+        "hostScopedCredentialRemoved": true,
+        "priorExpiredScopedCredentialRemoved": true,
+        "rootPrivateCopyPreserved": true,
+        "exactPackagesExported": true,
+        "ownedContainerRemoved": true,
+        "ownedContainerId": "777ca1ca8f4bfab8c4746134ac0e67b462858f3f692d2dc1d3783a803ae66b20",
+        "ownedTemporaryImageRemoved": true,
+        "ownedTemporaryImageId": "sha256:139a67dbcf271b0e5d4b62f85706e991ac7004b56ab102f35fd31686bf10131a"
+      }
+    }
+  },
+  "finalEvidenceChangeScope": "Evidence only; production source, tests and committed critical harness unchanged from testedHead. Root owns current-head npm test, independent adversarial review and CI."
+}

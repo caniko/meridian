@@ -10,9 +10,10 @@ Source head: `553fd5c386de5e18e531a1d0101d64ef3a3b1792`. Contributor
 original Author/AuthorDate preserved. Maintainer corrections are separate.
 Initial exact unchanged-main control:
 `f299fe06e72411b786380b5212edea79cd13966a`.
-Final integration base is current main
-`9d77d8e282cb9c58d99b8962b900777e9f4b0803`; rebased contributor mappings
-are `179257b9` → `fd39b5c5` and `553fd5c3` → `731dbdf6`.
+Current integration base is fetched main
+`0369441786b082aadeb31689dcbce41d7e8574d9`; rebased contributor mappings
+are `179257b9` → `c6991b05` and `553fd5c3` → `390c45d5`. Both rebases
+were conflict-free and retained the contributor's Author/AuthorDate.
 
 ## Product fit and adversarial corrections
 
@@ -129,6 +130,86 @@ their source store and deleted from the disposable runtime in `finally`.
 
 ## Local validation
 
+The 2026-10-04 test-agent preparation targets
+`dac34820653253da8a69fe81cad5cb2d7e5dc0ab` against the exact current main
+above. The source archives were built on Linux x86_64 and independently
+installed as tarballs; all 409 installed `dist` files match each arm's built
+source. Both arms resolve SDK 0.2.141 and the actual CLI reports
+`2.1.284 (Claude Code)`. Released OpenCode 2.0.16 adopts each installed
+plugin's discovered catalog (200k before, 1M after), and supported import
+retains all 15 messages with zero generations in both rehearsals.
+
+The controller's explicitly authorized `default-native` snapshot initially
+passed read-only readiness with HTTP 200. The baseline attempt subsequently
+stopped before generation with HTTP 401 despite future expiry and scopes.
+The exact same snapshot returned 401 on the host and Linux; its sanitized
+response classification was `invalid-or-expired-token`. Both snapshots
+remained unchanged, the source mount was read-only, and runtime cleanup
+joined with zero owned residual processes. This is an authentication blocker,
+not a failed native Sonnet generation or a completed affected-flow test.
+The [current sanitized attempt record](1213-native-sonnet-context-acceptance-20261004.json)
+retains the exact heads, author maps, package hashes, assertions and missing
+gates. No credential, identity, authorization URL or SDK transcript is included.
+
+### Bounded personal-profile attempt (round 2)
+
+The controller selected the configured `personal` profile under the owner's
+explicit authorization. Its immutable snapshot passed read-only OAuth usage
+readiness on the host and Linux with **HTTP 200**; the grant was present,
+future-dated and scoped. A separate mode-0700 directory/mode-0600 Linux copy
+retained the supported credential-store shape with an empty refresh token.
+`MERIDIAN_CREDENTIALS_READONLY=1` was set before imports and proxy startup.
+Neither source store nor the controller's immutable copy was written, and no
+refresh, login, other-store search or private SDK transcript access occurred.
+
+The unchanged-main installed arm made **one SDK query attempt** and exited
+**1**. The actual released OpenCode primary request carried the ancient marker,
+current receipt marker and signed identity. Main advertised/adopted 200,000,
+then passed only 7 of the 14 synthetic user/assistant history messages to the
+SDK (15 records were imported including the idle event): prompt characters
+458,019, ancient marker absent and omission notice present. The same no-trim
+fact is false. However, the SDK emitted only model **`<synthetic>`**, observed
+input tokens **0**, result subtype `success`, one native turn and no coding
+receipt; the iterator had not completed when the client reported its error.
+The harness therefore failed the earlier native account/model/completion
+assertion, not its expected live ancient-marker assertion.
+
+Recovery used only supported OpenCode session-message GET requests, with zero
+additional model queries. The current assistant entry had `finish=error` and
+the sanitized message **“Claude Max subscription issue. Check your subscription
+status at [redacted].”** This is Meridian's `billing_error` normalization in
+`src/proxy/errors.ts`; the supported client error object carried status 200,
+which is not proof of a successful model response. The underlying upstream
+billing/entitlement detail was not retained, so its precise cause remains
+unproven. OAuth readiness alone did not establish generation entitlement.
+
+The attempt stopped for this unexpected failure. **The fixed generation and
+tiny same-session resume were not run.** There were no giant preparatory calls,
+no fallback profile and no unexplained rerun. The bounded gate remains **OPEN**:
+one SDK query attempt, zero observed valid `claude-sonnet-5-5` completions,
+and no actual before/after acceptance. The earlier default-native 401 failures
+remain retained separately; this round does not replace or explain them.
+
+All 534 files under each frozen arm's `src` match its exact source head; all
+409 installed `dist` files still match the corresponding built source. The
+sanitized JSON record retains source/tree/archive/tarball/distribution,
+SDK module, actual native executable and OpenCode binary hashes, exact command,
+assertions, failure, query counts and cleanup. Exact tarballs were also exported
+locally for the controller; no upload or PR mutation occurred.
+
+The proxy/client/native children and supported-history readers joined with
+zero owned residual processes. Runtime auth, both rounds' disposable scoped
+copies, this round's fixture/session directories, the specifically owned
+container and its exclusive temporary image were removed. The controller's
+private snapshot remained unchanged and available for its subsequent gates.
+
+Preparatory adversarial findings strengthened the escrowed gate: it now
+observes retention of every fixture message, compares public native session
+IDs without storing them, requires the resumed credential/executable and a
+small prompt delta, enforces one baseline/two fixed queries, records native
+tool turns, asserts Linux x64 and bounds readiness/catalog/setup/startup.
+The original ancient-marker/no-trim assertion remains unchanged.
+
 Focused checks: 112 pure model/replay tests, 121 catalog/conversion tests,
 41 actual HTTP replay tests and 12 health/catalog-route tests pass. Standalone
 typecheck and native Node bundle builds pass on macOS and Linux.
@@ -136,7 +217,11 @@ Full `npm test` at `74e50774fba47a7540f5b1c8c9f24e8d2db35bb8` passes
 **5,321 tests, 35 skips, zero failures across 18 isolated stages**. Its pretest
 typechecks. Later changes affect only the escrow harness/evidence; final
 standalone typecheck, syntax check and actual credentialless rehearsal pass.
-Product code is unchanged after the full suite.
+That full-suite result predates the latest base. The current test-agent run
+passes all 286 focused tests on Linux and macOS, plus standalone typecheck
+and builds on both platforms. The root controller coordinates the remaining
+full suite, independent final review and final-head CI; this agent did not
+push, mutate the PR, merge, close #1212/#1213 or publish a release.
 
 Independent adversarial review has no material production or harness findings
 remaining. It corrected receipt checks that could match user prompts, SDK

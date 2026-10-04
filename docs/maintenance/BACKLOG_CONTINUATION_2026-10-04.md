@@ -8,9 +8,23 @@ Root remains the sole queue owner. This documentation branch starts from
 E41 merge `d3be0c628ee164d6bb41882c6fa0f9fe97b74a1e`; the user's dirty checkout and
 other delivery worktrees are preserved. The controller supplied the current
 GitHub decisions below; active branch records were read locally. This is a
-bounded continuation snapshot, not a new complete queue refresh or acceptance
-of every open item. Earlier records remain historical wherever superseded here.
+bounded continuation of the earlier semantic reviews. A fresh whole-queue
+metadata check does not establish acceptance of every open item. Earlier
+records remain historical wherever superseded here.
 No release or community-comment authorization is inferred.
+
+After the E41 merge, one paginated repository/queue refresh at 23:38:04 UTC
+confirmed the same six managed repositories, 164 accessible repositories plus
+Centeva/pylon-code organization discovery, unchanged permissions and plugin-link
+coverage, and no inaccessible managed candidate. The live queue has **27 open
+PRs / 12 issues**: Meridian 24/12, OpenCode scrub 2/0, Pi scrub 1/0; the other
+three managed scrub repositories have no open items. Retained contributor heads
+and substantive metadata are unchanged; new items are the known owner deliveries
+and approved #1270. Held Release Please #1202 advanced to
+`ebbc22e7800cde2751d0d141c6d6c5284b653112`; plugin release heads are unchanged.
+This refresh supplies metadata leads, not release authorization or new semantic
+acceptance. Exact source dispositions in the earlier checkpoint still apply
+where not superseded here.
 
 ## Delivered checkpoint and current decisions
 

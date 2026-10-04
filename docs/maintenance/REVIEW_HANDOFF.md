@@ -70,7 +70,12 @@ catalog discovery and the plugin-generated attested primary request. It records
 later controller snapshot cleanup without claiming successful inference. The
 fresh Sonnet full suite is queued after GC. Refresh active
 source/delivery evidence before integration; this checkpoint does not itself
-refresh the entire queue.
+establish whole-stack acceptance. A single paginated post-E41 queue/discovery
+refresh at 23:38:04 UTC found the same six managed repositories and permissions,
+27 open PRs / 12 issues, unchanged contributor heads, and no coverage gaps or
+unexpected source work. Held Release Please #1202 is now `ebbc22e7`; separate
+release authorization remains absent. The continuation records exact counts
+and scope.
 
 ## Current continuation — 2026-10-04
 

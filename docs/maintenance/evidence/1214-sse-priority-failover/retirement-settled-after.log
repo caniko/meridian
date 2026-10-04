@@ -1,0 +1,14 @@
+bun test v1.3.14 (0d9b296a)
+
+src/__tests__/priority-routing-integration.test.ts:
+[PROXY] 3813e97c-46b5-435e-9ccc-c7c21bd86f6b adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=2ms msgCount=1 msgs=user[string]
+[PROXY] 3813e97c-46b5-435e-9ccc-c7c21bd86f6b usage: input=10 output=50 cache=0%
+[PROXY] 71192f1e-9b68-4108-b4a7-b39dd01b1192 adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=continuation session=84602ef8 agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] 71192f1e-9b68-4108-b4a7-b39dd01b1192 retaining session turn fence after mandatory durable cleanup failed
+(pass) priority routing > retains the exact trusted turn claim when a suppressed SSE reader cannot retire [476.88ms]
+
+ 1 pass
+ 87 filtered out
+ 0 fail
+ 8 expect() calls
+Ran 1 test across 1 file. [1001.00ms]

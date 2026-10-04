@@ -1,0 +1,25 @@
+bun test v1.3.14 (0d9b296a)
+
+src/__tests__/priority-routing-integration.test.ts:
+[PROXY] b6193bb0-2716-4500-9ce9-adfcfade1b2c adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] b65d311c-1fd4-47fa-9edc-9f43c7e0dd87 adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] b65d311c-1fd4-47fa-9edc-9f43c7e0dd87 usage: input=10 output=50 cache=0%
+(pass) priority routing > does not start another account before suppressed retirement, or after cancellation during retirement [586.73ms]
+[PROXY] 4260d70f-5485-4de6-bb7f-b69f9444d7fb adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 4260d70f-5485-4de6-bb7f-b69f9444d7fb adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 4260d70f-5485-4de6-bb7f-b69f9444d7fb usage: input=10 output=50 cache=0%
+(pass) priority routing > treats an oversized post-header JSON boundary as terminal with joined retirement, without trying a third account [300.89ms]
+[PROXY] 11cc68b2-69d2-4c3a-a973-c9bf49d4ee50 adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+[PROXY] 11cc68b2-69d2-4c3a-a973-c9bf49d4ee50 adapter=opencode profile=personal(priority) model=sonnet stream=true tools=0 lineage=new session=new diverged=not-found sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=1 msgs=user[string]
+(pass) priority routing > treats an oversized post-header JSON boundary as terminal with rejected retirement, without trying a third account [92.72ms]
+[PROXY] 32bed88e-7e18-4a30-97f9-3c1ed8500fa6 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=1 msgs=user[string]
+[PROXY] 32bed88e-7e18-4a30-97f9-3c1ed8500fa6 usage: input=10 output=50 cache=0%
+[PROXY] 77673a1c-ae27-4101-8eca-05e3d21e90c4 adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=continuation session=c59dc292 agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=0ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+[PROXY] 77673a1c-ae27-4101-8eca-05e3d21e90c4 retaining session turn fence after mandatory durable cleanup failed
+(pass) priority routing > retains the exact trusted turn claim when a suppressed SSE reader cannot retire [116.04ms]
+
+ 4 pass
+ 84 filtered out
+ 0 fail
+ 32 expect() calls
+Ran 4 tests across 1 file. [1.53s]

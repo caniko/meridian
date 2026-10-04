@@ -2074,7 +2074,8 @@ describe("priority routing", () => {
   }, 5_000)
 
   it("retains the exact trusted turn claim when a suppressed SSE reader cannot retire", async () => {
-    const app = createTestApp()
+    const { app, getInFlightCount } = createProxyServer({ port: 0, host: "127.0.0.1", profiles: PROFILES, defaultProfile: "work" })
+    if (!getInFlightCount) throw new Error("direct Claude fixture must expose its request completion count")
     const sessionId = "rejected-suppressed-reader"
     await (await post(app, trustedOpenCodeTurnHeaders(sessionId, "seed"), OPENING_MESSAGE)).json()
     capturedEnvs = []
@@ -2103,7 +2104,12 @@ describe("priority routing", () => {
     const body = await res.text()
     // The original SDK response completes normally; reader retirement failure
     // is nevertheless not authority to release or replay this logical turn.
-    await Bun.sleep(50)
+    // Body EOF alone precedes final SDK/fork cleanup. Observe finishRequest
+    // before inspecting authority, so a slow cleanup cannot make a released
+    // claim appear retained merely because the assertion ran too early.
+    const settledDeadline = Date.now() + 2_000
+    while (getInFlightCount() !== 0 && Date.now() < settledDeadline) await Bun.sleep(5)
+    expect(getInFlightCount()).toBe(0)
     expect(body.split("event: error").length - 1).toBe(1)
     expect(capturedEnvs).toHaveLength(1)
     expect(capturedEnvs[0]).toContain("prof-work")

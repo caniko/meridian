@@ -1,0 +1,25 @@
+bun test v1.3.14 (0d9b296a)
+
+src/__tests__/priority-routing-integration.test.ts:
+[PROXY] 494bc993-2606-4f74-b780-54e48072cb01 adapter=opencode profile=work(priority) model=sonnet stream=false tools=0 lineage=new session=new diverged=not-found agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=2ms msgCount=1 msgs=user[string]
+[PROXY] 494bc993-2606-4f74-b780-54e48072cb01 usage: input=10 output=50 cache=0%
+[PROXY] 48f25c9d-a3d3-465c-b8b5-5a701d011e17 adapter=opencode profile=work(priority) model=sonnet stream=true tools=0 lineage=continuation session=5341b7f9 agent=primary sdkActive=0/10 sdkQueued=0 sessionWait=1ms msgCount=3 msgs=user[string] → assistant[text] → user[string]
+2113 |     expect(body.split("event: error").length - 1).toBe(1)
+2114 |     expect(capturedEnvs).toHaveLength(1)
+2115 |     expect(capturedEnvs[0]).toContain("prof-work")
+2116 |     const route = lookupPriorityAssignmentResult(`opencode:${sessionId}`)
+2117 |     if (route.status !== "found") throw new Error(`expected durable route, received ${route.status}`)
+2118 |     expect(route.attempt?.ownerToken).toBeString()
+                                             ^
+error: expect(received).toBeString()
+
+Received: undefined
+
+      at <anonymous> (/Users/rynfar/repos/meridian-sse-priority-incorporation-1214-20261004/src/__tests__/priority-routing-integration.test.ts:2118:39)
+(fail) priority routing > retains the exact trusted turn claim when a suppressed SSE reader cannot retire [445.92ms]
+
+ 0 pass
+ 87 filtered out
+ 1 fail
+ 5 expect() calls
+Ran 1 test across 1 file. [1042.00ms]

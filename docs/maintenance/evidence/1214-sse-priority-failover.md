@@ -2,8 +2,9 @@
 
 ## Disposition and authority
 
-2026-10-04: accept the purpose with maintainer corrections; final local gates,
-independent review and actual affected-client E2E remain acceptance gates.
+2026-10-04: accept the purpose with maintainer corrections. Final local gates and
+independent review passed on `bb33d26d`; final-head CI and actual affected-client
+E2E remain acceptance gates.
 Source [#1214](https://github.com/rynfar/meridian/pull/1214) was refreshed read-only
 and remained open at `1c8f17099ad62dbd2a511f69c12e5b4e15d9da7f`, with two
 commits and no PR discussion or reviews. Its linked discussions were empty.
@@ -142,7 +143,7 @@ HTTP controls 3 pass / 0 fail (24 assertions).
 The [transport/idle log](1214-sse-priority-failover/focused-transport-idle.log) and
 [HTTP log](1214-sse-priority-failover/http-negative-controls.log) and
 [complete priority log](1214-sse-priority-failover/focused-priority.log) are durable.
-Standalone build passed; final exact-head local gate results will be appended.
+Standalone build passed; the final local gate results are recorded below.
 These earlier results are not claimed as validation of a later changed head.
 
 ## Remaining acceptance gates
@@ -159,8 +160,9 @@ recording SDK/CLI/platform versions, flags, statuses, telemetry identities,
 header/first-keepalive timing and cancellation/cleanup. Fixture mode is transport
 proof only. Root must also preserve exact affected-client failover, cancellation
 and continuation evidence; synthetic Messages HTTP or another model/client
-cannot satisfy that gate. Required final-head CI and independent adversarial
-review remain before landing. This candidate is not yet a completed fix.
+cannot satisfy that gate. Required final-head CI remains before landing;
+independent review has passed as recorded below. This candidate is not yet a
+completed fix.
 
 ## Independent review and additional corrections
 
@@ -195,7 +197,8 @@ are retained.
 
 Post-review focused checks: [59 transport/idle tests, 264 assertions](1214-sse-priority-failover/transport-review-fixed.log)
 and [four HTTP controls, 31 assertions](1214-sse-priority-failover/http-negative-controls-review-fixed.log)
-pass. Typecheck passes. Final full local gates must use the new frozen head.
+pass. Typecheck passes. Final full local gates used frozen corrected head
+`bb33d26d7757e34deb6645bf66d0c14d77658c0f`.
 
 The reviewer also identified quadratic scanning when a single incomplete frame
 is supplied one byte at a time (up to roughly 2.15 billion character visits at
@@ -206,3 +209,39 @@ CPU hardening, not an observed affected-client defect or a bounded-CPU claim.
 Revisit if a provider begins passing fragmented/raw SSE into this helper or a
 current inner producer is observed emitting prolonged partial frames. Correct
 fragment framing and memory limits do not constitute a CPU performance bound.
+
+## Final local gates and reviewed scope
+
+The independent reviewer approved the complete corrected product and packaged
+harness at `bb33d26d7757e34deb6645bf66d0c14d77658c0f`, with no remaining material
+findings. On that exact head, `npm test` exited 0: **5,406 pass / 35 skip / 0
+fail**, across 19 isolated stages and 26,912 assertions, including its initial
+typecheck. Standalone `npm run typecheck` and `npm run build` both exited 0; the
+latter certified local build 3. The [gate record and artifact hashes](1214-sse-priority-failover/local-gates.json)
+and [complete compressed suite log](1214-sse-priority-failover/npm-test-bb33d26d.log.gz)
+are durable. These results identify the exact tested head, rather than claiming
+that a later evidence commit was itself fully tested.
+
+One earlier standalone build failed with `BuildProvenanceError: inputs-changed`
+because the maintainer committed while its certification snapshot was running.
+The [failed build log](1214-sse-priority-failover/build-review-fixed.log) is kept.
+Freezing `bb33d26d` before the fresh passing build removes the concrete snapshot
+change; this is not an unexplained green rerun or a product regression claim.
+
+The final trusted-retirement test replaces a fixed 50-ms sleep with bounded
+polling of the direct Claude server's `getInFlightCount()`. It must reach zero
+before inspecting the durable attempt. Body EOF can precede SDK/fork cleanup;
+the observable zero proves `finishRequest` ran and prevents a slow cleanup from
+making a subsequently released claim appear retained. The two-second deadline
+fails explicitly if cleanup does not settle. The independent reviewer approved
+this test-only synchronization and its failure semantics.
+
+With that stronger assertion, [pre-review product `1a1060f0` fails](1214-sse-priority-failover/retirement-settled-before.log)
+at the missing exact owner token after observing request completion; the
+[corrected product passes all eight assertions](1214-sse-priority-failover/retirement-settled-after.log).
+All [four added HTTP controls pass, with 32 assertions](1214-sse-priority-failover/http-controls-settled-final.log),
+and the changed test typechecks. Product code, packaged harness and pure relay
+tests are unchanged from the fully tested and reviewed `bb33d26d` blobs listed in
+the gate record. Only test synchronization and durable evidence changed, so the
+full local suite was not repeated; required final-head CI including `test`
+remains a merge gate. There were **zero live model generations** in this work.

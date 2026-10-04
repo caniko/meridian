@@ -1,0 +1,56 @@
+
+> @rynfar/meridian@1.79.0 build
+> bun scripts/build.ts
+
+Bundled 554 modules in 44ms
+
+  cli.js                          15.85 KB   (entry point)
+  cli-jn6p2dz8.js                 2.26 MB    (chunk)
+  cli-1s25p10d.js                 4.82 KB    (chunk)
+  cli-kvzyq9qz.js                 1.1 KB     (chunk)
+  cli-09zvfxm4.js                 46.0 KB    (chunk)
+  cli-0gbsqsvm.js                 33.30 KB   (chunk)
+  cli-zh659m8r.js                 19.93 KB   (chunk)
+  cli-abgcynqb.js                 14.95 KB   (chunk)
+  cli-etp7nktk.js                 22.90 KB   (chunk)
+  cli-1jstkdj9.js                 0.82 KB    (chunk)
+  cli-3zwfvexc.js                 2.13 KB    (chunk)
+  cli-vdy1t4mx.js                 16.20 KB   (chunk)
+  cli-fk5wv36c.js                 8.25 KB    (chunk)
+  cli-j2em8n5p.js                 1.57 KB    (chunk)
+  cli-sry5aqdj.js                 1.41 KB    (chunk)
+  cli-yybp09jr.js                 32.19 KB   (chunk)
+  cli-p9swy5t3.js                 2.35 KB    (chunk)
+  organizationName-g3k9h4t9.js    0.75 KB    (chunk)
+  socketActivation-s3xh5s16.js    256 bytes  (chunk)
+  profileCli-t3nartqk.js          1.33 KB    (chunk)
+  antigravitySetup-y3wyhmrw.js    10.77 KB   (chunk)
+  setup-xbg20842.js               0.90 KB    (chunk)
+  tokenRefresh-269eckh2.js        1.0 KB     (chunk)
+  index-3dyb07gp.js               487 bytes  (chunk)
+  statusProbe-9x9q261e.js         5.38 KB    (chunk)
+  cliDashboard-c0dvkj4y.js        11.59 KB   (chunk)
+  profiles-sz8fm335.js            0.95 KB    (chunk)
+  server.js                       0.95 KB    (entry point)
+  meridian-v2.js                  0.69 MB    (entry point)
+  profilePage-etwd75y0.js         67.25 KB   (chunk)
+  profileRename-tr4mzjcq.js       457 bytes  (chunk)
+  loginCallbackPage-bjrsnkps.js   2.1 KB     (chunk)
+  stats-4c4ewmdh.js               310 bytes  (chunk)
+  pluginPage-xbws24rt.js          17.31 KB   (chunk)
+
+Bundled 87 modules in 11ms
+
+  buildObservationWorker.js  0.50 MB  (entry point)
+
+Bundled 3 modules in 4ms
+
+  index.js  9.25 KB  (entry point)
+
+Bundled 116 modules in 23ms
+
+  index.js  0.69 MB  (entry point)
+
+  fixed: cli-jn6p2dz8.js
+fix-bun-exports: patched 1 file(s)
+Certified local build 3 (301f0bbb-afaf-49f3-9521-40c4c91adc96)

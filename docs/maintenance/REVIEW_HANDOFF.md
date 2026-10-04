@@ -38,8 +38,8 @@ Bounded reviews of new sources remain explicit deferrals:
   Corrections plus native/browser/client proof remain gates.
 - [#1261 transcript sweep](evidence/1261-transcript-sweep-review.md), source
   `7475d08c652332aa1b9b23cbc525024bef83ab28`: disk-growth purpose fits, but
-  root-wide deletion bypasses pins and reproduces busy-root admission and
-  unjoined-child hazards. Require durable ownership/admission/join authority
+  root-wide deletion bypasses pins and reproduces a busy-root admission race; unjoined-child hazards are supported
+  by inspection, with that shutdown proof still open. Require durable ownership/admission/join authority
   through supported APIs and actual affected-client proof.
 
 [Test scratch cleanup #1265](https://github.com/rynfar/meridian/pull/1265) is
@@ -64,7 +64,10 @@ log while admission stays fail closed and the HTTP body stays generic 500.
 Historical full suite at original product head
 `3a5291e345532cae895bd93127171d4ff4e064fa`: 5,305 pass / 35 skips / 0 failures.
 After rebase/harness loader correction: 16 focused checks and all five headless
-matrix arms pass, as do standalone typecheck/build. Final-head CI and exact
+matrix arms pass, as do standalone typecheck/build. All six executed CI checks
+passed at `9a179372`, including
+[test](https://github.com/rynfar/meridian/actions/runs/37235975680/job/111535029225).
+A fresh base/head/check review remains necessary before any future integration. Exact
 macOS 27.0.1 / nono 0.79.0 / OpenCode 2.0.21 / plugin 1.11.1 native/client/model/
 installed-package proof remain open. #1229 stays open; synthetic denial does
 not establish that the native sandbox operation is fixed.

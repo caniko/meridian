@@ -4,10 +4,12 @@
 
 Accept with maintainer corrections. [Nowaker's PR #1263](https://github.com/rynfar/meridian/pull/1263) addresses test infrastructure accumulation: each Bun test process on unchanged main creates settings and session scratch directories that outlive passing, failing and timed-out suites. No production behavior, public API, model adapter or user configuration changes.
 
-- Reviewed main/base: `f299fe06e72411b786380b5212edea79cd13966a`.
+- Reproduced baseline/original reviewed base: `f299fe06e72411b786380b5212edea79cd13966a`.
+- Current delivery base after merged header PR #1264: `9d77d8e282cb9c58d99b8962b900777e9f4b0803`.
 - Reviewed source head: `3a959e12569d72db44be9f868ea25fdf54fde49a`.
-- Authored cherry-pick: `3b86fb69beed0db87e2bc7113bd3a8be176cfb3e`.
-- Separate maintainer correction/source validation head: `fb795476ef9be300c9be4960c639e003ea3e366c`.
+- Current authored cherry-pick: `19334b24e762249628821a76ddc0b3bec83c3c9f` (original source `3a959e12569d72db44be9f868ea25fdf54fde49a`; historical pre-rebase cherry-pick `3b86fb69beed0db87e2bc7113bd3a8be176cfb3e`).
+- Current separate maintainer correction: `c169e46d80cd20689990e5276900f14f6655f215` (historical pre-rebase correction/full-suite validation head `fb795476ef9be300c9be4960c639e003ea3e366c`).
+- Current carried evidence commit: `f905a9d93c2c6ab513b0eff8373156c275934c9f` (historical pre-rebase delivery head `9961a379ee3e61f178185ffa8d8ead9917d18909`).
 - Preserved Author: `Nowaker <spam@nowaker.net>`; AuthorDate: `2026-10-04T13:33:12Z`.
 - Worktree/branch: `/Users/rynfar/repos/meridian-backlog-preload-1263-20261004`, `codex/backlog-preload-1263-20261004`.
 - No linked issue, source comments, inline reviews or review objections were present at review. Source PR remains open; no merge, closure or community comment is authorized by this delivery.
@@ -107,16 +109,16 @@ try {
 ## Required gates and delivery status
 
 - Focused actual Bun cleanup tests: **12 pass, 0 fail**, exit 0.
-- `npm run typecheck`: **pass**, exit 0 on the final source; the final `npm test` pretest also passed.
-- `npm run build`: **pass**, exit 0, including Node entrypoint/export validation.
+- `npm run typecheck`: **pass**, exit 0 on the rebased source; the historical full `npm test` pretest also passed.
+- `npm run build`: **pass**, exit 0 on the rebased source, including Node entrypoint/export validation.
 - `git diff --check`: **pass**.
-- Final full `npm test` at `fb795476ef9be300c9be4960c639e003ea3e366c`: **pass**, exit 0, **5,316 pass / 35 skip / 0 fail**, 26,355 assertions across all **18 process-isolated stages**. Ran with an isolated `TMPDIR`; **zero** `meridian-test-(settings|sessions)-<pid>` directories remained. Three unrelated project fixtures (`meridian-test-droid-project`, `meridian-test-forgecode-project`, `meridian-test-opencode-project`) remained outside this sweep's intended scope; the harness subsequently removed its entire private root.
-- Final delivery PR/CI: pending root delivery; the source PR's green CI is not final delivery-head evidence.
+- Historical full `npm test` before the header-only rebase, at `fb795476ef9be300c9be4960c639e003ea3e366c` on baseline `f299fe06e72411b786380b5212edea79cd13966a`: **pass**, exit 0, **5,316 pass / 35 skip / 0 fail**, 26,355 assertions across all **18 process-isolated stages**. Ran with an isolated `TMPDIR`; **zero** `meridian-test-(settings|sessions)-<pid>` directories remained. Three unrelated project fixtures (`meridian-test-droid-project`, `meridian-test-forgecode-project`, `meridian-test-opencode-project`) remained outside this sweep's intended scope; the harness subsequently removed its entire private root.
+- Delivery [PR #1265](https://github.com/rynfar/meridian/pull/1265) is created and linked. Root must push the rebased head and obtain fresh final-head CI, including `test`; the historical full-suite result and source PR's green CI do not substitute for that gate.
 - Windows/Linux final-head CI remains required; no local Windows/Linux execution is claimed. The permission-specific fixture explicitly skips Windows/root.
-- Final remote recheck: main and contributor head still match the reviewed SHAs above. Source PR is linked to the T3 thread.
+- Remote base at rebase: `9d77d8e282cb9c58d99b8962b900777e9f4b0803`; contributor head remains `3a959e12569d72db44be9f868ea25fdf54fde49a`. Source and delivery PRs are linked to the T3 thread.
 - No PR has been merged, no original issue/PR has been closed, no release has been initiated.
 
-### Full-suite stage results
+### Historical full-suite stage results
 
 | Stage | Pass | Skip | Fail | Assertions | Files |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -138,3 +140,20 @@ try {
 | 16 | 7 | 0 | 0 | 16 | 1 |
 | 17 | 9 | 0 | 0 | 28 | 1 |
 | 18 | 8 | 0 | 0 | 49 | 1 |
+
+## Header-only base update and impact review
+
+After root merged header PR #1264, rebased this isolated feature branch onto `9d77d8e282cb9c58d99b8962b900777e9f4b0803`. Rebase preserved the contributor Author and AuthorDate above. Reviewed the complete base delta from `f299fe06e72411b786380b5212edea79cd13966a`: only shared-header separator CSS, its existing static assertion, a manual header fixture and its verification documentation/evidence changed. There is no change to preload ownership, process probing, test teardown, session/configuration initialization or production interfaces.
+
+`git diff --exit-code 9961a379ee3e61f178185ffa8d8ead9917d18909 f905a9d93c2c6ab513b0eff8373156c275934c9f -- src/__tests__/preload.ts src/__tests__/test-tmp-dirs.ts src/__tests__/preload-tmp-cleanup.test.ts` exited **0**, proving all cleanup source/test blobs are identical to the prior validated delivery. The base's CSS/test correction is retained as merged. Independent adversarial findings above therefore remain resolved.
+
+Impact-appropriate checks on the rebased source/evidence head `f905a9d93c2c6ab513b0eff8373156c275934c9f`:
+
+```sh
+bun test src/__tests__/preload-tmp-cleanup.test.ts src/__tests__/site-header.test.ts src/__tests__/build-badge.test.ts
+npm run typecheck
+npm run build
+git diff --check origin/main
+```
+
+The focused command passed **71 tests / 293 assertions / 0 failures**, exit **0**, across all three files. An isolated temporary-root inventory again found **zero** per-process settings/session scratch directories afterward. Standalone typecheck, build and whitespace validation passed with exit **0**. No full suite was rerun while another queue item held the serialized suite slot; the unchanged-source historical full-suite proof above is retained. Fresh CI on the pushed rebased final head remains mandatory before integration. No model calls, GitHub mutations, community comments, merges, closures or releases were performed by this rebase task.

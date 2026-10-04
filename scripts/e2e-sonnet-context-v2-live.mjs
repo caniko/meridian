@@ -12,9 +12,11 @@ import { resolve, join, dirname } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { createRequire } from 'node:module'
 import { spyOn } from 'bun:test'
+import { spawnSync } from 'node:child_process'
 import { sonnetContextFixture } from './e2e-sonnet-context-fixture.mjs'
 
 assert.equal(process.platform, 'linux', 'Run this affected-platform gate on Linux')
+assert.equal(process.arch, 'x64', 'Run this affected-platform gate on Linux x86_64')
 const repo = realpathSync(resolve(process.env.E2E_MERIDIAN_ROOT ?? '.'))
 // Observe the exact external module resolved by the selected server bundle,
 // including a baseline/package with its own dependency installation.
@@ -23,6 +25,8 @@ const sdkVersion = JSON.parse(readFileSync(join(dirname(sdkPath), 'package.json'
 assert.equal(sdkVersion, '0.2.141', 'This acceptance gate requires the implicated SDK version')
 const client = realpathSync(process.env.E2E_OPENCODE_BIN)
 const importOnly = process.env.E2E_IMPORT_ONLY === '1'
+const maxGenerations = Number(process.env.E2E_MAX_GENERATIONS ?? '2')
+assert([1, 2].includes(maxGenerations), 'The gate permits one baseline or two fixed generations')
 const owned = importOnly ? undefined : realpathSync(process.env.E2E_PROFILE_CLAUDE_DIR)
 const proof = resolve(process.env.E2E_PROOF_DIR ?? '.')
 mkdirSync(proof, { recursive: true, mode: 0o700 })
@@ -31,12 +35,12 @@ const project = join(root, 'project'), config = join(root, 'client-config'), aut
 for (const directory of [project, config, auth]) mkdirSync(directory, { mode: 0o700 })
 const fixture = sonnetContextFixture()
 const facts = { platform: `${process.platform}/${process.arch}`, model: 'claude-sonnet-5-5', client: '2.0.16',
-  sdk: sdkVersion,
+  sdk: sdkVersion, maxGenerations,
   root, readiness: {}, catalogRequests: 0, wire: [], queries: [], resumed: false, result: 'INCOMPLETE' }
 const savedConsole = { log: console.log, warn: console.warn, error: console.error, debug: console.debug }
 let logCount = 0
 for (const key of Object.keys(savedConsole)) console[key] = () => { logCount++ }
-let proxy, relay, server, serverOutput, observer, sdk, censusTimer
+let proxy, relay, server, serverOutput, observer, sdk, censusTimer, firstNativeSession, nativeExecutable
 const trackedProcesses = new Map()
 const writeFacts = () => writeFileSync(join(proof, 'sonnet-context-results.json'), JSON.stringify({ ...facts, suppressedLogLines: logCount }, null, 2), { mode: 0o600 })
 async function bounded(promise, milliseconds, label) {
@@ -122,28 +126,44 @@ try {
   const actualQuery = sdk.query
   observer = spyOn(sdk, 'query').mockImplementation(input => {
     assert(!importOnly, 'Import rehearsal fenced native generation')
-    assert(facts.queries.length < 2, 'Bounded gate refused an additional native generation')
+    assert(facts.queries.length < maxGenerations, 'Bounded gate refused an additional native generation')
     const text = typeof input.prompt === 'string' ? input.prompt : undefined
     const row = { credentialDirectoryMatched: input.options.env?.CLAUDE_CONFIG_DIR === auth,
       resolvedSonnet: input.options.env?.ANTHROPIC_DEFAULT_SONNET_MODEL, sdkModel: input.options.model,
+      nativeExecutableMatched: input.options.pathToClaudeCodeExecutable === nativeExecutable,
       resumed: typeof input.options.resume === 'string', promptCharacters: text?.length,
+      resumeMatchesFirstSession: typeof firstNativeSession === 'string' && input.options.resume === firstNativeSession,
+      historyMessagesRetained: fixture.messages.filter(message => text?.includes(message.content)).length,
       ancientRetained: text?.includes(fixture.ancient) ?? false,
       currentRetained: text?.includes(fixture.current) ?? false,
       omitted: text?.includes('were omitted from this replay') ?? false,
-      nativeModels: [], inputTokens: 0, completed: false }
+      nativeModels: [], inputTokens: 0, toolUseBlocks: 0, completed: false }
     facts.queries.push(row)
+    facts.stage = `native-query-${facts.queries.length}`
+    writeFacts()
     const query = actualQuery(input)
     return new Proxy(query, { get(target, key) {
       if (key === Symbol.asyncIterator) return async function* () {
           for await (const event of query) {
+            if (typeof event.session_id === 'string') {
+              firstNativeSession ??= event.session_id
+              row.nativeSessionMatchesFirst = row.nativeSessionMatchesFirst !== false && event.session_id === firstNativeSession
+            }
             if (event.type === 'assistant' && typeof event.message?.model === 'string') {
               if (!row.nativeModels.includes(event.message.model)) row.nativeModels.push(event.message.model)
               const usage = event.message.usage
               if (usage) row.inputTokens = Math.max(row.inputTokens, (usage.input_tokens ?? 0) + (usage.cache_read_input_tokens ?? 0) + (usage.cache_creation_input_tokens ?? 0))
+              row.toolUseBlocks += event.message.content.filter(block => block.type === 'tool_use').length
             }
+            if (event.type === 'result') {
+              row.resultSubtype = event.subtype
+              row.nativeTurns = event.num_turns
+            }
+            writeFacts()
             yield event
           }
           row.completed = true
+          writeFacts()
       }
       const value = Reflect.get(target, key, target)
       return typeof value === 'function' ? value.bind(target) : value
@@ -156,17 +176,18 @@ try {
   if (!proxy.server.listening) await once(proxy.server, 'listening')
   const upstream = `http://127.0.0.1:${proxy.server.address().port}`
   if (!importOnly) {
-    const healthResponse = await fetch(`${upstream}/health`)
+    const healthResponse = await fetch(`${upstream}/health`, { signal: AbortSignal.timeout(15_000) })
     const health = await healthResponse.json()
     facts.readiness.nativeCliLoggedIn = health.auth?.loggedIn === true
     const executable = health.claudeExecutable?.path
+    nativeExecutable = executable
     assert(healthResponse.ok && facts.readiness.nativeCliLoggedIn && typeof executable === 'string', 'Native CLI readiness failed before generation')
-    const version = Bun.spawnSync([executable, '--version'], { env: process.env })
+    const version = spawnSync(executable, ['--version'], { env: process.env, timeout: 15_000 })
     const match = /^(\d+)\.(\d+)\.(\d+) \(Claude Code\)/.exec(new TextDecoder().decode(version.stdout).trim())
     facts.claudeCode = match ? `${match[1]}.${match[2]}.${match[3]}` : undefined
-    assert(version.exitCode === 0 && match && (Number(match[1]) > 2 || (Number(match[1]) === 2 && (Number(match[2]) > 1 || (Number(match[2]) === 1 && Number(match[3]) >= 284)))), 'Native CLI does not support the implicated Sonnet 5.5')
+    assert(version.status === 0 && match && (Number(match[1]) > 2 || (Number(match[1]) === 2 && (Number(match[2]) > 1 || (Number(match[2]) === 1 && Number(match[3]) >= 284)))), 'Native CLI does not support the implicated Sonnet 5.5')
   }
-  const catalog = await fetch(`${upstream}/v1/models`).then(response => response.json())
+  const catalog = await fetch(`${upstream}/v1/models`, { signal: AbortSignal.timeout(10_000) }).then(response => response.json())
   facts.proxyWindow = catalog.data.find(row => row.id === facts.model)?.context_window
   assert(Number.isSafeInteger(facts.proxyWindow) && facts.proxyWindow > 0, 'Proxy did not advertise the actual Sonnet model')
   relay = Bun.serve({ hostname: '127.0.0.1', port: 0, async fetch(request) {
@@ -193,10 +214,11 @@ try {
   for (const kind of ['CONFIG', 'DATA', 'CACHE', 'STATE']) clientEnv[`XDG_${kind}_HOME`] = join(root, kind.toLowerCase())
   Object.assign(clientEnv, { HOME: join(root, 'client-home'), OPENCODE_CONFIG_DIR: config, OPENCODE_DISABLE_AUTOUPDATE: '1', OPENCODE_SERVER_PASSWORD: 'local-e2e',
     MERIDIAN_CONFIG_DIR: process.env.MERIDIAN_CONFIG_DIR, MERIDIAN_OPENCODE_ATTESTATION_KEY: attestation, PWD: project, INIT_CWD: project })
-  const version = Bun.spawnSync([client, '--version'], { env: clientEnv })
+  const version = spawnSync(client, ['--version'], { env: clientEnv, timeout: 15_000 })
+  assert.equal(version.status, 0, 'OpenCode version probe failed or timed out')
   assert.equal(new TextDecoder().decode(version.stdout).trim(), 'opencode v2.0.16')
-  const setup = Bun.spawnSync(['node', join(repo, 'dist/cli.js'), 'setup', '--v2', '--opencode-bin', client], { cwd: project, env: clientEnv })
-  assert.equal(setup.exitCode, 0, 'Installed package setup failed')
+  const setup = spawnSync('node', [join(repo, 'dist/cli.js'), 'setup', '--v2', '--opencode-bin', client], { cwd: project, env: clientEnv, timeout: 30_000 })
+  assert.equal(setup.status, 0, 'Installed package setup failed or timed out')
   const configured = JSON.parse(readFileSync(join(config, 'opencode.json'), 'utf8'))
   assert.deepEqual(configured.plugins.map(path => realpathSync(path)), [realpathSync(join(repo, 'dist/meridian-v2'))])
   const reservation = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch: () => new Response('reserved') })
@@ -211,14 +233,15 @@ try {
   serverOutput = Promise.all([new Response(server.stdout).text(), new Response(server.stderr).text()])
   const base = `http://127.0.0.1:${port}`
   const headers = { authorization: `Basic ${Buffer.from('opencode:local-e2e').toString('base64')}`, 'content-type': 'application/json' }
-  async function api(path, body) {
-    const response = await fetch(`${base}${path}`, { headers, ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }), signal: AbortSignal.timeout(240_000) })
+  async function api(path, body, timeout = 240_000) {
+    const response = await fetch(`${base}${path}`, { headers, ...(body === undefined ? {} : { method: 'POST', body: JSON.stringify(body) }), signal: AbortSignal.timeout(timeout) })
     assert(response.ok, `OpenCode API ${path} status ${response.status}`)
     return response.status === 204 ? undefined : response.json()
   }
-  for (let attempt = 0; attempt < 200; attempt++) {
+  const startupDeadline = Date.now() + 30_000
+  while (Date.now() < startupDeadline) {
     try {
-      const models = await api('/api/model')
+      const models = await api('/api/model', undefined, Math.min(1000, Math.max(1, startupDeadline - Date.now())))
       facts.clientWindow = models.data.find(row => row.providerID === 'anthropic' && row.modelID === facts.model)?.limit.context
       if (facts.clientWindow === facts.proxyWindow) break
     } catch (error) { if (server.exitCode !== null) throw error }
@@ -263,14 +286,22 @@ try {
   assert(facts.wire.some(row => row.model === facts.model && row.agent === 'build' && row.mode === 'primary' && row.attested && row.ancientRetained), 'Actual V2 primary request did not carry the imported history and signed identity')
   assert(fresh?.credentialDirectoryMatched && fresh.nativeModels.includes(facts.model) && fresh.completed, 'Wrong native account/model or incomplete SDK query')
   assert(facts.sameAncientNoTrimAssertion, 'Native Sonnet fresh replay prematurely discarded ancient history')
+  assert.equal(fresh.historyMessagesRetained, fixture.messages.length, 'Native Sonnet fresh replay discarded part of the imported history')
+  assert(fresh.nativeExecutableMatched && fresh.resultSubtype === 'success', 'Initial native executable/result mismatch')
+  assert(fresh.nativeTurns === 1 && fresh.toolUseBlocks === 0, 'The fresh coding receipt used additional native tool turns')
+  assert.equal(facts.queries.length, 1, 'The fresh arm used more than one native generation')
   assert.equal(facts.proxyWindow, 1_000_000)
   assert(fresh.inputTokens > 200_000, 'Actual native input did not exceed the old context window')
   assert(facts.receiptDelivered, 'Actual V2 response lacks the current coding receipt')
   const start = facts.queries.length
   const resumed = await prompt(`For the follow-up coding task, return only console.log("${fixture.current}_RESUMED"); Do not call tools.`)
-  facts.resumed = facts.queries.slice(start).some(row => row.resumed && row.nativeModels.includes(facts.model) && row.completed)
+  facts.resumed = facts.queries.slice(start).some(row => row.resumed && row.resumeMatchesFirstSession && row.nativeSessionMatchesFirst
+    && row.credentialDirectoryMatched && row.nativeExecutableMatched && row.promptCharacters < 2000
+    && row.resultSubtype === 'success' && row.nativeTurns === 1 && row.toolUseBlocks === 0
+    && row.nativeModels.includes(facts.model) && row.completed)
     && assistantText(resumed).includes(`console.log("${fixture.current}_RESUMED");`)
   assert(facts.resumed, 'Minimal actual V2/SDK resume control failed')
+  assert.equal(facts.queries.length, 2, 'The fixed arm did not use exactly two native generations')
   facts.result = 'PASS'
   }
 } catch (error) {

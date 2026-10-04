@@ -9742,6 +9742,10 @@ export function installProxyProcessErrorHandlers(): void {
 }
 
 export async function startProxyServer(config: Partial<ProxyConfig> = {}): Promise<ProxyInstance> {
+  // OAuth returns to localhost, whose cookies are shared by unrelated local
+  // apps. A real browser's 16 KiB cookie jar exceeded Node's default ingress
+  // limit before /callback could run. Keep a finite 32 KiB header budget.
+  const serverOptions = { maxHeaderSize: 32 * 1024 }
   const selectedConfig = resolveBackendConfig(config)
   if (selectedConfig.backend === "antigravity") {
     const backend = createAntigravityServer(selectedConfig)
@@ -9750,7 +9754,7 @@ export async function startProxyServer(config: Partial<ProxyConfig> = {}): Promi
       installErrorReporter({ version: selectedConfig.version })
       installProxyProcessErrorHandlers()
     }
-    const server = serve({ fetch: backend.app.fetch, port: selectedConfig.port, hostname: selectedConfig.host, overrideGlobalObjects: false }, info => {
+    const server = serve({ fetch: backend.app.fetch, port: selectedConfig.port, hostname: selectedConfig.host, serverOptions, overrideGlobalObjects: false }, info => {
       if (!selectedConfig.silent) console.log(`Meridian Antigravity backend: http://${selectedConfig.host}:${info.port}`)
     }) as Server
     const tracker = trackServerConnections(server)
@@ -9882,7 +9886,7 @@ export async function startProxyServer(config: Partial<ProxyConfig> = {}): Promi
   if (fd !== undefined) {
     delete process.env.LISTEN_FDS
     delete process.env.LISTEN_PID
-    server = createAdaptorServer({ fetch: app.fetch, overrideGlobalObjects: false }) as Server
+    server = createAdaptorServer({ fetch: app.fetch, serverOptions, overrideGlobalObjects: false }) as Server
     server.listen({ fd }, () => {
       const addr = server.address()
       onListening(typeof addr === "object" && addr !== null ? addr.port : finalConfig.port)
@@ -9894,6 +9898,7 @@ export async function startProxyServer(config: Partial<ProxyConfig> = {}): Promi
         fetch: app.fetch,
         port: finalConfig.port,
         hostname: finalConfig.host,
+        serverOptions,
         overrideGlobalObjects: false,
       },
       (info) => onListening(info.port),

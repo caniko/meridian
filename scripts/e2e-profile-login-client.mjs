@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
-// Actual headless OpenCode + real SDK/model using ONLY a newly browser-created
-// profile. Run after build with E2E_PROFILE_CLAUDE_DIR set to that profile's
+// Actual headless OpenCode + real SDK/model using ONLY the intended browser-created
+// or re-authenticated profile. Run after build with E2E_PROFILE_CLAUDE_DIR set to its
 // published directory and E2E_PLUGIN_PATH to an independently installed scrub.
 // Credentials are read from their native store; never print or copy them.
 import assert from 'node:assert/strict'
@@ -32,7 +32,8 @@ Object.assign(process.env, { MERIDIAN_CONFIG_DIR: join(root, 'proxy-config'), ME
   MERIDIAN_CREDENTIALS_READONLY: '1', MERIDIAN_PASSTHROUGH: '1' })
 const queries = [], servedModels = new Set(), realQuery = sdk.query
 const observer = spyOn(sdk, 'query').mockImplementation(input => {
-  queries.push({credentialDirectoryMatched:input.options?.env?.CLAUDE_CONFIG_DIR === credentialDir, resume:!!input.options?.resume})
+  queries.push({credentialDirectoryMatched:input.options?.env?.CLAUDE_CONFIG_DIR === credentialDir, resume:!!input.options?.resume,
+    executable:input.options?.pathToClaudeCodeExecutable})
   return observeSdkModels(realQuery(input), servedModels)
 })
 const pluginConfigPath = join(root, 'plugins.json')
@@ -54,6 +55,10 @@ try {
     profiles:[{id:'browser-created',claudeConfigDir:credentialDir}], defaultProfile:'browser-created'})
   if (!proxy.server.listening) await once(proxy.server,'listening')
   const url = `http://127.0.0.1:${proxy.server.address().port}`
+  const health = await (await fetch(url+'/health')).json()
+  assert(health.claudeExecutable?.path, 'Health did not identify the actual CLI')
+  const selected = spawnSync(health.claudeExecutable.path, ['--version'], {encoding:'utf8'})
+  assert.equal(selected.status, 0, 'Cannot probe the actual selected CLI')
   const plugins = await (await fetch(url+'/plugins/list')).json()
   assert(plugins.plugins.some(plugin=>plugin.name==='opencode-scrub'&&plugin.status==='active'),'Scrub plugin inactive')
   writeFileSync(join(config,'opencode.json'),JSON.stringify({$schema:'https://opencode.ai/config.json',plugin:[resolve('dist/meridian')],
@@ -67,16 +72,20 @@ try {
   const firstText=first.events.filter(event=>event.type==='text').map(event=>event.part?.text??'').join('')
   const continued=first.session?await run('continued',['run','--format','json','--session',first.session,'Without tools, repeat the exact account receipt from the previous turn.'],env):null
   const continuedText=continued?.events.filter(event=>event.type==='text').map(event=>event.part?.text??'').join('')??''
-  const summary={result:'FAIL',platform:`${process.platform}/${process.arch}`,bun:Bun.version,opencode:version.stdout.trim(),sdk:sdkVersion,claudeCode:cliVersion,model,
+  const summary={result:'FAIL',platform:`${process.platform}/${process.arch}`,bun:Bun.version,opencode:version.stdout.trim(),sdk:sdkVersion,
+    packagedClaudeCode:cliVersion,claudeCode:selected.stdout.trim(),model,
     firstExit:first.exit,continuedExit:continued?.exit,firstHasSession:!!first.session,
     toolCalls:first.events.filter(event=>event.type==='tool_use').length,firstReceipt:firstText.includes(receipt),continuedReceipt:continuedText.includes(receipt),
-    allQueriesUseNewAccount:queries.length>0&&queries.every(query=>query.credentialDirectoryMatched),servedModels:[...servedModels],realSdkQueries:queries.length,
+    allQueriesUseNewAccount:queries.length>0&&queries.every(query=>query.credentialDirectoryMatched),
+    allQueriesUseReportedExecutable:queries.length>0&&queries.every(query=>query.executable===health.claudeExecutable.path),
+    servedModels:[...servedModels],realSdkQueries:queries.length,
     resumed:queries.some(query=>query.resume),scrub:plugins.plugins.find(plugin=>plugin.name==='opencode-scrub')?.version,privateArtifacts:root}
   writeFileSync(join(root,'summary.json'),JSON.stringify(summary,null,2),{mode:0o600})
   assert.equal(first.exit,0,`First client failed; private artifacts: ${root}`)
   assert.equal(continued?.exit,0,`Continuation failed; private artifacts: ${root}`)
   assert(summary.toolCalls>0&&summary.firstReceipt&&summary.continuedReceipt,'Actual tool receipt or continuation missing')
   assert(summary.allQueriesUseNewAccount&&summary.resumed,'The new account was not used for all real SDK queries and resume')
+  assert(summary.allQueriesUseReportedExecutable, 'Health and SDK selected different CLI executables')
   assert(servedModels.size>0&&[...servedModels].every(value=>value===model||value.startsWith(model+'-')),'Upstream response did not confirm the implicated model')
   summary.result='PASS';writeFileSync(join(root,'summary.json'),JSON.stringify(summary,null,2),{mode:0o600});console.log(JSON.stringify(summary))
 } finally {await proxy?.close();observer.mockRestore()}

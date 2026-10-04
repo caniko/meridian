@@ -7423,7 +7423,10 @@ overrides before SDK/proxy imports, and copies only the selected credential file
 into its own private runtime account. SDK refresh may write that owned copy;
 source bytes, identity and permissions must remain unchanged. Query/model
 observations assert the selected runtime and actual served model without logging
-credentials. Cleanup joins writers and uses fenced GC
+credentials. The observer resolves the SDK's public entry from the selected
+checkout and verifies it is the exact entry used by that checkout's proxy.
+Initialization cleanup covers credential-copy and work-directory setup failures
+as well as import/startup failures. Cleanup joins writers and uses fenced GC
 for all fixture-owned targets, including failed turns. Unresolved ownership or
 leases stop cleanup before any direct SDK deletion. It directly deletes only
 exact sessions created by the fixture through supported APIs. Incomplete

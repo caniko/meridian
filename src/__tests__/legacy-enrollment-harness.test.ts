@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
 import { spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
 
@@ -22,14 +22,27 @@ describe("legacy enrollment native harness authority", () => {
     auditPath = join(directory, "audit.json")
     mkdirSync(source)
     mkdirSync(join(checkout, "src/proxy"), { recursive: true })
+    writeFileSync(join(checkout, "package.json"), '{"type":"module"}')
+    const sdk = join(checkout, "node_modules/@anthropic-ai/claude-agent-sdk")
+    mkdirSync(sdk, { recursive: true })
+    writeFileSync(join(sdk, "package.json"), JSON.stringify({ name: "@anthropic-ai/claude-agent-sdk",
+      type: "module", exports: { ".": { default: "./sdk.mjs" } } }))
+    writeFileSync(join(sdk, "sdk.mjs"), `
+      export const targetSdkIdentity = 'distinct-synthetic-target-sdk';
+      export function query() { throw new Error('Unexpected synthetic SDK query'); }
+    `)
     writeFileSync(join(source, ".credentials.json"), bytes, { mode: 0o400 })
+    chmodSync(join(source, ".credentials.json"), 0o400)
     writeFileSync(join(checkout, "src/proxy/server.ts"), `
       import { readFileSync, writeFileSync } from 'node:fs';
       import { join } from 'node:path';
+      import { query, targetSdkIdentity } from '@anthropic-ai/claude-agent-sdk';
       const runtime = process.env.CLAUDE_CONFIG_DIR;
       const source = process.env.E2E_CLAUDE_CONFIG_DIR;
       writeFileSync(process.env.E2E_HARNESS_AUDIT_PATH, JSON.stringify({
         runtime, distinct: runtime !== source,
+        targetSdkObserved: targetSdkIdentity === 'distinct-synthetic-target-sdk'
+          && typeof query.mock === 'object',
         readonly: process.env.MERIDIAN_CREDENTIALS_READONLY,
         sourceUnchanged: readFileSync(join(source, '.credentials.json')).equals(
           Buffer.from(${JSON.stringify(bytes.toString())})),
@@ -51,6 +64,7 @@ describe("legacy enrollment native harness authority", () => {
       }
     }
     runtime = undefined
+    chmodSync(join(source, ".credentials.json"), 0o600)
     rmSync(directory, { recursive: true, force: true })
   })
 
@@ -68,12 +82,57 @@ describe("legacy enrollment native harness authority", () => {
     const audit = JSON.parse(readFileSync(auditPath, "utf8")) as { runtime: string; [key: string]: unknown }
     runtime = audit.runtime
     expect(audit).toMatchObject({ distinct: true, readonly: "1", sourceUnchanged: true,
-      copied: true, authOverridesAbsent: true })
+      copied: true, authOverridesAbsent: true, targetSdkObserved: true })
     expect(existsSync(runtime)).toBe(false)
     expect(readFileSync(join(source, ".credentials.json"))).toEqual(bytes)
     expect(result.stdout).not.toContain(bytes.toString())
     expect(result.stderr).not.toContain(bytes.toString())
   })
+
+  for (const stage of ["runtime-copy", "workdir"] as const) {
+    it(`removes the private runtime copy after an injected ${stage} setup failure before imports`, () => {
+      const preload = join(directory, `setup-fault-${stage}.ts`)
+      writeFileSync(preload, `
+        import * as fs from 'node:fs';
+        import { basename, dirname, join } from 'node:path';
+        import { spyOn } from 'bun:test';
+        const write = fs.writeFileSync, mkdir = fs.mkdirSync;
+        const fail = path => {
+          const runtime = ${JSON.stringify(stage)} === 'runtime-copy'
+            ? dirname(String(path)) : join(dirname(String(path)), 'owned-runtime-account');
+          write(process.env.E2E_HARNESS_AUDIT_PATH, JSON.stringify({ runtime,
+            copiedBeforeFailure: fs.existsSync(join(runtime, '.credentials.json')) }));
+          throw new Error('synthetic setup fault ${stage}');
+        };
+        if (${JSON.stringify(stage)} === 'runtime-copy') {
+          spyOn(fs, 'writeFileSync').mockImplementation((path, data, options) => {
+            write(path, data, options);
+            if (basename(String(path)) === '.credentials.json'
+              && basename(dirname(String(path))) === 'owned-runtime-account') fail(path);
+          });
+        } else {
+          spyOn(fs, 'mkdirSync').mockImplementation((path, options) => {
+            if (basename(String(path)) === 'project') fail(path);
+            return mkdir(path, options);
+          });
+        }
+      `)
+      const result = spawnSync(process.execPath, ["--preload", preload, harness], {
+        encoding: "utf8", timeout: 10_000,
+        env: { ...process.env, E2E_CLAUDE_CONFIG_DIR: source, E2E_MERIDIAN_ROOT: checkout,
+          E2E_HARNESS_AUDIT_PATH: auditPath },
+      })
+      expect(result.status).toBe(1)
+      expect(result.stderr).toContain(`synthetic setup fault ${stage}`)
+      const audit = JSON.parse(readFileSync(auditPath, "utf8")) as { runtime: string; copiedBeforeFailure: boolean }
+      runtime = audit.runtime
+      expect(audit.copiedBeforeFailure).toBe(true)
+      expect(existsSync(runtime)).toBe(false)
+      expect(readFileSync(join(source, ".credentials.json"))).toEqual(bytes)
+      expect(result.stdout).not.toContain(bytes.toString())
+      expect(result.stderr).not.toContain(bytes.toString())
+    })
+  }
 
   it("requires a selected immutable snapshot before importing a proxy or looking up native auth", () => {
     const env: NodeJS.ProcessEnv = { ...process.env, E2E_MERIDIAN_ROOT: checkout, E2E_HARNESS_AUDIT_PATH: auditPath }

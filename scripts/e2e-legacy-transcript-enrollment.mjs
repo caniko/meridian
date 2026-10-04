@@ -6,6 +6,7 @@ import assert from 'node:assert/strict'
 import { existsSync, lstatSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { createRequire } from 'node:module'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { spyOn } from 'bun:test'
 import { observeSdkModels } from './lib/observe-sdk-models.mjs'
@@ -25,29 +26,38 @@ const initialSdkRoot = process.env.CLAUDE_CONFIG_DIR
 const baselineExpected = process.argv.includes('--expect-unfixed')
 const root = realpathSync(mkdtempSync(join(tmpdir(), 'meridian-legacy-transcript-e2e-')))
 const runtimeRoot = join(root, 'owned-runtime-account')
-mkdirSync(runtimeRoot, { mode: 0o700 })
-assert.notEqual(realpathSync(runtimeRoot), sourceRoot, 'Runtime account must be a separate owned directory')
-writeFileSync(join(runtimeRoot, '.credentials.json'), sourceBytes, { mode: 0o600, flag: 'wx' })
 const querySdkRoot = runtimeRoot
 const state = join(root, 'state')
 const work = join(root, 'project')
-mkdirSync(work)
-for (const key of Object.keys(process.env)) {
-  if (/^(MERIDIAN_|CLAUDE_PROXY_|CLAUDE_|ANTHROPIC_)/.test(key) || key === 'CLAUDECODE') delete process.env[key]
-}
-Object.assign(process.env, {
-  MERIDIAN_CONFIG_DIR: join(root, 'settings'), MERIDIAN_SESSION_DIR: state,
-  MERIDIAN_CREDENTIALS_READONLY: '1', MERIDIAN_NO_UPDATE_CHECK: '1',
-  CLAUDE_CONFIG_DIR: runtimeRoot,
-  MERIDIAN_WORKDIR: work, MERIDIAN_TELEMETRY_PERSIST: '0',
-  MERIDIAN_SESSION_GC_GRACE_MS: '0', MERIDIAN_SESSION_PROFILE_COPY_PRUNE: '0',
-  MERIDIAN_ROUTING: 'manual', MERIDIAN_PASSTHROUGH: '0',
-})
 let sdk, proxy, store, clearSessionCache, observer
 const queries = [], servedModels = new Set()
 const moduleAt = path => import(pathToFileURL(join(checkout, path)).href)
 try {
-  sdk = await import('@anthropic-ai/claude-agent-sdk')
+  // Every operation after creating the private root is cleanup-owned, including
+  // a write that makes the credential copy visible before reporting failure.
+  mkdirSync(runtimeRoot, { mode: 0o700 })
+  assert.notEqual(realpathSync(runtimeRoot), sourceRoot, 'Runtime account must be a separate owned directory')
+  writeFileSync(join(runtimeRoot, '.credentials.json'), sourceBytes, { mode: 0o600, flag: 'wx' })
+  mkdirSync(work)
+  for (const key of Object.keys(process.env)) {
+    if (/^(MERIDIAN_|CLAUDE_PROXY_|CLAUDE_|ANTHROPIC_)/.test(key) || key === 'CLAUDECODE') delete process.env[key]
+  }
+  Object.assign(process.env, {
+    MERIDIAN_CONFIG_DIR: join(root, 'settings'), MERIDIAN_SESSION_DIR: state,
+    MERIDIAN_CREDENTIALS_READONLY: '1', MERIDIAN_NO_UPDATE_CHECK: '1',
+    CLAUDE_CONFIG_DIR: runtimeRoot,
+    MERIDIAN_WORKDIR: work, MERIDIAN_TELEMETRY_PERSIST: '0',
+    MERIDIAN_SESSION_GC_GRACE_MS: '0', MERIDIAN_SESSION_PROFILE_COPY_PRUNE: '0',
+    MERIDIAN_ROUTING: 'manual', MERIDIAN_PASSTHROUGH: '0',
+  })
+  // Baseline and candidate may have independently installed dependencies.
+  // Resolve the public entry at the target checkout, not the harness location.
+  const targetRequire = createRequire(pathToFileURL(join(checkout, 'package.json')))
+  const sdkEntry = targetRequire.resolve('@anthropic-ai/claude-agent-sdk')
+  const proxyRequire = createRequire(pathToFileURL(join(checkout, 'src/proxy/server.ts')))
+  assert.equal(realpathSync(proxyRequire.resolve('@anthropic-ai/claude-agent-sdk')), realpathSync(sdkEntry),
+    'Harness observer must use the exact proxy-installed SDK entry')
+  sdk = await import(pathToFileURL(sdkEntry).href)
   const realQuery = sdk.query
   observer = spyOn(sdk, 'query').mockImplementation(input => {
     queries.push({ runtimeMatched: input.options?.env?.CLAUDE_CONFIG_DIR === runtimeRoot })
@@ -173,7 +183,7 @@ try {
   assert(queries.every(query => query.runtimeMatched), 'Every SDK query must use the owned runtime store')
   assert(servedModels.size > 0 && [...servedModels].every(value => value === model || value.startsWith(model + '-')), 'Upstream did not confirm the selected model')
   assertSourceUnchanged()
-  result = { result: 'PASS', sourceGrantUnchanged: true, ownedRuntimeAccount: true, allQueriesUseOwnedRuntime: true, servedModels: [...servedModels], expected: baselineExpected ? 'unfixed' : 'corrected',
+  result = { result: 'PASS', sourceGrantUnchanged: true, ownedRuntimeAccount: true, allQueriesUseOwnedRuntime: true, observedCheckoutSdk: true, servedModels: [...servedModels], expected: baselineExpected ? 'unfixed' : 'corrected',
     checkout, platform: process.platform, model, client: 'real HTTP/SDK fixture',
     currentAndPreviousPinnedUnchanged: true, generationAttached,
     trackedLegacyCollected: !baselineExpected, unknownSessionPreserved: true }

@@ -290,6 +290,13 @@ bun test src/__tests__/proxy-session-store.test.ts \
 
 The complete isolated store suite then passed **24 pass / 0 fail**, 105
 assertions. No production source or native harness changed for this correction.
+The necessary full rerun on frozen
+`b20a0e66f55443876dedbb3c0b0d9d38d1228ef0` completed **5392 pass / 35 skip /
+0 fail**, 27,018 assertions across all 19 isolated batches, exit **0**. Its
+`pretest` typecheck passed. No source or documentation changed during either
+full-suite process. The 35 skips comprise 34 existing Darwin credential-file
+tests whose write authority is Keychain-backed, plus the native Windows
+executor-PID-reuse control. They do not establish those paths on this host.
 
 | Check | Result |
 | --- | --- |
@@ -302,7 +309,7 @@ assertions. No production source or native harness changed for this correction.
 | `npm run typecheck` | Exit 0 after the final harness setup/target-SDK and modern store fixture corrections. |
 | `npm run build` | Exit 0 after the final harness setup/target-SDK corrections; Node entrypoint bundling completed (certified local build 5). |
 | `git diff --check`; syntax checks for both committed harnesses | Exit 0. |
-| Full `npm test` | First frozen `ab9bb9ae` run exited 1 on the causal fixture precondition above. A necessary rerun on the corrected committed fixture is pending in the parent's exclusive slot. |
+| Full `npm test` | First frozen `ab9bb9ae` run exited 1 on the causal fixture precondition above. Corrected frozen `b20a0e66` rerun passed **5392 / 35 skip / 0 fail**, 27,018 assertions in all 19 batches, exit 0. |
 | Native before/after fixture | Escrowed; not run. Model slot is reserved by another authorized gate. |
 | E41 chain/parallel × streaming/nonstreaming | Not run for this correction. |
 | Actual reported Linux/OpenCode host; native Windows | Not run. No cross-platform/model success claim. |

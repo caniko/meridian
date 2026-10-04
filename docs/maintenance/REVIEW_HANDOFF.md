@@ -1,5 +1,45 @@
 # Upstream review handoff
 
+## Current continuation — 2026-10-04 (after #1269)
+
+The [current continuation record](BACKLOG_CONTINUATION_2026-10-04.md) supersedes
+specific earlier October 4 statuses while preserving the logs below. Root remains
+the sole queue owner; no release or community-comment authority is inferred.
+
+[Checkpoint #1269](https://github.com/rynfar/meridian/pull/1269) merged as
+`0369441786b082aadeb31689dcbce41d7e8574d9`, validated head
+`65b7793001e9982296459a7e33b85813bc2e8509`, matching tree
+`e6ea7edcea9a81aeba9dd7b13cfed32f60eef4a2`; required
+[test run 37238890010](https://github.com/rynfar/meridian/actions/runs/37238890010)
+passed. #1228 closed at unchanged `cee10174` at 22:45 UTC because its private
+SDK transcript mutation is declined; the original symptom remains unresolved.
+
+The owner approved #1270's four current-expiry fields and shared UI; #1260
+remains open with its five history fields/storage/listeners/auth logs excluded.
+The [bounded #1219 record](evidence/1219-sqlite-scope-review.md) resolves complete
+extraction, not whole-stack semantic review or SQL contract approval. #1244's
+async cleanup approval already exists; its implementation evidence stays open.
+
+Draft #1271 (`7de8cf5f`) retains safe fsync/publication durability, separate
+maintainer corrections and Nowaker credit; historical full suite is
+5,349 pass / 35 skips / 0 failures. Independent review passes, but live/native
+proof and final-head CI remain gates. #1223's excluded recovery stays open.
+SSE #1214 is frozen at `bb33d26d`, independently approved after corrections,
+with full suite running and native proof open. E41 harness `b49defec` and
+approved expiry `5ae59a16` have queued full suites; original #1245/#1220 cause,
+expiry browser/native proof and their final integration gates remain open.
+Transcript enrollment's committed `4d645c7f` has further enrollment/discard
+corrections in progress; actual native/client/Windows acceptance remains open.
+
+Sonnet draft #1267 is locally rebased to `dac34820`. The prior default-native
+attempt stopped at read-only 401 with zero SDK queries. Fresh explicitly
+selected personal usage returned 200, and T3's round-two affected Linux/V2/
+Sonnet gate is ongoing; readiness does not establish before/after generation
+or resume proof. Refresh exact source/delivery/base/local/CI evidence before
+integration. Active worktree records and precise source maps are linked in
+the continuation; this checkpoint does not refresh the entire queue itself.
+
+
 ## Current continuation — 2026-10-04
 
 The owner authorized a managed PR/issue backlog pass after reviewing repository

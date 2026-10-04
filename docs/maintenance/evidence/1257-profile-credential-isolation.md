@@ -46,5 +46,7 @@ default Claude subscription remains unchanged. No public fields, routes,
 settings, session behavior, SDK persistence, or dependencies are added.
 Process-global auth/store spies are isolated in their own npm-test stage.
 
-Final local gates and final-head CI must pass before merge; see the linked PR
-for delivery state. This correction does not close the held cache/SQLite stack.
+Final local gates pass: npm test 5,304 / 0 / 35 platform skips across 18
+isolated stages (including its pretest typecheck), standalone typecheck and
+build. [Integration #1258](https://github.com/rynfar/meridian/pull/1258) carries
+final-head CI and delivery state; required CI remains a merge gate. This correction does not close the held cache/SQLite stack.

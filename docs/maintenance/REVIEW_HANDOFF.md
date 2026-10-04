@@ -44,8 +44,18 @@ reproduces the metadata leak and wrong API logged-out demotion; actual CLI
 store reads. Eight isolated HTTP regression controls retain stored-Claude
 plan/renewal/presence and unknown-store behavior. Native browser confirms the
 API card no longer shows Max 20x or wrong logged-out status. SDK/model calls
-are fenced. Local final gates and final-head PR/CI/merge remain.
+are fenced. Final local gates 5,304 / 0 / 35 platform skips across 18 stages,
+standalone typecheck/build pass. Integration [#1258](https://github.com/rynfar/meridian/pull/1258)
+awaits final-head CI/merge.
 [Durable proof](evidence/1257-profile-credential-isolation.md).
+
+#1233 source c609e8d1a82b7c98114d65376474dcde5ed3ff56 is completely
+reviewed for its opt-in hostname contract. [Issue #1259](https://github.com/rynfar/meridian/issues/1259)
+records authenticated GET/PUT /settings/api/header and optional hostname on
+unauthenticated /health while enabled. Owner decision is pending; no source
+incorporation or new contract is authorized yet. After approval, compose the
+current responsive header and verify all API/width/privacy controls. The source
+PR remains reviewable and unchanged; no external comment was sent.
 
 #1256 retirement-harness checkpoint delivered as
 a079dc94bd313a830a318215d760baf7c984e695 from exact validated head

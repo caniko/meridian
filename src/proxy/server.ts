@@ -206,6 +206,7 @@ import {
   commitFork,
   canonicalizeTranscriptLocator,
   ensureTranscriptJournaled,
+  enrollLegacyMappedTranscripts,
   prepareForkForPublication,
   publishPinnedTranscript,
   registerLiveTranscript,
@@ -756,6 +757,7 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
     },
   )
   const sessionGcOptions: SessionLifecycleOptions = {
+    legacyEnrollmentCursor: {},
     maxPending: Math.max(1, envInt("SESSION_GC_MAX_PENDING", 256)),
     maxDeletesPerRun: Math.max(1, envInt("SESSION_GC_MAX_DELETES", 16)),
     // A prepared fork is an active write lease. Never age it out before the
@@ -843,7 +845,13 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
   const sweepSessionGc = (): Promise<void> => {
     if (sessionGcRunning) return sessionGcRunning
     sessionGcRunning = (async () => {
-      if (profileCopyPruningEnabled) await pruneSupersededProfileCopies()
+      // Legacy mappings still prove exact locations. Enrollment is bounded;
+      // automatic eviction retains any targets not yet journaled. Even if
+      // capacity prevents enrollment, GC must be allowed to free that capacity.
+      let enrollmentError: unknown
+      try { await enrollLegacyMappedTranscripts(sessionGcOptions) }
+      catch (error) { enrollmentError = error }
+      if (profileCopyPruningEnabled && enrollmentError === undefined) await pruneSupersededProfileCopies()
       const result = await runSessionGc(collectSessionGcPins(), sessionGcOptions)
       if (result.deleted || result.notFound || result.failed) {
         claudeLog("session.gc", { ...result })
@@ -851,6 +859,7 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
           plog(`[PROXY] session GC deferred ${result.failed} failed deletion(s); retry is scheduled`)
         }
       }
+      if (enrollmentError !== undefined) throw enrollmentError
     })().catch((error) => {
       // Corrupt or contended metadata is fail-closed: keep transcripts and try
       // later instead of guessing at ownership.
@@ -7883,6 +7892,28 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
           )
           const explicitlyRequestedProfile = c.req.header("x-meridian-profile")?.trim()
           if (explicitlyRequestedProfile) arrivalProfileIds.add(explicitlyRequestedProfile)
+          // Join the exact mapping enrollment before taking this request's
+          // arrival generations. Its own maintenance CAS must not look like a
+          // competing turn. Cancellation affects lock admission, never a
+          // transaction already running or the shared GC's cleanup.
+          try {
+            await enrollLegacyMappedTranscripts(
+              { ...sessionGcOptions, admissionSignal: requestAbortLink.controller.signal },
+              Object.keys(readSessionStoreGenerationSnapshot(agentSessionId, [...arrivalProfileIds])),
+            )
+          } catch (error) {
+            const cancelled = requestAbortLink.controller.signal.aborted
+            claudeLog("session.legacy_enrollment_failed", { requestId,
+              error: error instanceof Error ? error.message : String(error) })
+            finishRequest()
+            return trackedResponse(new Response(JSON.stringify({
+              type: "error", error: {
+                type: cancelled ? "request_cancelled" : "overloaded_error",
+                message: cancelled ? "The request was cancelled" : "Durable transcript enrollment is unavailable; retry the turn",
+              },
+            }), { status: cancelled ? 499 : 503,
+              headers: { "Content-Type": "application/json", ...(!cancelled ? TRANSIENT_RETRY_AFTER_HEADERS : {}) } }))
+          }
           sharedSessionRevisionsAtArrival = readSessionStoreGenerationSnapshot(
             agentSessionId,
             [...arrivalProfileIds],

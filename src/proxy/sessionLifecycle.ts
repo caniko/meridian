@@ -38,7 +38,11 @@ import {
   getSessionStoreDir,
   pruneSupersededProfileCopies,
   listSupersededProfileConversations,
+  readLegacyTranscriptEnrollmentSnapshot,
+  getStoredSessionGeneration,
+  attachLegacyTranscriptGenerations,
   type ProfileCopyPruneOptions,
+  type StoredSession,
 } from "./sessionStore"
 import { CrossProcessTurnCoordinator, type CrossProcessTurnLease } from "./session/crossProcessTurnCoordinator"
 import {
@@ -146,6 +150,8 @@ export interface SessionLifecycleOptions {
   maxOwned?: number
   maxTombstones?: number
   maxDeletesPerRun?: number
+  /** Process-local bounded maintenance progress; never a deletion authority. */
+  legacyEnrollmentCursor?: { afterMappingKey?: string }
   lockWaitMs?: number
   lockRetryMs?: number
   lockStaleMs?: number
@@ -537,6 +543,88 @@ export async function attachPinnedTranscript<T extends boolean | string>(
   return updatePinnedTranscript(locator, publish, options, true)
 }
 
+/** Enroll only physical locators that a durable Meridian mapping still proves.
+ * Unknown SDK sessions and mappings without recorded locations are not owners.
+ * One bounded pass attaches current/predecessor generations atomically with
+ * their mapping CAS, without releasing writer or publication leases. */
+export async function enrollLegacyMappedTranscripts(
+  options: SessionLifecycleOptions = {},
+  mappingKeys?: readonly string[],
+): Promise<number> {
+  const fields = ["currentTranscript", "previousTranscript"] as const
+  const limit = option(options.maxDeletesPerRun, DEFAULT_MAX_DELETES, "maxDeletesPerRun")
+  const eligible = Object.entries(readLegacyTranscriptEnrollmentSnapshot(mappingKeys)).filter(([, session]) =>
+    fields.some(field => session[field] !== undefined && session[field]?.lifecycleGeneration === undefined))
+    .sort(([left], [right]) => left.localeCompare(right))
+  const cursor = mappingKeys === undefined ? options.legacyEnrollmentCursor : undefined
+  const afterMappingKey = cursor?.afterMappingKey
+  const start = afterMappingKey === undefined ? 0
+    : eligible.findIndex(([key]) => key.localeCompare(afterMappingKey) > 0)
+  const offset = start < 0 ? 0 : start
+  const candidates = [...eligible.slice(offset), ...eligible.slice(0, offset)].slice(0, limit)
+  let enrolled = 0
+  for (const [mappingKey, session] of candidates) {
+    // Advance on failed/skipped CAS as well. A fenced deleting target must
+    // not starve unrelated eligible mappings on every maintenance pass.
+    if (cursor) cursor.afterMappingKey = mappingKey
+    const expectedGeneration = getStoredSessionGeneration(session, mappingKey)
+    const legacy: { currentTranscript?: TranscriptLocator; previousTranscript?: TranscriptLocator } = {}
+    for (const field of fields) {
+      const recorded = session[field]
+      if (recorded && recorded.lifecycleGeneration === undefined) legacy[field] = { ...recorded }
+    }
+    const published = await withSidecarLock(options, async paths => {
+      const sidecar = await readSidecar(paths.sidecar)
+      const beforeMutation = structuredClone(sidecar)
+      let changed = false
+      for (const field of fields) {
+        const locator = legacy[field]
+        if (!locator) continue
+        const normalized = canonicalizeTranscriptLocator(locator)
+        const key = getTranscriptResourceKey(normalized)
+        let resource = sidecar.resources[key]
+        if (!resource) {
+          assertResourceCapacity(sidecar, options, "live")
+          const now = nowMs(options)
+          resource = sidecar.resources[key] = {
+            key, generation: allocateLifecycleGeneration(sidecar, key),
+            locator: physicalLocator(normalized), state: "live",
+            createdAt: now, updatedAt: now, attempts: 0,
+          }
+          changed = true
+        } else {
+          assertSameLocator(resource.locator, normalized)
+          if (resource.state === "deleting") {
+            // Leave recovery to the existing exact-executor reconciliation.
+            // Refusing the whole sweep here would prevent that recovery.
+            return false
+          }
+          if (resource.state === "deleted") {
+            throw new SessionLifecycleError(`cannot enroll transcript ${key} from state ${resource.state}`)
+          }
+        }
+        // Preserve the mapping's recorded paths, including aliases. Physical
+        // identity is canonicalised by the lifecycle and its pin index.
+        locator.lifecycleGeneration = resource.generation
+      }
+      if (changed) {
+        pruneTombstones(sidecar, options)
+        await writeSidecar(paths.sidecar, sidecar)
+      }
+      try {
+        const attached = attachLegacyTranscriptGenerations(mappingKey, expectedGeneration, legacy)
+        if (attached === false && changed) await writeSidecar(paths.sidecar, beforeMutation)
+        return attached !== false
+      } catch (error) {
+        if (changed) await writeSidecar(paths.sidecar, beforeMutation)
+        throw error
+      }
+    })
+    if (published) enrolled++
+  }
+  return enrolled
+}
+
 async function updatePinnedTranscript<T extends boolean | string>(
   locator: TranscriptLocator,
   publish: () => T,
@@ -786,7 +874,17 @@ export async function releaseSupersededProfileCopies(
     const sidecar = await readSidecar(paths.sidecar)
     const budget = Math.floor(maxPending / 2) - pendingResourceCount(sidecar)
     if (budget <= 0) return 0
-    const selection = { ...copies, maxUnpinnedTranscripts: budget }
+    const selection = { ...copies, maxUnpinnedTranscripts: budget,
+      canReleaseMapping: (session: StoredSession): boolean => {
+        if (copies.canReleaseMapping && !copies.canReleaseMapping(session)) return false
+        return [session.currentTranscript, session.previousTranscript].every(locator => {
+          if (!locator) return true
+          const resource = sidecar.resources[getTranscriptResourceKey(canonicalizeTranscriptLocator(locator))]
+          return resource !== undefined && resource.state !== "deleting" && resource.state !== "deleted"
+            && (locator.lifecycleGeneration === undefined || locator.lifecycleGeneration === resource.generation)
+        })
+      },
+    }
     const conversations = listSupersededProfileConversations(selection).slice(0, 64)
     const leases: CrossProcessTurnLease[] = []
     const fenced = new Set<string>()

@@ -7377,3 +7377,52 @@ their own auth status. A synthetic API key recognition is not inference-key
 validation. The separately isolated HTTP regression file checks supplied setup
 tokens and preserves stored subscription plan, renewal and missing-token rules.
 See [bounded proof](docs/maintenance/evidence/1257-profile-credential-isolation.md).
+
+
+## Legacy recorded-transcript enrollment
+
+Run the credentialless ownership controls on unchanged main before changing the
+native-session fixture. The probe creates only disposable Meridian metadata and
+injects a recording deleter; it never creates SDK files or model calls.
+
+```sh
+E2E_MERIDIAN_ROOT=/absolute/path/to/unchanged-main \
+  bun scripts/probe-legacy-transcript-enrollment.mjs
+bun test src/__tests__/session-legacy-enrollment.test.ts
+bun test src/__tests__/proxy-retirement-admission.test.ts
+```
+
+The four probe arms distinguish a still-mapped but unjournaled legacy target,
+modern owned GC, enrollment through the existing exact CAS primitive, and stale
+CAS rollback. Its baseline `PASS` means those assertions reproduced the ownership
+gap; it does not mean the original disk-growth report is resolved. The HTTP
+regression must fail on unchanged main when the recorded predecessor is lost
+before ownership enrollment, in both streaming modes.
+
+With an explicitly selected ready account, the escrowed native harness costs
+three real HTTP/SDK model turns per arm. Use the same model, platform and account
+for baseline and corrected runs. It joins all requests, creates native sessions
+through the SDK, downgrades only its disposable Meridian metadata, inspects
+history through supported SDK APIs, and verifies that current/predecessor pins
+retain unchanged history. After eviction, the corrected arm must delete exactly
+the two recorded sessions while preserving the unknown shared-root control.
+
+```sh
+E2E_CLAUDE_CONFIG_DIR=/absolute/path/to/ready-account \
+  E2E_MODEL=claude-haiku-4-5 E2E_MERIDIAN_ROOT=/absolute/path/to/unchanged-main \
+  bun scripts/e2e-legacy-transcript-enrollment.mjs --expect-unfixed
+E2E_CLAUDE_CONFIG_DIR=/absolute/path/to/the-same-ready-account \
+  E2E_MODEL=claude-haiku-4-5 \
+  bun scripts/e2e-legacy-transcript-enrollment.mjs
+```
+
+Selecting the normal `~/.claude` root explicitly clears an inherited alternate
+`CLAUDE_CONFIG_DIR` for model queries. Cleanup joins writers and uses fenced GC
+for all fixture-owned targets, including failed turns. It directly deletes only
+exact sessions created by the fixture through supported APIs. Incomplete
+cleanup retains the isolated Meridian ownership metadata and exits nonzero.
+The harness uses a real proxy HTTP/SDK fixture; it does not establish actual
+OpenCode/Linux client behavior, Windows process recovery, or collection of
+sessions whose Meridian ownership locator was already forgotten. Keep those
+limits and the four E41 resume/tool-history gates explicit in the
+[evidence record](docs/maintenance/evidence/1261-legacy-enrollment.md).

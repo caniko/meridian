@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test"
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
@@ -38,7 +38,9 @@ installMcpToolsMock(() => ({ createOpencodeMcpServer: () => ({ type: "sdk", name
 
 const { createProxyServer, clearSessionCache } = await import("../proxy/server")
 const { resetActiveProfile } = await import("../proxy/profiles")
-const { setSessionStoreDir, readSessionStoreSnapshot } = await import("../proxy/sessionStore")
+const { setSessionStoreDir, readSessionStoreSnapshot, storeSharedSession } = await import("../proxy/sessionStore")
+const lifecycle = await import("../proxy/sessionLifecycle")
+const { getTranscriptResourceKey } = lifecycle
 
 let root: string
 let proxy: ReturnType<typeof createProxyServer> | undefined
@@ -161,6 +163,73 @@ describe("profile switch admission with bounded retirement", () => {
     const firstResponse = await first
     expect(firstResponse.status, await firstResponse.clone().text()).toBe(200)
     await firstResponse.text()
+  })
+})
+
+describe("legacy transcript enrollment admission", () => {
+  it("frees existing garbage when ownership capacity defers enrollment, then enrolls on the next sweep", async () => {
+    const options = { storeDir: join(root, "sessions"), retiredGraceMs: 0 }
+    const garbage = { sessionId: "owned-garbage", configDir: join(root, "personal"), projectDir: root }
+    const legacy = { ...garbage, sessionId: "legacy-capacity" }
+    await lifecycle.registerLiveTranscript(garbage, options)
+    storeSharedSession("personal:legacy-capacity", legacy.sessionId, 1, undefined, undefined, undefined,
+      undefined, undefined, undefined, undefined, legacy)
+    const enroll = lifecycle.enrollLegacyMappedTranscripts
+    const collect = lifecycle.runGc
+    const deleted: string[] = []
+    const enrollment = spyOn(lifecycle, "enrollLegacyMappedTranscripts").mockImplementation((settings, keys) =>
+      enroll({ ...settings, maxOwned: 1 }, keys))
+    const gc = spyOn(lifecycle, "runGc").mockImplementation((pins, settings) => collect(pins, {
+      ...settings, retiredGraceMs: 0, deleter: async locator => { deleted.push(locator.sessionId) },
+    }))
+    try {
+      await sweep()
+      expect(gc).toHaveBeenCalledTimes(1)
+      expect(deleted).toEqual([garbage.sessionId])
+      expect(readSessionStoreSnapshot()["personal:legacy-capacity"]?.currentTranscript?.lifecycleGeneration).toBeUndefined()
+      await sweep()
+      expect(readSessionStoreSnapshot()["personal:legacy-capacity"]?.currentTranscript?.lifecycleGeneration).toMatch(/^r:/)
+      expect(deleted).toEqual([garbage.sessionId])
+    } finally {
+      enrollment.mockRestore()
+      gc.mockRestore()
+    }
+  })
+
+  it.each([false, true])("journals the recorded predecessor before a new turn replaces it (stream=%s)", async stream => {
+    const key = "legacy-enrollment"
+    const current = { sessionId: "legacy-current", configDir: join(root, "personal"), projectDir: root }
+    const previous = { sessionId: "legacy-previous", configDir: join(root, "personal"), projectDir: root }
+    const mappingKey = `personal:${key}`
+    storeSharedSession(mappingKey, previous.sessionId, 1, undefined, undefined, undefined,
+      undefined, undefined, undefined, undefined, previous)
+    storeSharedSession(mappingKey, current.sessionId, 1, undefined, undefined, undefined,
+      undefined, undefined, undefined, undefined, current)
+    const response = await request(key, stream)
+    const text = await response.text()
+    expect(response.status, text).toBe(200)
+    if (stream) expect(parseSSE(text).some(event => event.event === "error"), text).toBe(false)
+    await sweep()
+    const sidecar = JSON.parse(readFileSync(join(root, "sessions", "session-gc.json"), "utf8")) as {
+      resources: Record<string, { locator: { sessionId: string }; state: string }>
+    }
+    expect(sidecar.resources[getTranscriptResourceKey(previous)]?.locator.sessionId).toBe(previous.sessionId)
+    expect(sidecar.resources[getTranscriptResourceKey(current)]?.locator.sessionId).toBe(current.sessionId)
+    expect(queryProfiles).toEqual([join(root, "personal")])
+  })
+
+  it("refuses unsafe enrollment through the existing structured retry contract", async () => {
+    const current = { sessionId: "legacy-corrupt", configDir: join(root, "personal"), projectDir: root }
+    storeSharedSession("personal:legacy-corrupt", current.sessionId, 1, undefined, undefined, undefined,
+      undefined, undefined, undefined, undefined, current)
+    mkdirSync(join(root, "sessions"), { recursive: true })
+    writeFileSync(join(root, "sessions", "session-gc.json"), "not valid lifecycle metadata")
+    const response = await request("legacy-corrupt", false)
+    expect(response.status).toBe(503)
+    expect(response.headers.get("Retry-After")).toBe("5")
+    expect(await response.json()).toMatchObject({ type: "error", error: { type: "overloaded_error" } })
+    expect(queryProfiles).toEqual([])
+    expect(readSessionStoreSnapshot()["personal:legacy-corrupt"]?.currentTranscript).toEqual(current)
   })
 })
 

@@ -516,6 +516,26 @@ but a running durable callback always finishes before returning ownership.
 Cleanup never receives the canceled admission signal. Publication callbacks
 remain synchronous; same-context recursive acquisition is rejected explicitly.
 
+Older durable Meridian mappings can carry exact current and direct-predecessor
+locators without lifecycle generations. `enrollLegacyMappedTranscripts` journals
+only those recorded identities and attaches their generations with one mapping
+CAS under the lifecycle lock. A lost CAS restores newly allocated ownership and
+fence counters. Existing writer/publication leases and ownership states stay
+intact; deleting and deleted targets are never resurrected. Pending priority
+publication and rollback authorities are skipped until finalization.
+
+Maintenance attempts a bounded batch and advances a process-local cursor even
+when a target is skipped; restarting resets that scheduling hint, not ownership.
+Identity-bearing requests join only their selected mapping enrollment before
+capturing arrival generations. Automatic count eviction retains unfenced
+locators until enrollment makes them eligible, and profile-copy pruning verifies
+that each released locator already has a matching, safe lifecycle resource.
+At a full count cap, a new publication can retry while maintenance progresses;
+existing pending finalization keeps its exact authority. If enrollment hits
+ownership capacity, GC still drains already-owned garbage before a later pass
+retries. No collector enumerates SDK roots to infer ownership, adopts forgotten
+sessions, enables CLI age cleanup, or reads private SDK transcripts.
+
 ## Session store write cost
 
 `sessionStore.ts` mutations are synchronous and run on the event loop, so their cost is lag for every request. The parsed document is cached by file identity (device, inode, size, mtime, ctime); every writer publishes by rename while holding the store lock, so a locked mutation that finds the cache current builds on it without re-parsing. Mutators receive a copy-on-write draft and replace entries rather than editing them. New entries own a deep copy of caller data before serialization. Cached entries/maps and metadata are frozen; privately parsed nested arrays are frozen before a lookup or snapshot exposes them, avoiding a full nested walk for a single cold lookup. Each entry's serialized UTF-8 bytes are memoized, so a write encodes only the entries it changed. Unchanged entries keep their identity and serialized bytes. The file format, lock, fsync and rename are unchanged.

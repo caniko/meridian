@@ -1105,6 +1105,20 @@ export function readSessionStoreSnapshot(): Record<string, StoredSession> {
   return readStoreStrict(getStorePath())
 }
 
+/** Rollback copies remain exact publication authorities until finalization;
+ * maintenance must not advance their generations under an active request. */
+export function readLegacyTranscriptEnrollmentSnapshot(
+  mappingKeys?: readonly string[],
+): Record<string, StoredSession> {
+  const document = readStoreDocumentCached(getStorePath())
+  const candidates: Record<string, StoredSession> = {}
+  for (const key of mappingKeys ?? Object.keys(document.sessions)) {
+    const session = document.sessions[key]
+    if (session && !isLegacyEnrollmentProtected(document.meta, key)) candidates[key] = session
+  }
+  return candidates
+}
+
 /** Capture exact durable generations for one adapter session across profile keys. */
 export function readSessionStoreGenerationSnapshot(
   adapterSessionId: string,
@@ -1344,6 +1358,27 @@ function isPriorityRollbackMapping(meta: SessionStoreMeta, key: string): boolean
     && Object.values(meta.priorityRollbackMappings).some((rollback) => rollback.mappingKey === key)
 }
 
+function isLegacyEnrollmentProtected(meta: SessionStoreMeta, key: string): boolean {
+  if (isPriorityRollbackMapping(meta, key)) return true
+  return meta.version === PRIORITY_STORE_META_VERSION
+    && Object.entries(meta.priorityAssignments).some(([routeKey, assignment]) =>
+      assignment.mappingKey === key
+      && (meta.priorityAttempts[routeKey] !== undefined || meta.priorityRollbackMappings[routeKey] !== undefined))
+}
+
+/** Automatic eviction must retain the only recorded proof of a legacy target
+ * until bounded lifecycle enrollment has attached its ownership generation. */
+function hasUnenrolledTranscript(session: StoredSession): boolean {
+  return [session.currentTranscript, session.previousTranscript].some(locator =>
+    locator !== undefined && locator.lifecycleGeneration === undefined)
+}
+
+function protectUnenrolledMappings(sessions: Record<string, StoredSession>, protectedKeys: Set<string>): void {
+  for (const [key, session] of Object.entries(sessions)) {
+    if (hasUnenrolledTranscript(session)) protectedKeys.add(key)
+  }
+}
+
 export function storeSharedSession(
   key: string,
   claudeSessionId: string,
@@ -1438,6 +1473,7 @@ export function storeSharedSession(
         ])
       : new Set<string>()
     protectedMappings.add(key)
+    protectUnenrolledMappings(store, protectedMappings)
     const removeCount = Math.max(0, keys.length - maxEntries)
     const removable = keys
       .filter((candidate) => !protectedMappings.has(candidate))
@@ -1835,9 +1871,11 @@ export function storeSharedSessionAndPriorityAssignment(
       .filter((candidate) => document.sessions[candidate] !== undefined)
       .length
     const retainedSessionLimit = Math.max(maxSessions, protectedExistingCount)
+    protectUnenrolledMappings(document.sessions, protectedMappings)
     const sortedSessions = Object.keys(document.sessions)
       .filter((candidate) => !protectedMappings.has(candidate))
       .sort((left, right) => document.sessions[left]!.lastUsedAt - document.sessions[right]!.lastUsedAt)
+    if (sortedSessions.length < Math.max(0, Object.keys(document.sessions).length - retainedSessionLimit)) return false
     while (Object.keys(document.sessions).length > retainedSessionLimit) {
       const candidate = sortedSessions.shift()
       if (!candidate) break
@@ -1903,6 +1941,7 @@ export function finalizeSharedSessionAndPriorityAssignment(
       ...Object.values(document.meta.priorityRollbackMappings).map((rollback) => rollback.mappingKey),
     ])
     const maxSessions = getMaxStoredSessionsLimit()
+    protectUnenrolledMappings(document.sessions, protectedMappings)
     const protectedExistingCount = [...protectedMappings]
       .filter((candidate) => document.sessions[candidate] !== undefined)
       .length
@@ -2066,6 +2105,54 @@ export function attachSharedTranscriptLocator(
   return attachedGeneration
 }
 
+/** Attach ownership generations only to exact locators already recorded by a
+ * legacy mapping. Enrollment cannot invent a location or replace either ID. */
+export function attachLegacyTranscriptGenerations(
+  key: string,
+  expectedGeneration: StoredSessionGeneration,
+  locators: { currentTranscript?: TranscriptLocator; previousTranscript?: TranscriptLocator },
+): StoredSessionGeneration | false {
+  let attachedGeneration: StoredSessionGeneration | false = false
+  mutateStore(({ sessions, meta }) => {
+    const existing = sessions[key]
+    if (!existing || getStoredSessionGeneration(existing, key) !== expectedGeneration
+      || isLegacyEnrollmentProtected(meta, key)) return false
+    const fields = ["currentTranscript", "previousTranscript"] as const
+    for (const field of fields) {
+      const attached = locators[field]
+      if (!attached) continue
+      const recorded = existing[field]
+      const sessionId = field === "currentTranscript" ? existing.claudeSessionId : existing.previousClaudeSessionId
+      if (!recorded || recorded.lifecycleGeneration !== undefined || !attached.lifecycleGeneration
+        || recorded.sessionId !== sessionId || attached.sessionId !== recorded.sessionId
+        || attached.configDir !== recorded.configDir || attached.projectDir !== recorded.projectDir) return false
+      validateTranscriptLocator(attached, sessionId!)
+    }
+    if (!locators.currentTranscript && !locators.previousTranscript) return false
+    const attached: StoredSession = {
+      ...existing,
+      ...(locators.currentTranscript ? { currentTranscript: { ...locators.currentTranscript } } : {}),
+      ...(locators.previousTranscript ? { previousTranscript: { ...locators.previousTranscript } } : {}),
+      revision: (existing.revision ?? 0) + 1,
+      generationId: randomUUID(),
+    }
+    sessions[key] = attached
+    advanceKeySlot(key, meta)
+    attachedGeneration = getStoredSessionGeneration(attached, key)
+    if (meta.version === PRIORITY_STORE_META_VERSION) {
+      for (const [routeKey, assignment] of Object.entries(meta.priorityAssignments)) {
+        if (assignment.mappingKey !== key) continue
+        assignment.mappingGeneration = attachedGeneration
+        assignment.generationId = randomUUID()
+        assignment.updatedAt = Date.now()
+        advanceKeySlot(priorityGenerationKey(routeKey), meta)
+      }
+    }
+    return true
+  })
+  return attachedGeneration
+}
+
 /** Ensure a single session is absent from the shared file store.
  *  Used when a session is detected as stale (e.g. expired upstream).
  *  Absence is an idempotent success; false is reserved for a present mapping
@@ -2108,6 +2195,8 @@ export interface ProfileCopyPruneOptions {
   maxUnpinnedTranscripts: number
   /** A conversation with a request arrived or running keeps every copy. */
   isConversationActive: (conversationId: string) => boolean
+  /** Lifecycle callers verify that every pin being released is journaled. */
+  canReleaseMapping?: (session: StoredSession) => boolean
 }
 
 function pinnedTranscriptCount(session: StoredSession): number {
@@ -2148,6 +2237,7 @@ function selectSupersededProfileCopies(
     const newest = copies.reduce((best, key) => (lastUsed(key) > lastUsed(best) ? key : best))
     const superseded = copies.filter((key) => (
       key !== newest && !protectedKeys.has(key) && now - lastUsed(key) > options.graceMs
+      && (options.canReleaseMapping?.(document.sessions[key]!) ?? true)
     ))
     if (superseded.length > 0 && !options.isConversationActive(conversationId)) candidates.push(...superseded)
   }

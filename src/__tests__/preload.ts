@@ -54,7 +54,7 @@ delete process.env.CLAUDE_PROXY_FOLLOW_ACTIVE
 sweepStaleTestDirs(tmpdir())
 const { configDir, sessionDir } = testDirsFor(tmpdir(), process.pid)
 for (const dir of [configDir, sessionDir]) {
-  removeTestDir(dir)
+  if (!removeTestDir(dir)) throw new Error(`Could not reset test scratch directory: ${dir}`)
   mkdirSync(dir, { recursive: true })
 }
 // `bun test` emits neither "exit" nor "beforeExit"; an afterAll registered in a

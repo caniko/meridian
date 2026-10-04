@@ -11,9 +11,24 @@
   }
   const bounds = () => ({ viewport: innerWidth, page: document.documentElement.scrollWidth,
     header: document.querySelector('.meridian-header').getBoundingClientRect().right })
+  const settledBounds = async (view = window) => {
+    await view.document.fonts.ready
+    let previous, stable = 0
+    for (let i = 0; i < 50; i++) {
+      await new Promise(resolve => view.requestAnimationFrame(() => view.requestAnimationFrame(resolve)))
+      await pause(100)
+      const current = { viewport: view.innerWidth, page: view.document.documentElement.scrollWidth,
+        header: view.document.querySelector('.meridian-header').getBoundingClientRect().right }
+      if (JSON.stringify(current) === JSON.stringify(previous)) stable++
+      else stable = 0
+      if (stable >= 2) return current
+      previous = current
+    }
+    throw new Error('Fixture header/document geometry did not settle')
+  }
   if (location.pathname.startsWith('/fixture/before/')) {
-    await pause(700)
-    return { result: 'BASELINE', hostnameChipPresent: !!document.getElementById('mhHost'), bounds: bounds() }
+    await until(() => document.getElementById('mhStatusText')?.textContent)
+    return { result: 'BASELINE', hostnameChipPresent: !!document.getElementById('mhHost'), bounds: await settledBounds() }
   }
   check(location.pathname === '/settings' || location.pathname === '/fixture/provider', 'Use Settings or standalone provider fixture')
   const nativeFetch = window.fetch.bind(window)
@@ -23,6 +38,22 @@
     check(response.ok, 'Owned fixture request failed: ' + path)
     return response.json()
   }
+  // Measure the actual unchanged page at this CSS width. Existing baseline
+  // overflow must not be misattributed to the opt-in header change.
+  check((await json('/fixture/state')).baseline, 'Set an exact E2E_BASELINE_ROOT for visual comparison')
+  const baselineFrame = document.createElement('iframe')
+  baselineFrame.style.cssText = 'position:fixed;left:-10000px;top:0;border:0;width:' + innerWidth + 'px;height:1000px;visibility:hidden'
+  baselineFrame.setAttribute('aria-hidden', 'true')
+  baselineFrame.src = location.pathname === '/settings' ? '/fixture/before/settings' : '/fixture/before/providers'
+  document.body.appendChild(baselineFrame)
+  let baseline
+  try {
+    await until(() => baselineFrame.contentDocument?.readyState === 'complete'
+      && baselineFrame.contentDocument.querySelector('.meridian-header'))
+    await until(() => baselineFrame.contentDocument.getElementById('mhStatusText')?.textContent)
+    baseline = await settledBounds(baselineFrame.contentWindow)
+    check(baseline.viewport === innerWidth, 'Baseline CSS viewport differs')
+  } finally { baselineFrame.remove() }
   const host = document.getElementById('mhHost')
   const releases = []
   let heldHealth, heldPut, rejectHealth = false, overrideName, stressBuild = false
@@ -101,8 +132,9 @@
       const expected = full.includes(':') || /^[0-9.]+$/.test(full) ? full : full.split('.')[0]
       await until(() => host.textContent === expected)
       check(host.title === 'Running on ' + full, 'Full-hostname tooltip was lost')
-      const measured = bounds(), rect = host.getBoundingClientRect(), style = getComputedStyle(host)
-      check(measured.page <= measured.viewport + 1, 'Hostname caused page overflow')
+      const measured = await settledBounds(), rect = host.getBoundingClientRect(), style = getComputedStyle(host)
+      check(measured.page <= baseline.page + 1, 'Hostname added page overflow beyond the measured baseline')
+      check(measured.header <= measured.viewport + 1, 'Header escaped viewport')
       check(rect.left >= -1 && rect.right <= measured.viewport + 1, 'Hostname escaped header viewport')
       check(style.textOverflow === 'ellipsis' && style.overflowX === 'hidden', 'Hostname clipping contract changed')
       check(!document.getElementById('mhUpdate').hidden, 'Update notice disappeared with hostname')
@@ -115,7 +147,8 @@
     check((await json('/fixture/state')).modelCalls === 0, 'UI fixture attempted model generation')
     return { result: 'PASS', path: location.pathname, actualHostname, width: innerWidth,
       actualSettingsPersistence: true, oneSaveAtATime, olderPollIgnored, failedPollClearsLabel,
-      consentOffAfterProbe: true, syntheticAuth: true, syntheticLongAndIpLabels: true, labels }
+      consentOffAfterProbe: true, noAddedPageOverflow: true, baseline,
+      syntheticAuth: true, syntheticLongAndIpLabels: true, labels }
   } finally {
     releases.forEach(release => release())
     window.fetch = nativeFetch

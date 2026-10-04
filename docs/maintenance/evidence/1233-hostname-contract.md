@@ -4,14 +4,18 @@
 
 On 2026-10-04 the owner explicitly approved the public contract tracked by
 [#1259](https://github.com/rynfar/meridian/issues/1259) in the review
-conversation: `GET`/`PUT /settings/api/header` behind the existing settings
-authentication gate; a persisted, default-off `showHostname` option; and an
-optional OS `hostname` on unauthenticated `/health` only while enabled. This
-is a paraphrase of the approved scope, not an invented transcript quotation.
+conversation. The exact presented question was:
+
+> Approve the hostname contract tracked in Meridian issue #1259? It adds authenticated GET/PUT /settings/api/header, defaults hostname display off, and includes hostname on unauthenticated /health only while enabled. AGENTS.md requires owner approval before changing this public API.
+
+The owner's exact reply was:
+
+> Approve the opt-in hostname contract
+
 The approval covers the shared product header, including standalone
 Antigravity. The existing optional `MERIDIAN_API_KEY` semantics are preserved.
 
-The owner separately approved the bounded reverse-proxy correction: allow
+Review accepted the bounded reverse-proxy correction: allow
 exact request Origin, or HTTPS Origin with the same normalized public Host/
 port while the internal request uses HTTP. Explicit public 443 and omitted
 HTTPS 443 are equivalent. No forwarding header establishes trust, no public
@@ -29,13 +33,15 @@ empty. The earlier `c609e8d1` checkpoint is obsolete. The current source is
 one actual authored commit with responsive-header rebasing, and contains no
 changes from adjacent #1232.
 
-| Source commit | Initial authored cherry-pick | Author / AuthorDate |
-| --- | --- | --- |
-| `322d3af68691eb41552b53c010d1996e9474c130` | `9939c6d585fbaf22e7b50f8a7e0a612571fe88c3` | Nowaker `<spam@nowaker.net>` / `2026-10-01T22:40:02Z` |
+| Source commit | Initial authored cherry-pick | Rebased authored cherry-pick | Author / AuthorDate |
+| --- | --- | --- | --- |
+| `322d3af68691eb41552b53c010d1996e9474c130` | `9939c6d585fbaf22e7b50f8a7e0a612571fe88c3` | `ae6bf5e4441d31c872315de11bb2e7a71e6782bb` | Nowaker `<spam@nowaker.net>` / `2026-10-01T22:40:02Z` |
 
 The contributor commit was cherry-picked without conflict from then-current
-main. Maintainer corrections remain separate. Final rebased commit mapping,
-local final-head checks and browser evidence are recorded below before
+main and rebased onto `9d77d8e282cb9c58d99b8962b900777e9f4b0803` after the
+verified header-separator integration. Maintainer product corrections remain
+separate in `a6be2cd3d5c3a168610c5a94a67adfa1d1dabba7`. Local final-head
+checks and browser evidence are recorded below before
 handoff to the queue owner. No push, PR creation, merge, closure, community
 comment or release is performed by this implementation agent.
 
@@ -109,7 +115,9 @@ frame. Repeat at 320/375/414/768/1280px, on `path=/fixture/provider`, and on
 `path=/fixture/before/settings` for baseline comparison. The probe exercises
 the real click/save path, blocked concurrent save, reversed-response and
 failed-poll controls, DNS/IP tooltips, clipping and intact update notices.
-Long/IP labels and update payloads are explicitly synthetic stress controls;
+The probe compares document width to an actual same-width baseline frame;
+hostname and header bounds remain strict. Long/IP labels and update payloads
+are explicitly synthetic stress controls;
 ordinary settings and health use the actual OS name. It restores consent off.
 
 The visual baseline fixture is exact main
@@ -118,3 +126,21 @@ media, final source mapping, full local gates and required final-head CI are
 pending from the queue owner. No live model E2E is implicated: this feature
 changes header/settings/health only. Do not describe the visual acceptance
 or integration as complete until those evidence fields are supplied.
+
+At 320px, native browser inspection found a pre-existing Settings feature-row
+overflow: baseline and corrected off-state both have document width 323px
+and header right edge 305px. The hostname itself stays clipped within the
+header. The acceptance claim is **no added overflow**, not zero baseline
+overflow. The maintained probe measures that unchanged baseline directly.
+The unrelated baseline feature-row layout is outside this hostname change.
+
+An initial standalone-provider comparison also reported added overflow, then
+passed on immediate diagnostic rerun without a product change. Review found
+two concrete fixture flaws: baseline provider requests were dispatched to
+Claude health instead of the controlled standalone backend, and bounds were
+sampled immediately after label text arrived, before asynchronous header
+fitting settled. The maintained fixture now dispatches both provider pages'
+requests to standalone with provider facts controlled to forbid subprocesses;
+the probe waits for two stable geometry intervals after fonts/rendering.
+These fixture corrections require a fresh probe result before acceptance;
+the unexplained initial rerun is not treated as proof.

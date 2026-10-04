@@ -7155,7 +7155,8 @@ collaborative browser. Evaluate `scripts/e2e-hostname-header-browser.js` inside
 the owned frame at 320/375/414/768/1280px. Require real settings persistence,
 one pending save at a time, an older enabled health response unable to restore
 a disabled label, failed-poll label removal, full-name tooltips, clipped long
-labels and intact update notices without page overflow. Repeat on
+labels, intact update notices and no added page overflow against the measured
+same-width baseline (retain strict header/hostname bounds). Repeat on
 `path=/fixture/provider` for standalone Antigravity's shared header, and use
 `path=/fixture/before/settings` for baseline visual comparison. The fixture
 uses actual pages, HTTP routes and settings I/O with isolated configuration;

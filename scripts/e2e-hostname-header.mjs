@@ -34,15 +34,18 @@ const { app } = createProxyServer({ profiles, defaultProfile: profiles[0].id, si
 const runtime = new AntigravityRuntime()
 runtime.initialize = async () => {}
 runtime.verifyAccount = async () => {}
+runtime.providerFacts = () => ({ quota: { fetchedAt: Date.now(), windows: [] },
+  models: ['owned-fixture-no-generation'], error: undefined, loading: false })
 const standalone = createAntigravityServer({ ...DEFAULT_PROXY_CONFIG, backend: 'antigravity', silent: true, version: '1.79.0' }, runtime)
 let before = {}
 if (baseline) {
   before = {
     home: (await import(pathToFileURL(join(baseline, 'src/telemetry/landing.ts')).href)).landingHtml,
     settings: (await import(pathToFileURL(join(baseline, 'src/telemetry/settingsPage.ts')).href)).settingsPageHtml,
+    providers: (await import(pathToFileURL(join(baseline, 'src/telemetry/providerPage.ts')).href)).providerPageHtml,
   }
 }
-const paths = ['/', '/settings', '/providers', '/fixture/provider', '/fixture/before/', '/fixture/before/settings']
+const paths = ['/', '/settings', '/providers', '/fixture/provider', '/fixture/before/', '/fixture/before/settings', '/fixture/before/providers']
 const server = Bun.serve({ hostname: '127.0.0.1', port, async fetch(request) {
   const url = new URL(request.url)
   if (url.pathname === '/fixture/state') return Response.json({ fixture: 'hostname-contract', syntheticAuth: true,
@@ -50,16 +53,18 @@ const server = Bun.serve({ hostname: '127.0.0.1', port, async fetch(request) {
   if (url.pathname === '/fixture/frame') {
     const width = Number(url.searchParams.get('width') || 1280), path = url.searchParams.get('path') || '/settings'
     if (!Number.isInteger(width) || width < 320 || width > 2560 || !paths.includes(path)) return new Response('Invalid fixture viewport', { status: 400 })
-    return new Response(`<iframe id="fixtureViewport" data-owned-fixture="hostname-contract" title="Owned Meridian hostname viewport" style="border:0;width:${width}px;height:1000px" src="${path}"></iframe>`, { headers: { 'content-type': 'text/html', 'cache-control': 'no-store' } })
+    return new Response(`<meta charset="utf-8"><iframe id="fixtureViewport" data-owned-fixture="hostname-contract" title="Owned Meridian hostname viewport" style="border:0;width:${width}px;height:1000px" src="${path}"></iframe>`, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } })
   }
   if (url.pathname.startsWith('/fixture/before/')) {
-    const page = url.pathname.endsWith('settings') ? before.settings : before.home
-    return page ? new Response(page, { headers: { 'content-type': 'text/html', 'cache-control': 'no-store' } }) : new Response('Set E2E_BASELINE_ROOT', { status: 404 })
+    const page = url.pathname.endsWith('settings') ? before.settings : url.pathname.endsWith('providers') ? before.providers : before.home
+    return page ? new Response(page, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } }) : new Response('Set E2E_BASELINE_ROOT', { status: 404 })
   }
   assert(!['/v1/messages', '/messages', '/v1/responses', '/v1/chat/completions'].includes(url.pathname), 'This UI fixture must not call a model')
   if (url.pathname === '/fixture/provider') return standalone.app.fetch(new Request(new URL('/providers', request.url), request))
   const referrer = request.headers.get('referer')
-  if (url.pathname === '/health' && referrer && new URL(referrer).pathname === '/fixture/provider') return standalone.app.fetch(request)
+  if (referrer && ['/fixture/provider', '/fixture/before/providers'].includes(new URL(referrer).pathname)) {
+    return standalone.app.fetch(request)
+  }
   return app.fetch(request)
 } })
 console.log(JSON.stringify({ ready: true, port: server.port, ownedRoot: root, syntheticAuth: true, modelCalls, baseline: baseline || null }))

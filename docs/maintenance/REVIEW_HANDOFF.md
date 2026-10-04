@@ -1,5 +1,84 @@
 # Upstream review handoff
 
+## Current continuation — 2026-10-04
+
+The owner authorized a managed PR/issue backlog pass after reviewing repository
+rules. The [current queue and exact source dispositions](BACKLOG_REVIEW_2026-10-04.md)
+cover Meridian and the five managed scrub repositories. Paginated account and
+organization discovery found no additional managed scrub candidates. The dirty
+user checkout is preserved; implementation uses isolated branches/worktrees.
+No release or community-comment authorization is inferred.
+
+The October 3 sections below are historical records. Their delivery- or
+approval-pending statements are superseded by this continuation and the current
+standalone backlog record wherever a later disposition is supplied. In
+particular, #1258 merged as `f299fe06e72411b786380b5212edea79cd13966a` and
+#1257 closed; #1259 now has owner approval. Older records remain intact for
+traceability, and outstanding deferrals still apply as recorded in the current
+queue. Refresh live status before relying on any checkpoint.
+
+[Header delivery #1264](https://github.com/rynfar/meridian/pull/1264) is merged as
+`9d77d8e282cb9c58d99b8962b900777e9f4b0803`, from validated head
+`72ebaad447ee769aaac390833d5c4d8a1d1fc132`. Exact tree
+`93c72e883b0e43043a3e31e0e0844892a8218c37` and Nowaker co-author credit were
+verified. All six executed final-head CI checks passed, including
+[test run 37234609333/job 111531118342](https://github.com/rynfar/meridian/actions/runs/37234609333/job/111531118342).
+Source #1262 was refreshed unchanged at
+`b7bea911ecf41cdeeed34d5cc6d7f08c9936fe5f` and closed after verified delivery.
+Local gates: 5,304 pass / 35 platform skips / 0 failures, standalone
+typecheck/build and actual native-browser hover, negative and width controls.
+[Durable header proof](evidence/1262-header-separator.md) is delivered on main.
+
+Bounded reviews of new sources remain explicit deferrals:
+
+- [#1260 login lifetime](evidence/1260-login-lifetime-review.md), source
+  `99b8f0c46fbf8ce0b7f28cb14d2bdce4929948ef`: nine new profile response fields
+  require new tracked owner approval. Concurrent history loss, false logout,
+  unknown-store/replacement state errors and contradictory UI are reproduced.
+  Corrections plus native/browser/client proof remain gates.
+- [#1261 transcript sweep](evidence/1261-transcript-sweep-review.md), source
+  `7475d08c652332aa1b9b23cbc525024bef83ab28`: disk-growth purpose fits, but
+  root-wide deletion bypasses pins and reproduces busy-root admission and
+  unjoined-child hazards. Require durable ownership/admission/join authority
+  through supported APIs and actual affected-client proof.
+
+[Test scratch cleanup #1265](https://github.com/rynfar/meridian/pull/1265) is
+accepted with corrections, rebased delivery head
+`904eba426c571974503a31268ae805ce93018bcd` on header merge `9d77d8e2`.
+Authored incorporation `19334b24e762249628821a76ddc0b3bec83c3c9f` preserves
+source `3a959e12569d72db44be9f868ea25fdf54fde49a`; separate correction
+`c169e46d80cd20689990e5276900f14f6655f215` addresses ownership/deletion and
+harness safety. Historical full suite at `fb795476ef9be300c9be4960c639e003ea3e366c`:
+5,316 pass / 35 skips / 0 failures. Rebased focused checks: 71 pass; standalone
+typecheck/build pass, with zero per-process scratch residue. Fresh final-head CI
+and delivery human-credit verification remain pending.
+
+[Process diagnostics #1266](https://github.com/rynfar/meridian/pull/1266) is a
+**diagnostics-only draft** at `9a1793729fa1f09ee643f646ca3221c738d5ab00` on
+`9d77d8e2`. Known probe path and bounded errno/exit metadata now reach the proxy
+log while admission stays fail closed and the HTTP body stays generic 500.
+Historical full suite at original product head
+`3a5291e345532cae895bd93127171d4ff4e064fa`: 5,305 pass / 35 skips / 0 failures.
+After rebase/harness loader correction: 16 focused checks and all five headless
+matrix arms pass, as do standalone typecheck/build. Final-head CI and exact
+macOS 27.0.1 / nono 0.79.0 / OpenCode 2.0.21 / plugin 1.11.1 native/client/model/
+installed-package proof remain open. #1229 stays open; synthetic denial does
+not establish that the native sandbox operation is fixed.
+
+The owner explicitly approved the hostname contract under
+[issue #1259](https://github.com/rynfar/meridian/issues/1259) in this conversation.
+Current #1233 source `322d3af68691eb41552b53c010d1996e9474c130` is being
+incorporated. Default off, authenticated header settings and opt-in hostname
+on unauthenticated health remain the approved scope; correction and browser/
+local/CI gates are pending. The October 3 approval-pending note is superseded.
+
+Sonnet #1213 source `553fd5c386de5e18e531a1d0101d64ef3a3b1792` is ready;
+a draft delivery with supported Sonnet 5/5.5 native 1M context and inherited
+context-disable corrections is being prepared. Actual Linux/OpenCode 2.0.16/
+Sonnet 5.5 native readiness returns expired/401, and the owned macOS credential
+fixture is unavailable. Supported session-import rehearsal is not model
+acceptance. Exact affected-flow proof remains an open live gate.
+
 ## Current continuation — 2026-10-03
 
 Browser-login #1217 is delivered as 93d6c5c97daf9f21778cf5e6ecf90f12d53f40cb,

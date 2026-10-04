@@ -1,9 +1,9 @@
 # Browser account login incorporation (#792)
 
-Status: real new-account OAuth and actual headless use verified; existing-account
-re-authentication, final-head CI and integration remain acceptance gates.
+Status: real new-account creation, fresh automatic existing-account re-authentication
+and actual headless use verified. Final-head CI and integration remain gates.
 Tracked API scope: [#1215](https://github.com/rynfar/meridian/issues/1215).
-Source head: `47160ffe9a19cdf9fc38a2399d64f56210b0d1f6`. The four Nowaker
+Current source head: `a9abcce8c693dae018ff73872051a9dfeabe21b6`. The four Nowaker
 commits were cherry-picked with Author/AuthorDate intact; maintainer fixes are
 separate. The user's dirty checkout was preserved.
 
@@ -125,3 +125,75 @@ Documentation conflicts retained current main's flows and the browser E2E
 workflow. The existing draft #1217 remains the delivery vehicle. Fresh full
 local checks, affected-client verification and exact-head CI are required
 before merge. The automatic browser callback has not yet been demonstrated.
+
+## Fresh automatic callback and final-source recovery — 2026-10-04 UTC
+
+The user completed a fresh authorization directly in the native collaborative
+browser. Automatic `localhost:42215/callback` completed with HTTP 200; no
+manual code transfer or callback replay was used. Native macOS Keychain access
+and refresh grants both changed, expiry is future and profiles.json remains
+byte-for-byte identical. No credential file appeared on macOS. The maintained
+native-grant harness reproduces these assertions without printing grant values.
+
+Two real ingress/exchange findings are corrected separately from the authored
+contribution:
+
+- The blank callback returned HTTP 431, before any OAuth handler. Actual Node
+  parser failure was HPE_HEADER_OVERFLOW (16,752 received bytes). Browser
+  cookie/header aggregate measurements were 16,116/16,729 bytes; HttpOnly
+  localhost cookies explain why document.cookie looked empty. The real public
+  Node factory now accepts a bounded 32 KiB header budget in ordinary, socket-
+  activated and Antigravity ingress paths. Cookies remain untouched. The
+  maintained factory harness reproduces 20 KiB cookie refusal before and
+  handler reachability after; 40 KiB remains refused with 431.
+- A request minted through IPv4 reached Claude with its same challenge/state
+  but the consent page rewrote its redirect host from 127.0.0.1 to localhost.
+  An earlier token exchange naming IPv4 returned 400; this is not described
+  as an expired request. Both loopback origins and port-derived candidates
+  now mint/store localhost from the start. A real corrected IPv4-started
+  consent page preserves challenge, state and redirect exactly. The successful
+  automatic exchange above used this exact canonical redirect spelling. The
+  failing source unit control and corrected HTTP/unit exchange assertions
+  preserve PKCE, port, remote paste fallback and invalid-host refusal. No
+  additional real IPv4-addressed token redemption is claimed: the fixed flow
+  consistently authorizes and redeems localhost.
+
+Final client proof: macOS arm64, OpenCode 1.18.34, independently installed
+scrub 0.2.3, SDK 0.2.141, packaged CLI 2.1.284 but actual PATH-selected CLI
+2.1.289, native claude-opus-5-5, Bun 1.3.14. The PATH runtime changed outside
+this work; no global runtime/client upgrade was performed. Both client calls
+exit zero, the real read tool returns its unique receipt, and the same session
+recalls it without tools. All four actual SDK queries use the intended native
+credential directory and health-reported executable; all four SDK iterators
+complete and public proxy close joins. Account selection and public SDK completion are observed; private SDK files
+are not inspected. No kernel-wide cleanup claim is made.
+The preceding post-grant run also passed on Bun 1.4.2; the final summary records
+the runtime actually executed rather than inferring it from package metadata.
+
+The live Node harness hosts the compiled createProxyServer application with the
+same bounded Node ingress policy, intentionally without the separate startup
+credential-refresh scheduler. The companion header harness independently
+exercises startProxyServer itself. Re-authentication uses an explicitly loaded
+owned profile; new-account disk discovery remains covered by the earlier Bun
+live harness and real new-account proof.
+
+The refreshed four source commits were rebuilt from their actual current
+versions, including the contributor's final afterRender ordering correction,
+on main e2b09669b (delivered #1253). Author and AuthorDate are unchanged:
+
+| Source | Incorporated |
+| --- | --- |
+| f2b71f72a47197d1946dce400d68df87389ffbd1 | 3c682d1935880051d7f6742383b09a1f54e8bbba |
+| 6d30dfac2cbff9d0684571fba5ed9c62e9bfa8bb | ed9d6e46065b934d3078ec711acdc97d1831ab24 |
+| 14f2b12edebd42361d7fc9a6115f9ee402becfbf | 752deecd300785528aa1a9fc826a0d25ee42ed00 |
+| a9abcce8c693dae018ff73872051a9dfeabe21b6 | e9b3251994ac37b04c2cca3fac7fa64208e847f8 |
+
+Maintainer correction commits remain separate. The final-main rebase adds only
+#1253's independent Antigravity validation/evidence; browser implementation is
+byte-identical to the live-tested 9fd62b16 tree. Historical pending/assisted
+notes above are superseded by these fresh automatic facts. No release is
+authorized. Sanitized results are retained beside this record.
+
+Final local gates on e2b09669b: npm test 5,273 pass / zero failures / 35
+platform skips across all 17 stages (including pretest typecheck); standalone
+typecheck and build pass. The current Node header harness also passes.

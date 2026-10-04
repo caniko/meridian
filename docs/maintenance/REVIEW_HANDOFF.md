@@ -10,15 +10,37 @@ credit verified. All six executed CI checks passed, including
 Issue #1246 closed through the validated merge. The older pending lead below
 is historical; no release was authorized.
 
-#1238 is accepted on current main with the unsupported Antigravity 128-tool
-catalog cap removed. Published 1.76.5 and final main controls reproduce the
-exact rejection through actual OpenCode 1.18.30. Official agy 1.2.7 and native
-Gemini 3.8 Flash High then pass 129/256 MCP catalogs, actual tail-tool receipts,
-returned client results, negative validations and joined cleanup. The corrected
-129-tool gate also uses an independently unpacked tarball. Local final gates:
-5,154 / 0 / 4 skips, typecheck/build. Final-head CI and merge remain.
-[Durable harness/proof](evidence/1238-antigravity-tool-catalog.md).
+#1238 is delivered through [#1253](https://github.com/rynfar/meridian/pull/1253).
+Validated head 5aa8c029abcbe54f4ede905d0686312070616f95 merged as
+e2b09669b9140ba0eb8ebbec54cc504907e82cad, exact merged tree verified.
+All six executed final-head CI checks passed, including
+[test](https://github.com/rynfar/meridian/actions/runs/37173240035/job/111350364392);
+issue #1238 is closed. Official agy 1.2.7 / actual OpenCode 1.18.30 / native
+Gemini 3.8 Flash High pass 129/256 MCP catalogs, tail-tool receipts, client
+results, negative controls and joined cleanup. Final local 5,154 / 0 / 4 skips,
+typecheck/build. [Durable proof](evidence/1238-antigravity-tool-catalog.md).
 
+Browser-login #1217 / source #792 now has fresh automatic existing-account
+re-authentication and actual post-grant OpenCode/Opus 5.5 receipt/resume proof.
+The real blank callback was Node header overflow from localhost cookies; a
+finite 32 KiB ingress budget accepts them while 40 KiB remains refused. Claude
+also rewrites IPv4 redirects to localhost; minting/storing the canonical
+localhost address fixes exchange consistency. Both real native browser
+parameter comparisons are retained without OAuth values. Final source rebuilt
+from a9abcce8 onto e2b09669b with all four original Author/AuthorDates intact;
+separate corrections remain. Current isolated branch
+codex/browser-login-current-source-792-20261003, worktree
+/Users/rynfar/repos/meridian-browser-login-finalize-792. Final local gates pass 5,273 / 0 / 35 platform skips across 17 stages,
+standalone typecheck/build and current Node header harness pass. Updated
+integration head/CI and merge remain.
+[Proof and source mappings](evidence/792-browser-account-login.md).
+
+Newly discovered Nowaker #1251 (74ac9017) adds a layout settings API: public
+contract approval and a tracking issue remain required before modification.
+#1252 (3d02224d) phone pricing/header/spacing is independently under review
+from e2b09669b. Native preview outer resizing currently times out; the owned
+same-origin fixture frame supplies real exact CSS viewports without another
+browser. No release or community messages are authorized.
 
 #1230 is delivered through [#1249](https://github.com/rynfar/meridian/pull/1249),
 validated head `af7a6a4020de4ef3eaae6d6b1abeb6f129e9c400`, merge

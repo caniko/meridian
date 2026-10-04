@@ -7283,3 +7283,16 @@ Profile add/remove/rename writers now share `profiles.json.lock` and atomically
 publish mode-0600 snapshots. An interrupted writer leaves its lock in place:
 stop every writer before manually removing that specific lock. Never recover
 it solely because it is old; an active slow writer still owns its snapshot.
+
+For owned existing-account re-authentication through native Node ingress, build
+first, then run `E2E_EXISTING_ROOT=<owned fixture> E2E_PROFILE_ID=<owned id>
+E2E_PORT=<unused port> node scripts/e2e-profile-login-node-live.mjs`. Open its
+Profiles page and authorize in the browser. Run the native-grant harness with
+the same root/id and `E2E_GRANT_ACTION=capture` before authorization, then
+`E2E_GRANT_ACTION=verify` afterward. The mode-0600 before control is private;
+never attach it or OAuth URLs/codes. Require unchanged profile mapping, changed
+native grants and future expiry, then the actual OpenCode client/resume gate.
+`node scripts/e2e-profile-login-header-limit.mjs` separately exercises the
+public factory with 20 KiB synthetic cookies and a refused 40 KiB control;
+`E2E_EXPECT_HEADER_OVERFLOW=1 E2E_SERVER_MODULE=<baseline bundle>` repeats
+the failure control. No grant/model call is involved in that header probe.

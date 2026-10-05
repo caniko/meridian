@@ -72,18 +72,18 @@ in the repository. Mocked shutdown SDK invocation, synthetic GC deletion and
 injected I/O faults are clearly distinguished from actual SDK/model/platform
 proof. Review completion supplies neither product acceptance nor a merge gate.
 
-[Issue #1277](https://github.com/rynfar/meridian/issues/1277) proposes the tracked
-owner contract: JSON default, explicit opt-in SQLite, opaque async embedding
-owner handle, joined truthful close, explicit guarded offline migration/latest
-export/rollback and supported same-host local topology. Owner approval remains
-**pending**. The automatic/default replacement in #1243 is held; no contributed
-public SQL interface was incorporated. Approval would authorize a corrected
-implementation, not accept unsafe heads or remove evidence gates.
+[Issue #1277](https://github.com/rynfar/meridian/issues/1277) records the owner
+contract approved on **2026-10-04**: JSON default, explicit opt-in SQLite,
+opaque async embedding owner handle, joined truthful close, explicit guarded
+offline migration/latest export/rollback and supported same-host local topology. The automatic/default
+replacement in #1243 is held; no contributed public SQL interface was
+incorporated. Approval authorizes a corrected opt-in implementation; it does
+not accept unsafe heads or remove evidence gates.
 #1244's asynchronous cleanup contract remains approved; do not ask again.
 
-Next: obtain that one owner contract decision while continuing independent queue
-work; preserve authored contribution identity and separate corrections in any
-later implementation. Each accepted behavior still needs affected-flow actual
-client/model/SDK/platform E2E, full local gates, independent adversarial review,
+Next: implement the approved contract and material corrections while continuing
+independent queue work; preserve authored contribution identity and separate
+corrections in any later implementation. Each accepted behavior still needs
+affected-flow actual client/model/SDK/platform E2E, full local gates, independent adversarial review,
 installed package/native engine/topology proof and required final-head CI. No
 source issue is closed and no release is authorized by this review checkpoint.

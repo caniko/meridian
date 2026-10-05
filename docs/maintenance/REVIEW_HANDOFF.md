@@ -14,13 +14,22 @@ is complete for the recorded immutable scopes; both submitted heads are deferred
 for material corrections, native-engine/topology compatibility and actual
 accepted-flow evidence. Review completion is not implementation acceptance.
 
-The owner SQL public/operator decision is now tracked in
+The owner approved the SQL public/operator contract on **2026-10-04** in
 [#1277](https://github.com/rynfar/meridian/issues/1277): explicit opt-in, JSON
 default, opaque embedding ownership, truthful joined close and guarded offline
-migration/latest-state export/rollback. Approval is pending. #1244's async
-cleanup remains already approved. Source PRs/issues remain open; release and
+migration/latest-state export/rollback. Approval authorizes a corrected opt-in
+implementation; both submitted heads remain held for corrections and native
+engine/platform/actual-flow proof. #1244's async cleanup remains already
+approved. Source PRs/issues remain open; release and
 community-comment authorization remain absent. Earlier extraction-only and
-no-contract-issue statements are superseded only by this exact review/issue.
+no-contract-issue or approval-pending statements are superseded only by this
+exact review/approved issue.
+
+[Review delivery #1278](https://github.com/rynfar/meridian/pull/1278) at former
+head `4477a61245c146e4231d4d9ade510cc93fef476c` passed all six executed CI
+checks, including [required test](https://github.com/rynfar/meridian/actions/runs/37249439495),
+plus the expected changelog skip. Those checks cover that former head only;
+this status correction requires new final-head CI and independent review.
 
 
 ## Current continuation — 2026-10-04 (after #1269)

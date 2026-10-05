@@ -6,12 +6,28 @@ recorded: #1219 has 176 unique changed files across all nine packets; #1243 has
 prerequisite. Extraction and semantic review are complete for those immutable
 scopes. Product acceptance, correction delivery and live proof remain open.
 
-The owner decision is tracked in [#1277](https://github.com/rynfar/meridian/issues/1277).
-Recommend opt-in SQLite with JSON remaining default, an opaque embedding owner
-handle, truthful joined shutdown and explicit offline migration/export. The
-automatic/default migration in #1243 is held. Approval is **pending**; no public
-interface or authoritative owner state was changed by this review. #1244's
+The owner approved the contract on **2026-10-04** in
+[#1277](https://github.com/rynfar/meridian/issues/1277): opt-in SQLite with JSON
+remaining default, an opaque embedding owner handle, truthful joined shutdown
+and explicit guarded offline migration/latest-state export/rollback. Approval
+authorizes correction implementation; both submitted heads remain held for
+material corrections, native engine/platform compatibility and actual-flow
+evidence. The automatic/default migration in #1243 is held. No public interface
+or authoritative storage state was changed by this review. #1244's
 asynchronous cleanup approval already exists and remains valid.
+
+## Review delivery and prior-head CI
+
+[Review delivery #1278](https://github.com/rynfar/meridian/pull/1278) was ready
+at exact former head `4477a61245c146e4231d4d9ade510cc93fef476c`. Its six
+executed checks passed: [test and windows-smoke](https://github.com/rynfar/meridian/actions/runs/37249439495),
+[Docker smoke and build-push](https://github.com/rynfar/meridian/actions/runs/37249439485),
+and [desktop-build on ubuntu-latest and macos-latest](https://github.com/rynfar/meridian/actions/runs/37249439619).
+The `changelog-duplication` check had the expected skip. These statuses were
+rechecked against that exact GitHub head; they do not establish SQLite product
+acceptance or validate a later commit. This documentation status correction
+requires new final-head CI and independent review before merge. Historical
+reports and probe bytes retain their original decision-time context.
 
 ## Immutable scope and coverage
 

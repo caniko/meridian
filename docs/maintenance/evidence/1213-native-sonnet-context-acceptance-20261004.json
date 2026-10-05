@@ -137,7 +137,7 @@
     "totalFailed": 0,
     "typecheck": "PASS macOS and Linux",
     "build": "PASS macOS and Linux",
-    "fullSuite": "ROOT_COORDINATION_PENDING",
+    "fullSuite": "PASS: 5362 passed, 35 skipped, 0 failed across 19 isolated stages; exact frozen head 73b2d122de205990d96097e00805114696776010",
     "finalHeadCi": "ROOT_DELIVERY_PENDING"
   },
   "liveAttempt": {
@@ -212,7 +212,6 @@
       "Record later controller snapshot cleanup and qualify historical copy availability"
     ],
     "remainingGates": [
-      "Fresh current-base full npm test",
       "Required final-head CI including test",
       "Actual Linux/OpenCode/Sonnet 5.5 before/after history, positive receipt/input >200k and same-session resume"
     ]
@@ -929,7 +928,7 @@
       ]
     }
   },
-  "finalEvidenceChangeScope": "Production sources, tests and installed distributions remain unchanged from testedHead. The critical live harness changed after testedHead to add the tiny inference control and sanitized original-error capture; round3 records its exact harness hash, credentialless rehearsal and one refused query, not large-context acceptance. Root owns current-head npm test, independent adversarial review and CI.",
+  "finalEvidenceChangeScope": "Production sources, tests and installed distributions remain unchanged from testedHead. The critical live harness changed after testedHead to add the tiny inference control and sanitized original-error capture; round3 records its exact harness hash, credentialless rehearsal and one refused query, not large-context acceptance. Complete independent production/harness review and final local npm test/typecheck/build are now preserved in currentLocalValidation at exact frozen head 73b2d122. Later escrow changes are evidence-only; required final-head CI and actual Linux affected-flow acceptance remain open.",
   "lastEvidenceSourceHead": "cabc390fa9cf599225e505e9a8fcef3580db995d",
   "latestCleanup": {
     "rootPrivateCopyUnchanged": true,
@@ -982,5 +981,31 @@
     },
     "transport": "Actual client -> forwarding relay (unchanged headers/body) -> installed Meridian proxy -> real observed SDK query",
     "scope": "Proves actual V2 plugin execution on the refused tiny inference path; no successful required-model completion, capacity or resume proof. Classic scrub is a separate integration."
+  },
+  "currentLocalValidation": {
+    "testedHead": "73b2d122de205990d96097e00805114696776010",
+    "testedTree": "2e1d5ec2c7dace0899df83af4eafa7d3224ed16e",
+    "base": "0369441786b082aadeb31689dcbce41d7e8574d9",
+    "status": "PASS",
+    "npmTest": {
+      "pass": 5362,
+      "skip": 35,
+      "fail": 0,
+      "stages": 19,
+      "assertions": 26745
+    },
+    "npmTestExitCode": 0,
+    "standaloneTypecheckExitCode": 0,
+    "standaloneBuildExitCode": 0,
+    "environment": {
+      "platform": "macOS",
+      "architecture": "arm64",
+      "node": "v22.22.3",
+      "bun": "1.3.14",
+      "runtimeArchitectureVerifiedDirectly": true
+    },
+    "manifest": "1213-native-sonnet-context/local-gates-73b2d122/final-local-gates.json",
+    "additionalModelCalls": 0,
+    "scope": "Full local checks complete on exact clean head. Subsequent evidence-only escrow retains identical production/harness blobs. Required final-head CI and Linux native before/after/resume remain open."
   }
 }

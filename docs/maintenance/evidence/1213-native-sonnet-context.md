@@ -324,11 +324,21 @@ Full `npm test` at `74e50774fba47a7540f5b1c8c9f24e8d2db35bb8` passes
 **5,321 tests, 35 skips, zero failures across 18 isolated stages**. Its pretest
 typechecks. Later changes affect only the escrow harness/evidence; final
 standalone typecheck, syntax check and actual credentialless rehearsal pass.
-That full-suite result predates the latest base. The current test-agent run
-passes all 286 focused tests on Linux and macOS, plus standalone typecheck
-and builds on both platforms. The root controller coordinates the remaining
-full suite, independent final review and final-head CI; this agent did not
-push, mutate the PR, merge, close #1212/#1213 or publish a release.
+That historical full-suite result predates the latest base. The rebased
+preparation passes all 286 focused tests on Linux and macOS, plus standalone
+typecheck and builds on both platforms. Fresh full `npm test` on frozen clean
+head `73b2d122de205990d96097e00805114696776010` passes **5,362 tests,
+35 skips and zero failures across 19 isolated stages and 26,745 assertions**,
+including pretest typechecking. Standalone typecheck and build also pass on
+that exact head: macOS arm64, Node 22.22.3 and Bun 1.3.14, with architecture
+verified directly. This local platform does not replace the Linux live gate.
+The [final local-gate manifest](1213-native-sonnet-context/local-gates-73b2d122/final-local-gates.json)
+retains exact head/tree, timing, commands and SHA-256 hashes; complete lossless
+logs are escrowed beside it as [npm test](1213-native-sonnet-context/local-gates-73b2d122/npm-test.log.gz),
+[typecheck](1213-native-sonnet-context/local-gates-73b2d122/typecheck.log.gz) and
+[build](1213-native-sonnet-context/local-gates-73b2d122/build.log.gz).
+No additional model calls were made for these local checks. Final-head CI and
+actual affected-flow acceptance remain open; #1212/#1213 stay unresolved.
 
 Prior independent adversarial review left no material production or harness
 findings at its reviewed head. It corrected receipt checks that could match user prompts, SDK
@@ -349,8 +359,9 @@ child's historical copy availability from later controller cleanup. These
 evidence-only corrections preserve the reviewed production/harness blobs. The
 critical harness did change after `dac34820`: its tiny-control mode and original
 error capture have syntax, credentialless rehearsal and one refused-query
-proof, without large-context acceptance. A fresh local full suite remains
-queued with the controller.
+proof, without large-context acceptance. The complete local gates above
+now pass at `73b2d122`; later escrow changes affect evidence and compressed
+logs only and preserve those tested production/harness blobs.
 Exact final-head CI and the real affected-flow
 before/after remain required before acceptance; no merge, closure or release
 is authorized by these local results.

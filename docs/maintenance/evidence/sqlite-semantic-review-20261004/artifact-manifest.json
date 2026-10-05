@@ -266,6 +266,11 @@
       "sha256": "469a57381060e7ba774bcd2a4f8ca69e2f678b2f5cdf38625d80f01df6300b68"
     },
     {
+      "path": "1243/authored-commits.txt.gz",
+      "sizeBytes": 3442,
+      "sha256": "c0ecc730c53505c4dfe5ca8b3b4b70b193d40dde64a22071f904e3138cea2520"
+    },
+    {
       "path": "1243/evidence-manifest.json",
       "sizeBytes": 5688,
       "sha256": "ce62bc473c16e1872100a539939a06e6ed8b7a6c4501064a64098d84ff83ffe8"
@@ -362,8 +367,8 @@
     },
     {
       "path": "1243/libsql-provenance/provenance-report.md",
-      "sizeBytes": 6871,
-      "sha256": "ef3eb8948d37db5156bc02a5fed74ca23cde853978338ec456894aab326e5369"
+      "sizeBytes": 7335,
+      "sha256": "21498972699a330d15206f2aae6b126ceecf0062994a70377c33709476efeade"
     },
     {
       "path": "1243/libsql-provenance/sqlite-wal-commits-march2026.json",
@@ -384,6 +389,16 @@
       "path": "1243/npm-ci.log.gz",
       "sizeBytes": 278,
       "sha256": "469a57381060e7ba774bcd2a4f8ca69e2f678b2f5cdf38625d80f01df6300b68"
+    },
+    {
+      "path": "1243/pr-1219-comparison-live.json.gz",
+      "sizeBytes": 2306,
+      "sha256": "094ec576a8a803806d9748c37a5d85dab36cd65079fd5ab12a43449d1adb8c1f"
+    },
+    {
+      "path": "1243/pr-1243-live.json.gz",
+      "sizeBytes": 8337,
+      "sha256": "1c4de3fdb63a79278310638ef8405028ce9893027bb9f5d35817aabcadcd6a9b"
     },
     {
       "path": "1243/probe-async-json.stderr.log.gz",
@@ -422,13 +437,38 @@
     },
     {
       "path": "1243/review-report.md",
-      "sizeBytes": 27382,
-      "sha256": "3c4efeff228297f1446b228665643a3b57f5bef07af7ebc52d8ccac2505edc22"
+      "sizeBytes": 27625,
+      "sha256": "c58c083b7c9bcfa0208018a513d75c481b98c9f1eac263a7312b9ac355f473f9"
+    },
+    {
+      "path": "1243/source-status-final.txt.gz",
+      "sizeBytes": 81,
+      "sha256": "2c44b0f8bc872f7e54e1eb639180f5957c58133b0daf763e4f7001eb51cfc116"
+    },
+    {
+      "path": "1243/source-vs-current-main.stat.gz",
+      "sizeBytes": 3388,
+      "sha256": "5a36dc84e2d7cf665b9eae0c9b8c873e192e9a23ea2270b9c260342251ad1df6"
+    },
+    {
+      "path": "1243/sql-complete.diff.gz",
+      "sizeBytes": 63233,
+      "sha256": "4574e652bca3959a9a7188040d4549d14940511406efc7c23dadc3c6e34a174b"
     },
     {
       "path": "1243/sqlite-safety-probes.mjs",
       "sizeBytes": 11894,
       "sha256": "9409fa5b16970ed6c7585c155ab85dc5c5888ff7017e7a3cdf269cc893b97981"
+    },
+    {
+      "path": "1243/stack-base-async.diff.gz",
+      "sizeBytes": 56877,
+      "sha256": "a597759f6b5de5442841c753ab8282f04697e1fbeda3b7fe0fccc263548178bd"
+    },
+    {
+      "path": "1243/stack-base-remaining-changes.txt.gz",
+      "sizeBytes": 10024,
+      "sha256": "324b064c5ef8c1f14e959e9c4ca034dc7c2c9e7af4e8363a4a47837e7a34226d"
     },
     {
       "path": "README.md",
@@ -437,8 +477,8 @@
     },
     {
       "path": "raw-artifact-archives.json",
-      "sizeBytes": 7288,
-      "sha256": "85d7fabab0cdd0ce3fbc75d4a039ea94b04a64af2bae7dc984bdb1fb19883def"
+      "sizeBytes": 9967,
+      "sha256": "0277fcea08b23f819324e6a4ce1f4b1373e084b536afd1a7a04cae24567defa6"
     }
   ]
 }

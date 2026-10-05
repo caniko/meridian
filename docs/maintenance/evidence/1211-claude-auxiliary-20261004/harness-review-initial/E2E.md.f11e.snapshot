@@ -5996,22 +5996,15 @@ keeps acceptance closed.
 The sanitized `claude-auto-mode-results.json` contains only identities,
 protocol enums/counters, booleans and SDK completion/model/cost facts. It saves
 no generated prose, raw provider errors, tokens or private SDK transcripts.
-The result file is reserved exclusively as a private, owned, single-link
-descriptor before setup. Existing files or links are rejected without
-overwriting their targets; use a fresh proof directory for each attempt.
 A relay request ID matches each wire request to exactly one adapter decision;
 equal aggregate classifier counts cannot satisfy isolation. A fixed pass
 requires actual classifier traffic on both shape and header paths, zero
 classifier session-turn wait with adequate SDK capacity, every later main
 request resuming, no collision/refusal, successful client turns/tool writes
 and positive assistant usage from the exact required served model. A normal
-successful SDK result with boolean `is_error: false` is required unless the
-one-turn passthrough cap ends with `error_max_turns`, boolean `is_error: true`
-and the same query's tool IDs/arguments match a complete HTTP tool terminal
-for the owned outside write. SDK tool IDs cannot be shared between queries or
-repeated in different HTTP terminals. SSE tool receipts require message start,
-closed blocks before the terminal delta, and message stop, with no later
-content. Missing/unclosed terminals,
+successful SDK result is required unless the one-turn passthrough cap ends
+with `error_max_turns` and the same query's tool IDs/arguments match a complete
+HTTP tool terminal for the owned outside write. Missing/unclosed terminals,
 provider refusals and other SDK error results fail. Baseline wait is measured
 without weakening the fixed zero-wait assertion. Copy this result into durable
 review evidence after a native run; a temporary directory or synthetic green

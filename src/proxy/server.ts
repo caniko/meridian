@@ -19,6 +19,7 @@ import { linkRequestAbort, type RequestAbortLink } from "./requestAbort"
 import { processSessionTree, truncateSessionKey, type SessionTreeRegistration } from "./sessionTree"
 import { AbortableSemaphore, getProcessSdkSemaphore, type SemaphoreLease } from "./concurrency"
 import { InflightRegistry, isLoopbackPeer, onResponseDone, type InflightHandle } from "./inflight"
+import { plog, setProxyLogSilent } from "./operationalLog"
 import { closeServerWithGracePeriod, trackServerConnections } from "./shutdown"
 import { fetchOAuthUsage, fetchOAuthUsageResult, toUsageEntry, peekOAuthUsage } from "./oauthUsage"
 import { resolveSdkWorkingDirectory } from "./cwd"
@@ -548,16 +549,6 @@ function buildFreshPrompt(
   )
 }
 
-// Routine [PROXY] operational logging. Suppressed when config.silent is set so
-// an embedding TUI host (e.g. opencode-with-claude) isn't polluted on its input
-// line (#517 was the token_refresh instance of this). Structured telemetry
-// (claudeLog) and HTTP responses are unaffected. Module-scoped to match the
-// file's existing single-process session caches; createProxyServer sets it.
-let proxyLogSilent = false
-function plog(message: string): void {
-  if (!proxyLogSilent) console.error(message)
-}
-
 function logLateIdleDeadline(mode: string): (late: LateIdleDeadline) => void {
   return ({ lateMs, sinceLastMs, resumed }) => {
     plog(`[PROXY] upstream idle deadline fired ${lateMs}ms late (sinceLastMs=${sinceLastMs}, limit=${UPSTREAM_IDLE_MS}ms): ${resumed ? "upstream progress or completion was waiting" : "no model progress observed after yielding"}`)
@@ -675,7 +666,7 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
   const finalConfig = resolveBackendConfig(config)
   const claudeProviderFacts = new ClaudeProviderFacts()
   const antigravity = finalConfig.backend === "combined" ? createAntigravityServer({ ...finalConfig, profiles: undefined, defaultProfile: undefined }) : undefined
-  proxyLogSilent = finalConfig.silent
+  setProxyLogSilent(finalConfig.silent)
   const serverVersion = finalConfig.version ?? "unknown"
 
   const currentBuild = () =>

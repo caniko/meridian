@@ -14,7 +14,10 @@ executed final-head checks, including `test`, and merged as
 `ca6a5c0a4eddb87da52d83993f8f9e105712f0f6`. Its tree matches the validated
 head exactly, human contributor credit is present, and unchanged source #1286
 was closed as incorporated. The current focused delivery is #1290/#1289;
-its independent review corrections and affected Pi/Opus evidence remain open.
+its production review corrections, actual Pi/Opus and four-mode E41 evidence
+are complete. Final evidence review and final-head CI remain before merge;
+#1295 is being corrected in parallel. See the linked delivery record and
+its durable evidence receipts.
 Other historical dispositions below remain qualified by
 their own recorded scopes and dates.
 

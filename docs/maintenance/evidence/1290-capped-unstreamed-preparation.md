@@ -1,5 +1,10 @@
 # PR 1290 implementation preparation
 
+This is the retained preparation record. Subsequent [local gates/E61](1290-local-gates-e61.md),
+[actual Pi receipt](1290-pi-live.md) and [four-mode E41 receipt](1290-e41-live.md)
+supersede its pending execution/version questions. The owner confirmed that
+the reporter tuple is unknown and approved the supported isolated Pi run.
+
 Prepared 2026-10-06 for root's independent review. No semantic acceptance,
 publication, GitHub write, SDK/CLI execution, model call, native client run,
 login, refresh, or credential-store change is claimed. Full `npm test`, actual

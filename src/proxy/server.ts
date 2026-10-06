@@ -86,6 +86,7 @@ import { checkPluginConfigured, isPluginlessOpenCodeRequest, notePluginlessOpenC
 import { describeBuildDrift } from "./buildInfo"
 import { buildRuntime } from "./buildRuntime"
 import { getLatestVersion, isUpdateCheckEnabled, startUpdateCheck, stopUpdateCheck } from "./updateCheck"
+import { createAuthStatusOwner } from "./authStatusOwnership"
 import { mapModelToClaudeModel, resolveClaudeExecutableAsync, resolveSdkModelDefaults, explicitModelPin, CANONICAL_SONNET_MODEL, isClosedControllerError, getClaudeAuthStatusAsync, getAuthCacheInfo, expireAuthStatusCache, getResolvedClaudeExecutableInfo, hasExtendedContext, stripExtendedContext, recordExtendedContextUnavailable, recordExtendedContextRateLimited, subscriptionIncludesExtendedContext } from "./models"
 import { livenessReport, readinessReport, renderProbe } from "./probes"
 import type { AnthropicSseEvent } from "./openai"
@@ -662,7 +663,13 @@ function beginUpdateCheck(config: { silent?: boolean; version?: string }): Promi
 }
 
 export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServer {
+  return createProxyServerWithAuthOwner(config, createAuthStatusOwner())
+}
+
+function createProxyServerWithAuthOwner(config: Partial<ProxyConfig>, authOwner: ReturnType<typeof createAuthStatusOwner>): ProxyServer {
   if (resolveBackendConfig(config).backend === "antigravity") return createAntigravityServer(resolveBackendConfig(config))
+  const getInstanceAuthStatus = (profileId?: string, envOverrides?: Record<string, string>) =>
+    authOwner.run(() => getClaudeAuthStatusAsync(profileId, envOverrides))
   const finalConfig = resolveBackendConfig(config)
   const claudeProviderFacts = new ClaudeProviderFacts()
   const antigravity = finalConfig.backend === "combined" ? createAntigravityServer({ ...finalConfig, profiles: undefined, defaultProfile: undefined }) : undefined
@@ -2126,7 +2133,7 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
           routingMode,
         })
 
-        const authStatus = await getClaudeAuthStatusAsync(
+        const authStatus = await getInstanceAuthStatus(
           profile.id !== "default" ? profile.id : undefined,
           Object.keys(profile.env).length > 0 ? profile.env : undefined
         )
@@ -8532,7 +8539,7 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
       // Use active profile's auth context for health check
       const healthProfile = resolveProfile(finalConfig.profiles, finalConfig.defaultProfile)
       const profileEnvOverrides = Object.keys(healthProfile.env).length > 0 ? healthProfile.env : undefined
-      const auth = await getClaudeAuthStatusAsync(
+      const auth = await getInstanceAuthStatus(
           healthProfile.id !== "default" ? healthProfile.id : undefined,
           profileEnvOverrides
         )
@@ -8643,7 +8650,7 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
     const enriched = await Promise.all(profiles.map(async (p) => {
       const resolved = resolveProfile(finalConfig.profiles, finalConfig.defaultProfile, p.id)
       const envOverrides = Object.keys(resolved.env).length > 0 ? resolved.env : undefined
-      const auth = await getClaudeAuthStatusAsync(
+      const auth = await getInstanceAuthStatus(
         p.id !== "default" ? p.id : undefined,
         envOverrides
       )
@@ -9509,7 +9516,7 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
   app.get("/v1/models", async (c) => {
     const profile = resolveProfile(finalConfig.profiles, finalConfig.defaultProfile)
     const profileEnvOverrides = Object.keys(profile.env).length > 0 ? profile.env : undefined
-    const authStatus = await getClaudeAuthStatusAsync(
+    const authStatus = await getInstanceAuthStatus(
       profile.id !== "default" ? profile.id : undefined,
       profileEnvOverrides,
     )
@@ -9892,7 +9899,10 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
     app,
     config: finalConfig,
     initPlugins: initPluginsAsync,
-    closeBackend: antigravity?.closeBackend,
+    closeBackend: async () => {
+      const results = await Promise.allSettled([authOwner.close(), antigravity?.closeBackend()])
+      for (const result of results) if (result.status === "rejected") throw result.reason
+    },
     beginDrain: () => { draining = true; antigravity?.beginDrain?.() },
     forceAbortInFlight: () => {
       antigravity?.forceAbortInFlight?.()
@@ -10006,6 +10016,9 @@ export async function startProxyServer(config: Partial<ProxyConfig> = {}): Promi
   }
   logCredentialsModeBanner()
   claudeExecutable = await resolveClaudeExecutableAsync()
+  const authOwner = createAuthStatusOwner()
+  const getInstanceAuthStatus = (profileId?: string, envOverrides?: Record<string, string>) =>
+    authOwner.run(() => getClaudeAuthStatusAsync(profileId, envOverrides))
   const {
     app,
     config: finalConfig,
@@ -10015,7 +10028,7 @@ export async function startProxyServer(config: Partial<ProxyConfig> = {}): Promi
     getInFlightCount,
     sweepSessionGc,
     closeBackend,
-  } = createProxyServer(config)
+  } = createProxyServerWithAuthOwner(config, authOwner)
   if (initPlugins) await initPlugins()
 
   // Only the owned HTTP-server lifecycle starts a periodic sweep. Embedders
@@ -10156,11 +10169,11 @@ export async function startProxyServer(config: Partial<ProxyConfig> = {}): Promi
       for (const profile of currentProfiles) {
         const resolved = resolveProfile(finalConfig.profiles, finalConfig.defaultProfile, profile.id)
         if (Object.keys(resolved.env).length > 0) {
-          getClaudeAuthStatusAsync(resolved.id, resolved.env).catch(() => {})
+          void getInstanceAuthStatus(resolved.id, resolved.env)
         }
       }
       // Also refresh the default (no-override) context
-      getClaudeAuthStatusAsync().catch(() => {})
+      void getInstanceAuthStatus()
     }, AUTH_KEEPALIVE_MS)
     // Don't block process exit
     if (authKeepaliveInterval.unref) authKeepaliveInterval.unref()

@@ -21,6 +21,9 @@
  */
 import { describe, it, expect, beforeEach, afterEach, afterAll, mock, setSystemTime, spyOn } from "bun:test"
 import * as realChildProcess from "node:child_process"
+import { PassThrough } from "node:stream"
+import { installSdkMock } from "./sdkMock"
+import { installLoggerMock } from "./loggerMock"
 import { mkdtempSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -33,7 +36,7 @@ import { join } from "node:path"
 let authBehavior: "success" | "fail" | "hang" | "timeout" | "exit1" | "exit2" = "success"
 let execFileCalls = 0
 /** Options the probe passed to execFile, so spawn flags can be asserted. */
-let execFileOptions: any
+let execFileOptions: realChildProcess.ExecFileOptions | undefined
 let currentPayload = { loggedIn: true, email: "test@test.com", subscriptionType: "max" }
 let hungSpawns: Array<(err: Error | null, out: { stdout: string; stderr: string }) => void> = []
 
@@ -53,45 +56,86 @@ function killHungSpawns(): void {
   for (const done of pending) done(timeoutError(), { stdout: "", stderr: "" })
 }
 
-// The /health test loads server.ts, which imports more of child_process than
-// the auth probe uses; only exec and execFile are replaced.
+interface FakeAuthChild {
+  child: realChildProcess.ChildProcess
+  signals: NodeJS.Signals[]
+  callback(error: Error | null, output: { stdout: string; stderr: string }): void
+  witnesses(code?: number | null, signal?: NodeJS.Signals | null): void
+}
+let fakeAuthChildren: FakeAuthChild[] = []
+// These are unspawned EventEmitter/pipe fixtures, not native processes.
 mock.module("child_process", () => ({
   ...realChildProcess,
-  exec: (_cmd: string, optsOrCb: any, cb?: any) => {
-    const done = typeof optsOrCb === "function" ? optsOrCb : cb
-    done?.(null, { stdout: "", stderr: "" })
-  },
-  execFile: (_file: string, _args: any, optsOrCb: any, cb?: any) => {
+  execFile: (_file: string, _args: string[], options: realChildProcess.ExecFileOptions,
+    done: (error: Error | null, stdout: string, stderr: string) => void) => {
     execFileCalls++
-    execFileOptions = typeof optsOrCb === "function" ? undefined : optsOrCb
-    const done = typeof optsOrCb === "function" ? optsOrCb : cb
-    if (authBehavior === "hang") {
-      hungSpawns.push(done)
-      return
+    execFileOptions = options
+    const child = new realChildProcess.ChildProcess()
+    Object.defineProperty(child, "pid", { value: 10_000 + execFileCalls })
+    child.stdout = new PassThrough(); child.stderr = new PassThrough()
+    const signals: NodeJS.Signals[] = []
+    child.kill = signal => { signals.push((signal ?? "SIGTERM") as NodeJS.Signals); return true }
+    const fixture: FakeAuthChild = {
+      child, signals,
+      callback: (error, output) => done(error, output.stdout, output.stderr),
+      witnesses(code = 0, signal = null) {
+        child.emit("exit", code, signal)
+        child.stdout?.emit("close"); child.stderr?.emit("close")
+        child.emit("close", code, signal)
+      },
     }
-    if (authBehavior === "fail") {
-      done?.(new Error("claude auth status failed"), { stdout: "", stderr: "" })
-      return
+    fakeAuthChildren.push(fixture)
+    const complete = (error: Error | null, output: { stdout: string; stderr: string }) => {
+      fixture.callback(error, output)
+      fixture.witnesses(error ? 1 : 0)
     }
-    if (authBehavior === "timeout") {
-      done?.(timeoutError(), { stdout: "", stderr: "" })
-      return
-    }
-    // A non-zero exit still carries the CLI's stdout: its JSON, account email
-    // included (exit1), or output that is not JSON at all (exit2).
-    if (authBehavior === "exit1") {
-      const stdout = JSON.stringify({ loggedIn: false, email: "private@test.com" })
-      done?.(Object.assign(new Error("Command failed: /fake/claude auth status\n"), { killed: false, signal: null, code: 1, stdout }), { stdout, stderr: "" })
-      return
-    }
-    if (authBehavior === "exit2") {
-      const stdout = "not json"
-      done?.(Object.assign(new Error("Command failed: /fake/claude auth status\n"), { killed: false, signal: null, code: 2, stdout }), { stdout, stderr: "" })
-      return
-    }
-    done?.(null, { stdout: JSON.stringify(currentPayload), stderr: "" })
+    queueMicrotask(() => {
+      if (authBehavior === "hang") { hungSpawns.push(complete); return }
+      if (authBehavior === "fail") { complete(new Error("claude auth status failed"), { stdout: "", stderr: "" }); return }
+      if (authBehavior === "timeout") { complete(timeoutError(), { stdout: "", stderr: "" }); return }
+      if (authBehavior === "exit1") {
+        const stdout = JSON.stringify({ loggedIn: false, email: "private@test.com" })
+        complete(Object.assign(new Error("Command failed: /fake/claude auth status\n"), { killed: false, signal: null, code: 1, stdout }), { stdout, stderr: "" }); return
+      }
+      if (authBehavior === "exit2") {
+        complete(Object.assign(new Error("Command failed: /fake/claude auth status\n"), { killed: false, signal: null, code: 2, stdout: "not json" }), { stdout: "not json", stderr: "" }); return
+      }
+      complete(null, { stdout: JSON.stringify(currentPayload), stderr: "" })
+    })
+    return child
   },
 }))
+
+// All store/SDK doubles are installed before production imports. Only the
+// mtime tests below name an owned synthetic .credentials.json file.
+mock.module("../proxy/tokenRefresh", () => ({
+  credentialsFilePathForProfile: (dir?: string) => {
+    if (!dir) throw new Error("No default owner credential store in this fixture")
+    return join(dir, ".credentials.json")
+  },
+  createPlatformCredentialStore: () => ({ read: async () => null,
+    write: async () => { throw new Error("Fixture must not write credentials") } }),
+  readStoredCredentialPresence: async () => "absent",
+  refreshOAuthToken: async () => false,
+  ensureFreshToken: async () => false,
+  startBackgroundRefresh: () => undefined,
+  stopBackgroundRefresh: () => undefined,
+  getAuthRenewalStatus: async () => ({ renewalRequiredSoon: false }),
+  getStoredPlanFields: async () => ({}),
+  resolveRenewalWarnDays: () => 3,
+  configDirToKeychainService: () => "fixture-no-keychain",
+  configDirToCredentialsFile: (dir: string) => join(dir, ".credentials.json"),
+}))
+installSdkMock(() => ({ query: () => { throw new Error("Auth fixtures must not query a model") },
+  createSdkMcpServer: () => ({}), tool: () => ({}) }), "models-auth-status.test.ts")
+installLoggerMock(() => ({ claudeLog: () => undefined,
+  withClaudeLogContext: (_ctx: unknown, callback: () => unknown) => callback() }))
+const savedAuthFixtureEnv = { ...process.env }
+const fixtureRoot = mkdtempSync(join(tmpdir(), "meridian-auth-status-owned-"))
+Object.assign(process.env, { MERIDIAN_CONFIG_DIR: join(fixtureRoot, "config"),
+  MERIDIAN_SESSION_DIR: join(fixtureRoot, "sessions"), MERIDIAN_WORKDIR: fixtureRoot,
+  MERIDIAN_PROFILES: "[]", MERIDIAN_CREDENTIALS_READONLY: "1",
+  MERIDIAN_NO_UPDATE_CHECK: "1", MERIDIAN_TELEMETRY_PERSIST: "0" })
 
 const savedClaudePath = process.env.MERIDIAN_CLAUDE_PATH
 process.env.MERIDIAN_CLAUDE_PATH = "/fake/claude"
@@ -110,10 +154,13 @@ const {
 const warnSpy = spyOn(console, "warn").mockImplementation(() => {})
 const warnings = () => warnSpy.mock.calls.map(call => String(call[0]))
 
-beforeEach(() => warnSpy.mockClear())
+beforeEach(() => { warnSpy.mockClear(); fakeAuthChildren = [] })
 
 afterAll(() => {
   warnSpy.mockRestore()
+  for (const key of Object.keys(process.env)) if (!(key in savedAuthFixtureEnv)) delete process.env[key]
+  Object.assign(process.env, savedAuthFixtureEnv)
+  rmSync(fixtureRoot, { recursive: true, force: true })
   if (savedClaudePath === undefined) delete process.env.MERIDIAN_CLAUDE_PATH
   else process.env.MERIDIAN_CLAUDE_PATH = savedClaudePath
 })
@@ -406,6 +453,148 @@ describe("getClaudeAuthStatusAsync — real implementation", () => {
   })
 })
 
+describe("auth refresh process ownership", () => {
+  beforeEach(() => {
+    authBehavior = "hang"; execFileCalls = 0; hungSpawns = []
+    resetCachedClaudeAuthStatus(); setAuthStatusWaitMsForTesting(10)
+  })
+  afterEach(() => {
+    releaseHungSpawns(); setAuthStatusWaitMsForTesting()
+  })
+
+  it("does not treat the callback, exit or one closed pipe as complete cleanup", async () => {
+    const { startAuthStatusProcess } = await import("../proxy/authStatusProcess")
+    const process = startAuthStatusProcess("/fake/claude", { timeoutMs: 10_000 })
+    await tick()
+    const fake = fakeAuthChildren[0]!
+    fake.callback(null, { stdout: "{}", stderr: "" })
+    fake.child.emit("exit", 0, null)
+    fake.child.stdout?.emit("close")
+    expect(await settledWithin(process.result, 20)).toBe(NOT_SETTLED)
+    fake.child.emit("close", 0, null)
+    expect(await settledWithin(process.joined, 20)).toBe(NOT_SETTLED)
+    fake.child.stderr?.emit("close")
+    expect(await process.result).toBe("{}")
+    await process.joined
+    expect(fake.signals).toEqual([])
+    hungSpawns = []
+  })
+
+  it("bounds a missing close witness without inventing an exit or pipe join", async () => {
+    const { startAuthStatusProcess } = await import("../proxy/authStatusProcess")
+    const process = startAuthStatusProcess("/fake/claude", { timeoutMs: 10_000, killGraceMs: 5, joinGraceMs: 10 })
+    await tick()
+    const fake = fakeAuthChildren[0]!
+    await expect(process.cancel()).rejects.toThrow("cleanup is unconfirmed")
+    await expect(process.result).rejects.toThrow("cleanup is unconfirmed")
+    expect(fake.signals).toEqual(["SIGTERM", "SIGKILL"])
+    expect(await settledWithin(process.joined, 20)).toBe(NOT_SETTLED)
+    fake.callback(timeoutError(), { stdout: "", stderr: "" }); fake.witnesses(null, "SIGKILL")
+    await process.joined
+    hungSpawns = []
+  })
+
+  it("never signals an exited child whose pipe close is still missing", async () => {
+    const { startAuthStatusProcess } = await import("../proxy/authStatusProcess")
+    const process = startAuthStatusProcess("/fake/claude", { timeoutMs: 10_000, killGraceMs: 5, joinGraceMs: 10 })
+    await tick()
+    const fake = fakeAuthChildren[0]!
+    fake.callback(null, { stdout: "{}", stderr: "" }); fake.child.emit("exit", 0, null)
+    await expect(process.cancel()).rejects.toThrow("cleanup is unconfirmed")
+    expect(fake.signals).toEqual([])
+    fake.witnesses(); await process.joined
+    hungSpawns = []
+  })
+
+  it("last-owner close waits for actual exit, close and both pipes", async () => {
+    const { createAuthStatusOwner } = await import("../proxy/authStatusOwnership")
+    const owner = createAuthStatusOwner()
+    const profile = nextProfile()
+    expect(await owner.run(() => getClaudeAuthStatusAsync(profile))).toBeNull()
+    const fake = fakeAuthChildren[0]!
+    const closing = owner.close()
+    expect(fake.signals).toEqual(["SIGTERM"])
+    fake.callback(timeoutError(), { stdout: "", stderr: "" })
+    fake.child.emit("exit", null, "SIGTERM")
+    expect(await settledWithin(closing, 20)).toBe(NOT_SETTLED)
+    fake.child.stdout?.emit("close"); fake.child.stderr?.emit("close")
+    expect(await settledWithin(closing, 20)).toBe(NOT_SETTLED)
+    fake.child.emit("close", null, "SIGTERM")
+    await closing
+    expect(getAuthCacheInfo(profile)).toEqual({ lastCheckedAt: 0, lastSuccessAt: 0, isFailure: false })
+    expect(await owner.run(() => getClaudeAuthStatusAsync(profile))).toBeNull()
+    expect(execFileCalls).toBe(1)
+    hungSpawns = []
+  })
+
+  it("one embedded owner closing cannot cancel the sibling's shared check", async () => {
+    const { createAuthStatusOwner } = await import("../proxy/authStatusOwnership")
+    const first = createAuthStatusOwner(); const second = createAuthStatusOwner()
+    const profile = nextProfile()
+    await Promise.all([first.run(() => getClaudeAuthStatusAsync(profile)), second.run(() => getClaudeAuthStatusAsync(profile))])
+    expect(execFileCalls).toBe(1)
+    await first.close()
+    expect(fakeAuthChildren[0]!.signals).toEqual([])
+    releaseHungSpawns(); await pendingAuthStatusRefresh(profile)
+    expect(await second.run(() => getClaudeAuthStatusAsync(profile))).toEqual(currentPayload)
+    await second.close()
+    expect(execFileCalls).toBe(1)
+  })
+
+  it("expiry cannot start another process while the first check owns its slot", async () => {
+    const profile = nextProfile()
+    expect(await getClaudeAuthStatusAsync(profile)).toBeNull()
+    expireAuthStatusCache()
+    expect(await getClaudeAuthStatusAsync(profile)).toBeNull()
+    expect(execFileCalls).toBe(1)
+    releaseHungSpawns(); await pendingAuthStatusRefresh(profile)
+    expect(await getClaudeAuthStatusAsync(profile)).toEqual(currentPayload)
+  })
+
+  it("a missing last-owner close rejects shutdown and retains the shared slot", async () => {
+    const { createAuthStatusOwner } = await import("../proxy/authStatusOwnership")
+    const owner = createAuthStatusOwner(); const nextOwner = createAuthStatusOwner()
+    const profile = nextProfile()
+    await owner.run(() => getClaudeAuthStatusAsync(profile))
+    const fake = fakeAuthChildren[0]!
+    await expect(owner.close()).rejects.toThrow("cleanup is unconfirmed")
+    expect(fake.signals).toEqual(["SIGTERM", "SIGKILL"])
+    await nextOwner.run(() => getClaudeAuthStatusAsync(profile))
+    expect(execFileCalls).toBe(1)
+    fake.callback(timeoutError(), { stdout: "", stderr: "" }); fake.witnesses(null, "SIGKILL")
+    await tick()
+    authBehavior = "success"
+    expect(await nextOwner.run(() => getClaudeAuthStatusAsync(profile))).toEqual(currentPayload)
+    expect(execFileCalls).toBe(2)
+    await nextOwner.close()
+    hungSpawns = []
+  }, 5000)
+
+  it("ProxyInstance.close joins an auth check after the first HTTP wait expires", async () => {
+    const { startProxyServer } = await import("../proxy/server")
+    const instance = await startProxyServer({ port: 0, host: "127.0.0.1", silent: true,
+      profiles: [{ id: "owned-close-api", type: "api", apiKey: "fixture-key" }], defaultProfile: "owned-close-api" })
+    try {
+      const address = instance.server.address()
+      expect(address && typeof address === "object").toBe(true)
+      if (!address || typeof address !== "object") throw new Error("Owned fixture listener missing")
+      const response = await fetch(`http://127.0.0.1:${address.port}/health`)
+      expect((await response.json() as { status: string }).status).toBe("degraded")
+      const closing = instance.close()
+      await tick()
+      const fake = fakeAuthChildren[0]!
+      expect(fake.signals).toEqual(["SIGTERM"])
+      fake.callback(timeoutError(), { stdout: "", stderr: "" }); fake.witnesses(null, "SIGTERM")
+      await closing
+      expect(instance.server.listening).toBe(false)
+      hungSpawns = []
+    } finally {
+      releaseHungSpawns()
+      await instance.close()
+    }
+  })
+})
+
 /**
  * A failed check used to be visible only with OPENCODE_CLAUDE_PROVIDER_DEBUG
  * set, so a proxy stuck at "Could not verify auth status" said nothing about why.
@@ -625,7 +814,7 @@ describe("/health with an expired auth-status cache", () => {
 
   it("answers healthy from the previous status while the refresh is stalled", async () => {
     const { createProxyServer } = await import("../proxy/server")
-    const { app } = createProxyServer({ port: 0, host: "127.0.0.1" })
+    const { app } = createProxyServer({ port: 0, host: "127.0.0.1", profiles: [{ id: "fixture-api", type: "api", apiKey: "owned-key" }], defaultProfile: "fixture-api" })
     const probe = async () => {
       const res = await app.fetch(new Request("http://localhost/health"))
       return { status: res.status, body: await res.json() as Record<string, unknown> }
@@ -666,14 +855,14 @@ describe("HTTP surfaces during a slow first auth check", () => {
 
   it("/health answers degraded within the wait, then healthy once the check lands", async () => {
     const { createProxyServer } = await import("../proxy/server")
-    const { app } = createProxyServer({ port: 0, host: "127.0.0.1" })
+    const { app } = createProxyServer({ port: 0, host: "127.0.0.1", profiles: [{ id: "fixture-api", type: "api", apiKey: "owned-key" }], defaultProfile: "fixture-api" })
     const probe = async () => (await (await app.fetch(new Request("http://localhost/health"))).json() as { status: string }).status
 
     expect(await settledWithin(probe(), 1_000)).toBe("degraded")
     expect(hungSpawns).toHaveLength(1)
 
     releaseHungSpawns()
-    await pendingAuthStatusRefresh()
+    await pendingAuthStatusRefresh("fixture-api")
     expect(await probe()).toBe("healthy")
     expect(execFileCalls).toBe(1)
   })

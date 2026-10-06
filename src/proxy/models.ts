@@ -11,7 +11,9 @@ import { env } from "../env"
 import { isCredentialsReadOnly } from "./credentialsMode"
 import { credentialsFilePathForProfile } from "./tokenRefresh"
 import { claudeLog } from "../logger"
-import { authFieldPaths, describeAuthFields } from "./authDiscovery" 
+import { authFieldPaths, describeAuthFields } from "./authDiscovery"
+import { startAuthStatusProcess, AuthStatusProcessFailure } from "./authStatusProcess"
+import { authStatusOwnerContext, type AuthStatusOwnerState, type AuthRefresh } from "./authStatusOwnership"
 
 const exec = promisify(execCallback)
 const execFile = promisify(execFileCallback)
@@ -548,6 +550,20 @@ interface AuthCache {
 }
 const profileAuthCaches = new Map<string, AuthCache>()
 
+interface CachedAuthRefresh extends AuthRefresh {
+  promise: Promise<ClaudeAuthStatus | null>
+}
+const authRefreshes = new Map<string, CachedAuthRefresh>()
+let authCacheGeneration = 0
+
+function attachAuthOwner(refresh: AuthRefresh, owner?: AuthStatusOwnerState): void {
+  if (refresh.cancelled) return
+  if (owner) {
+    refresh.owners.add(owner)
+    owner.refreshes.add(refresh)
+  } else refresh.unowned = true
+}
+
 /** Get the last successful auth check timestamp for a profile.
  * @param profileId - Profile ID to look up (uses default cache when omitted) */
 export function getAuthCacheInfo(profileId?: string): { lastCheckedAt: number; lastSuccessAt: number; isFailure: boolean } {
@@ -573,7 +589,12 @@ function getAuthCache(key: string): AuthCache {
  *   When undefined, uses the default (global) auth context.
  * @param envOverrides - Optional env vars for per-profile auth (e.g. CLAUDE_CONFIG_DIR).
  */
-export async function getClaudeAuthStatusAsync(profileId?: string, envOverrides?: Record<string, string>): Promise<ClaudeAuthStatus | null> {
+export function getClaudeAuthStatusAsync(profileId?: string, envOverrides?: Record<string, string>): Promise<ClaudeAuthStatus | null> {
+  return getOwnedClaudeAuthStatusAsync(profileId, envOverrides, authStatusOwnerContext.getStore())
+}
+
+async function getOwnedClaudeAuthStatusAsync(profileId?: string, envOverrides?: Record<string, string>, owner?: AuthStatusOwnerState): Promise<ClaudeAuthStatus | null> {
+  if (owner?.closed) return null
   // Use per-profile cache when a profile ID is provided, else fall back to
   // the legacy global cache for backward compatibility with existing tests.
   const isDefault = !profileId
@@ -585,7 +606,6 @@ export async function getClaudeAuthStatusAsync(profileId?: string, envOverrides?
   const c_at = cache ? cache.at : cachedAuthStatusAt
   const c_isFailure = cache ? cache.isFailure : cachedAuthStatusIsFailure
   const c_failures = cache ? cache.failures : cachedAuthStatusFailures
-  const c_promise = cache ? cache.promise : cachedAuthStatusPromise
 
   const c_credMtime = cache ? cache.credMtimeMs : cachedAuthStatusCredMtimeMs
 
@@ -608,8 +628,11 @@ export async function getClaudeAuthStatusAsync(profileId?: string, envOverrides?
   // for AUTH_STATUS_WAIT_MS: the check outlives that wait and answers whoever
   // asks after it lands. One refresh at a time: concurrent callers share the
   // in-flight one.
-  const inflight = c_promise ?? startAuthStatusRefresh(cache, profileId, envOverrides, credMtime)
-  return previous ?? waitForFirstAnswer(inflight)
+  const key = profileId ?? ""
+  const refresh = authRefreshes.get(key)
+    ?? startAuthStatusRefresh(cache, profileId, envOverrides, credMtime)
+  attachAuthOwner(refresh, owner)
+  return previous ?? waitForFirstAnswer(refresh.promise)
 }
 
 /** The check in flight, or null - "could not verify" - once the caller's wait runs out. */
@@ -641,6 +664,11 @@ function reportedLoggedIn(stdout: unknown): boolean | undefined {
  * on. Never quotes the CLI's output, which carries the account's email.
  */
 function describeAuthStatusFailure(err: unknown): string {
+  if (err instanceof AuthStatusProcessFailure) {
+    if (err.reason === "join") return "Claude auth-status process cleanup is unconfirmed; no replacement check will start"
+    if (err.reason === "cancelled") return "Claude auth-status check cancelled during instance shutdown"
+    return `no answer within ${AUTH_STATUS_SPAWN_TIMEOUT_MS / 1000}s, so the check was killed`
+  }
   const e = err as { killed?: boolean; signal?: string | null; code?: unknown; stdout?: unknown } | null
   if (e?.killed) return `no answer within ${AUTH_STATUS_SPAWN_TIMEOUT_MS / 1000}s, so the check was killed`
   if (typeof e?.code === "number") {
@@ -682,8 +710,17 @@ function startAuthStatusRefresh(
   profileId: string | undefined,
   envOverrides: Record<string, string> | undefined,
   credMtime: number,
-): Promise<ClaudeAuthStatus | null> {
+): CachedAuthRefresh {
   const startedAt = Date.now()
+  const generation = authCacheGeneration
+  let resolveJoined!: () => void
+  const state: CachedAuthRefresh = {
+    owners: new Set(), unowned: false, cancelled: false,
+    promise: Promise.resolve(null),
+    joined: new Promise<void>(resolve => { resolveJoined = resolve }),
+  }
+  // Register before the first await, so a sibling adopts the same refresh.
+  authRefreshes.set(profileId ?? "", state)
   const refresh = (async (): Promise<ClaudeAuthStatus | null> => {
     try {
       // Route through the resolver instead of relying on `claude` being
@@ -696,12 +733,15 @@ function startAuthStatusRefresh(
       // supports. execFile (vs exec) avoids any quoting issues with
       // spaces in the resolved path.
       const claudePath = await resolveClaudeExecutableAsync()
-      const { stdout } = await execFile(claudePath, ["auth", "status"], {
-        timeout: AUTH_STATUS_SPAWN_TIMEOUT_MS,
-        windowsHide: true,
+      if (state.cancelled) return cache ? cache.lastKnownGood : lastKnownGoodAuthStatus
+      state.process = startAuthStatusProcess(claudePath, {
+        timeoutMs: AUTH_STATUS_SPAWN_TIMEOUT_MS,
         ...(envOverrides ? { env: { ...process.env, ...envOverrides } } : {}),
       })
+      void state.process.joined.then(resolveJoined)
+      const stdout = await state.process.result
       const parsed = JSON.parse(stdout) as ClaudeAuthStatus
+      if (generation !== authCacheGeneration || state.cancelled) return cache ? cache.lastKnownGood : lastKnownGoodAuthStatus
       // The same payload the CLI path logs, from the reader every HTTP route
       // goes through. Both are logged because they can disagree: this one is
       // TTL-cached per profile and falls back to a last-known-good value, so a
@@ -729,6 +769,7 @@ function startAuthStatusRefresh(
       }
       return parsed
     } catch (err) {
+      if (generation !== authCacheGeneration || state.cancelled) return cache ? cache.lastKnownGood : lastKnownGoodAuthStatus
       const failures = (cache ? cache.failures : cachedAuthStatusFailures) + 1
       const everAnswered = Boolean(cache ? cache.lastKnownGood : lastKnownGoodAuthStatus)
       const retryInMs = authStatusFailureTtlMs(failures)
@@ -751,22 +792,25 @@ function startAuthStatusRefresh(
         cachedAuthStatusCredMtimeMs = credMtime
         return lastKnownGoodAuthStatus
       }
+    } finally {
+      if (!state.process) resolveJoined()
     }
   })()
 
-  // The refresh never rejects (failures resolve to last-known-good), so the
-  // `finally` below cannot surface an unhandled rejection. It releases the
-  // slot only if it still holds this refresh - a test reset may have replaced it.
-  const inflight = refresh.finally(() => {
+  state.promise = refresh
+  if (cache) cache.promise = refresh
+  else cachedAuthStatusPromise = refresh
+  // Only actual process/pipe join releases ownership and the deduplication
+  // slot. A bounded result failure alone cannot permit an overlapping probe.
+  void Promise.all([refresh, state.joined]).then(() => {
+    if (authRefreshes.get(profileId ?? "") === state) authRefreshes.delete(profileId ?? "")
     if (cache) {
-      if (cache.promise === inflight) cache.promise = null
-    } else if (cachedAuthStatusPromise === inflight) {
-      cachedAuthStatusPromise = null
-    }
+      if (cache.promise === refresh) cache.promise = null
+    } else if (cachedAuthStatusPromise === refresh) cachedAuthStatusPromise = null
+    for (const owner of state.owners) owner.refreshes.delete(state)
+    state.owners.clear()
   })
-  if (cache) cache.promise = inflight
-  else cachedAuthStatusPromise = inflight
-  return inflight
+  return state
 }
 
 /** The auth-status refresh currently in flight, if any - for testing only. */
@@ -1188,6 +1232,8 @@ export function resetCachedClaudePath(): void {
 
 /** Reset cached auth status — for testing only */
 export function resetCachedClaudeAuthStatus(): void {
+  authCacheGeneration++
+  authRefreshes.clear()
   cachedAuthStatus = null
   lastKnownGoodAuthStatus = null
   cachedAuthStatusAt = 0
@@ -1211,11 +1257,9 @@ export function setAuthStatusWaitMsForTesting(ms: number = AUTH_STATUS_WAIT_MS):
  *  "not logged in". */
 export function expireAuthStatusCache(): void {
   cachedAuthStatusAt = 0
-  cachedAuthStatusPromise = null
-  for (const cache of profileAuthCaches.values()) {
-    cache.at = 0
-    cache.promise = null
-  }
+  // Expiry invalidates the reading, not the lifetime of a running child.
+  // Keep sharing it until its process and pipes have actually joined.
+  for (const cache of profileAuthCaches.values()) cache.at = 0
 }
 
 /**

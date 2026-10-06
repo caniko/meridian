@@ -50,6 +50,9 @@ Offline controls used the unchanged test fixture while replacing only
 
 Local runtime: Bun 1.3.14, Node 22.22.3, TypeScript 5.9.3. Dependency metadata
 reports Agent SDK 0.2.141 and Claude Code 2.1.284; neither was executed.
+The issue reports Claude Code 2.1.285, so the local CLI metadata does not match
+that version. The issue does not name the Pi version or operating system;
+confirm those before treating a native run as the affected-client evidence.
 Root still needs its full-suite gate on the repository's pinned Bun 1.3.11.
 
 Runnable escrow: `scripts/e2e-unstreamed-fallback.mjs`. After root authorizes

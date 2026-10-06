@@ -22,6 +22,7 @@
 import { describe, it, expect, beforeEach, afterEach, afterAll, mock, setSystemTime, spyOn } from "bun:test"
 import * as realChildProcess from "node:child_process"
 import { PassThrough } from "node:stream"
+import { EventEmitter } from "node:events"
 import { installSdkMock } from "./sdkMock"
 import { installLoggerMock } from "./loggerMock"
 import { mkdtempSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs"
@@ -70,11 +71,11 @@ mock.module("child_process", () => ({
     done: (error: Error | null, stdout: string, stderr: string) => void) => {
     execFileCalls++
     execFileOptions = options
-    const child = new realChildProcess.ChildProcess()
-    Object.defineProperty(child, "pid", { value: 10_000 + execFileCalls })
-    child.stdout = new PassThrough(); child.stderr = new PassThrough()
     const signals: NodeJS.Signals[] = []
-    child.kill = signal => { signals.push((signal ?? "SIGTERM") as NodeJS.Signals); return true }
+    const child = Object.assign(new EventEmitter(), {
+      pid: 10_000 + execFileCalls, stdout: new PassThrough(), stderr: new PassThrough(),
+      kill: (signal: NodeJS.Signals = "SIGTERM") => { signals.push(signal); return true },
+    }) as unknown as realChildProcess.ChildProcess
     const fixture: FakeAuthChild = {
       child, signals,
       callback: (error, output) => done(error, output.stdout, output.stderr),

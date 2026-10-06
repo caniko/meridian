@@ -97,57 +97,100 @@ Final focused files together: 37 pass / 0 fail, 262 assertions, 6.63 seconds.
 Typecheck and diff checks pass. Broad `npm test` and build were intentionally not
 run while the authorized owner was running #1290 live gates.
 
-## Narrow live fault-harness proposal — not implemented or executed
+## Escrowed publication fault harness — not executed
 
-Proposed repository gate: `scripts/e2e-publication-lock-fallback.mjs`, following
-the isolated ports, configuration, sessions, fixture workdir and supported SDK
-history inspection of `scripts/e2e-publication-lifetime.mjs`. The owner selects
-and records the actual affected provider, Linux architecture, client/plugin,
-model, SDK/CLI and runtime tuple before implementation or execution. Actual
-OpenCode runs require the generation-matching Meridian client plugin and its
-preflight/runtime route witnesses from E2E.md. The canonical Linux OpenCode gate
-also requires the scrub plugin and retains both plugins' runtime witnesses.
+[`scripts/e2e-publication-lock-fallback.mjs`](../../scripts/e2e-publication-lock-fallback.mjs)
+delegates the exact query input and every actual SDK message unchanged. It uses
+an isolated supported `oauth-token` profile, loopback port, config/session store,
+empty plugin directory and disposable project. Its private access-only snapshot
+must contain exactly `{accessToken, expiresAt}`, expire beyond the ten-minute
+run, and carry no refresh grant. The source snapshot is read and hash-checked;
+the harness never writes it or native source credentials. Existing credential
+and provider environment is cleared before product imports; refresh is disabled
+through read-only mode and the profile's isolated Claude configuration.
 
-Keep the probe to terminal publication after one real SDK answer, in JSON and
-SSE. A harness-local scheduling hook should first establish that the real SDK
-writer has joined, then hold the actual lifecycle FIFO ahead of terminal
-publication or hold its isolated canonical external lock with a bounded helper
-process. Do not manually manufacture a lock exception from inside a durable
-callback. Record a callback-entry sentinel so a failure proves acquisition was
-rejected before the session-store CAS. The fault must leave the original holder
-owned until explicit completion; cleanup may remove only its exact owned lock.
+The one fault brackets ordinary terminal `publishPinnedTranscript`. Before
+injecting, it requires a real successful answer, observed actual model/CLI
+metadata, the production joined-lease release witness, and absence of an SDK
+writer lease in the durable sidecar. A grantless owned child acquires the actual
+canonical `session-gc.json.lock` through production's initialized-candidate
+hardlink publication. The original publication function then waits 500 ms on
+that lock. The gate requires the genuine acquisition-timeout class/message, a
+false durable-callback sentinel, and exact child ownership through rejection.
+It rethrows that original error only after joining the helper and proving its
+owned lock/staging files were removed. Forced cleanup or callback entry fails
+the gate; no lock error is manufactured inside a durable callback.
 
-For the timer arm, delay the first real deadline beyond the existing tolerance,
-allow its single grace window, and delay the second deadline again. Require
-eventual waiter rejection after the second callback, no overlapping operation,
-and recovery only after actual holder completion. Pair this with a one-delay
-control whose holder completes within grace and serves its waiters. This does
-not require generating additional model turns for each timer waiter.
+The healthy control makes two real turns, requires native resume to a distinct
+fork, and checks the immutable source through supported `getSessionMessages`.
+The fault flow makes three real turns: seed, answered publication failure, then
+complete-history fresh replay. Fixed source must deliver the exact observed SDK
+answer, invalidate the old mapping, and use a target distinct from both the old
+source and abandoned target with no resume/resume-at/fork option. It asserts the
+exact earlier user/assistant replay input, live final turn, supported SDK history
+and unchanged source. SSE additionally requires natural body completion, one
+`end_turn` delta and one `message_stop`; JSON must end normally.
 
-For response/replay arms, require complete JSON or one complete SSE terminal,
-exact invalidation of the old mapping, a distinct fresh follow-up target with no
-old resume, and complete client history including tool call/result identity.
-Inspect actual SDK history only through supported APIs. Include healthy
-publication, concurrent-winner, failed-invalidation, priority and cancellation
-controls; preserve sanitized before/after logs and head/build/harness hashes.
-Run unchanged main and the final corrected head with the same assertions.
+Reproduce later with the **same harness file/hash** and dependencies against two
+clean isolated checkouts. The proposed supported owner tuple is Linux x86_64,
+Bun 1.3.11, Anthropic Claude Max through the real SDK, and explicit Opus 5.5;
+record the actual installed SDK/CLI versions rather than inferring them from a
+lockfile. The owner supplies the private snapshot separately.
+`E2E_EXPECTED_SERVED_MODEL` may be set only to the
+explicit expected actual SDK model ID when its metadata differs from the request
+alias. Optional `E2E_CLAUDE_BIN` pins an existing supported CLI executable.
 
-This document is a proposal, not an escrowed executable harness. Committing the
-narrow runnable gate and capturing actual failure/pass artifacts remain explicit
-acceptance gates; mocked success cannot substitute for them.
+```sh
+E2E_MERIDIAN_ROOT="$BASELINE_CHECKOUT" E2E_AUTH_FILE="$PRIVATE_ACCESS_SNAPSHOT" \
+  E2E_MODEL=claude-opus-5-5 bun "$HARNESS_CHECKOUT/scripts/e2e-publication-lock-fallback.mjs" --json
+E2E_MERIDIAN_ROOT="$CORRECTED_CHECKOUT" E2E_AUTH_FILE="$PRIVATE_ACCESS_SNAPSHOT" \
+  E2E_MODEL=claude-opus-5-5 bun "$HARNESS_CHECKOUT/scripts/e2e-publication-lock-fallback.mjs" --json
+```
+
+Repeat both commands with `--stream`. Unchanged main is expected to exit 1 at
+fault delivery, with the genuine pre-entry timeout/owned-helper cleanup proved,
+the actual answer preserved privately, and the source mapping still present.
+An earlier startup/provider/model/helper failure is **not** the baseline
+counterexample. Corrected source must exit 0 with `result: PASS` and all five
+observed actual queries. The script records exact source/lockfile/harness hashes,
+Meridian/SDK versions, actual served model IDs and actual CLI init versions.
+No bundle is exercised. Private mode-0600 artifacts include SDK inputs/answers,
+HTTP bodies and supported history; the printed summary contains hashes and
+metadata. Retain reviewed sanitized before/after evidence durably before claiming
+acceptance; raw private artifacts must not be published.
+
+Static bounds per run: at most five real SDK queries; request 120 s, run abort
+600 s, final process bound 630 s; helper acquire 5 s, readiness 8 s, owned hold
+15 s, normal join 2 s then forced join 2 s; external acquisition 500 ms; shutdown
+15 s. These JavaScript deadlines require a scheduling event loop. Use the
+owner's external process deadline for a frozen-runtime experiment. Preparation
+ran only `node --check` and content/diff checks, never the executable payload.
+
+This narrow raw-HTTP text fixture does not establish native Pi/OpenCode plugin
+behavior or tool identity, recurring live timer lag, concurrent-winner, failed
+invalidation, priority or cancellation under a real provider. The latter
+bookkeeping controls are discriminated in mocked integration tests above; the
+repeated-delay/one-delay controls are deterministic queue tests. Live timer and
+tool-history proof remain open where required by the full acceptance brief.
+The author's production client/model/version tuple remains unknown (Linux and
+Mac were reported). The owner-selected supported tuple is separate evidence,
+not an attribution to that deployment.
 
 ## Required next gates
 
 1. Independent final-diff review, required local `npm test` / typecheck / build,
    including process-global mock isolation, and final corrected-head CI with
    `test`. No branch push, PR creation, merge or external comment occurred.
-2. Implement and run the proposed affected-flow fault gate on the actual tuple;
-   the author's production Linux client/model/version tuple is still unknown.
+2. Run the escrowed fault gate on unchanged baseline and corrected source in
+   both modes with an explicit owner-selected tuple; capture actual before/after
+   artifacts. The author's production client/model/version tuple is unknown.
 3. Run E2E.md's concurrent transcript publication gate in both modes with the
    implicated model explicitly selected, all four E41 sequential/parallel ×
    JSON/SSE arms, and actual affected-client continuation with its required
-   plugin witnesses. No SDK, model, auth, provider, package, Docker or live
-   client operation was performed during this preparation.
+   plugin witnesses. Actual OpenCode requires its generation-matching Meridian
+   plugin; the canonical Linux gate also requires scrub and both runtime route
+   witnesses. No SDK, model, auth, provider, package, Docker or live client
+   operation was performed during this preparation.
 4. Refresh source head and current main before delivery and immediately before
    any exact-head merge. Preserve contributor credit on the eventual squash.
    Release authorization remains separate.

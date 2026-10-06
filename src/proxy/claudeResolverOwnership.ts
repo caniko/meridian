@@ -15,8 +15,8 @@ export function createClaudeResolution(run: (scope: ClaudeResolutionScope) => Pr
   const joined = new Promise<void>(resolve => { resolveJoined = resolve })
   const scope: ClaudeResolutionScope = {
     active() {
-      if (cancelled) throw new AuthStatusProcessFailure('cancelled')
       if ([...processes].some(process => !process.isJoined())) throw new AuthStatusProcessFailure('join')
+      if (cancelled) throw new AuthStatusProcessFailure('cancelled')
     },
     own(process) {
       // Every admission checks active synchronously before spawning. Register

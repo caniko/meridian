@@ -25,6 +25,7 @@ let yieldedCount = 0
 let capturedQueryParams: any = null
 let capturedQueryParamsAll: any[] = []
 let mockTerminalError: Error | undefined
+let mockBeforeTerminalError: (() => void) | undefined
 /**
  * Per-attempt SDK scripts, consumed one per `query()` call. Retry paths need
  * the second attempt to behave differently from the first; without this every
@@ -86,7 +87,10 @@ installSdkMock(() => ({
           }
         }
       }
-      if (terminalError) throw terminalError
+      if (terminalError) {
+        mockBeforeTerminalError?.()
+        throw terminalError
+      }
       // Real SDK queries terminate with a result, and that boundary is the only
       // persistence acknowledgement the live PTY transport gave us. Most test
       // fixtures predate that distinction, so synthesize the canonical result
@@ -121,7 +125,7 @@ installMcpToolsMock(() => ({
 
 const { createProxyServer } = await import("../proxy/server")
 const { clearSessionCache } = await import("../proxy/session/cache")
-const { evictSharedSession, lookupSharedSession, setSessionStoreDir } = await import("../proxy/sessionStore")
+const { evictSharedSession, lookupSharedSession, storeSharedSession, setSessionStoreDir } = await import("../proxy/sessionStore")
 const { diagnosticLog, telemetryStore } = await import("../telemetry")
 
 function userDenyMessage(toolUseId: string) {
@@ -234,6 +238,7 @@ describe("Integration: passthrough early stop", () => {
     capturedQueryParams = null
     capturedQueryParamsAll = []
     mockTerminalError = undefined
+    mockBeforeTerminalError = undefined
     mockAttemptScripts = []
     forkSessionSequence = 0
     mockBaseSessionId = `test-session-${crypto.randomUUID()}`
@@ -2088,16 +2093,18 @@ describe("Integration: passthrough early stop", () => {
     expect(events.filter(e => e.event === "message_start")).toHaveLength(1)
     expect(events.filter(e => e.event === "message_stop")).toHaveLength(1)
     const starts = events.filter(e => e.event === "content_block_start")
-      .map(e => (e.data as any).content_block)
-    expect(starts.map(block => block.type)).toEqual(["text", "tool_use"])
-    expect(starts[1].id).toBe("unstreamed-capped-tool")
-    expect(starts.map((_, i) => i)).toEqual(events.filter(e => e.event === "content_block_start")
-      .map(e => (e.data as any).index))
-    expect(events.filter(e => e.event === "content_block_delta")
-      .map(e => (e.data as any).delta.text ?? (e.data as any).delta.partial_json).join(""))
-      .toBe('Reading x.{"file_path":"x"}')
-    expect(events.filter(e => e.event === "message_delta")
-      .map(e => (e.data as any).delta.stop_reason)).toEqual(["tool_use"])
+    expect(starts.map(e => e.data.content_block)).toEqual([
+      { type: "text", text: "" },
+      { type: "tool_use", id: "unstreamed-capped-tool", name: "read", input: {} },
+    ])
+    expect(starts.map(e => e.data.index)).toEqual([0, 1])
+    expect(events.filter(e => e.event === "content_block_delta").map(e => e.data.delta))
+      .toEqual([
+        { type: "text_delta", text: "Reading x." },
+        { type: "input_json_delta", partial_json: '{"file_path":"x"}' },
+      ])
+    expect(events.filter(e => e.event === "message_delta").map(e => e.data.delta))
+      .toEqual([{ stop_reason: "tool_use", stop_sequence: null }])
 
     mockTerminalError = undefined
     mockMessages = [assistantMessage([{ type: "text", text: "the file says X" }])]
@@ -2142,11 +2149,13 @@ describe("Integration: passthrough early stop", () => {
     }, "es-unstreamed-parallel")
     const events = parseSSE(await response.text())
     expect(events.filter(e => e.event === "error")).toHaveLength(0)
-    expect(events.filter(e => e.event === "content_block_start")
-      .map(e => (e.data as any).content_block.id))
-      .toEqual(["unstreamed-parallel-a", "unstreamed-parallel-b"])
-    expect(events.filter(e => e.event === "message_delta")
-      .map(e => (e.data as any).delta.stop_reason)).toEqual(["tool_use"])
+    expect(events.filter(e => e.event === "content_block_start").map(e => e.data.content_block))
+      .toEqual([
+        { type: "tool_use", id: "unstreamed-parallel-a", name: "read", input: {} },
+        { type: "tool_use", id: "unstreamed-parallel-b", name: "read", input: {} },
+      ])
+    expect(events.filter(e => e.event === "message_delta").map(e => e.data.delta))
+      .toEqual([{ stop_reason: "tool_use", stop_sequence: null }])
 
     mockTerminalError = undefined
     mockMessages = [assistantMessage([{ type: "text", text: "a and b read" }])]
@@ -2189,8 +2198,8 @@ describe("Integration: passthrough early stop", () => {
     }, "es-unstreamed-no-result")
     const events = parseSSE(await response.text())
     expect(events.filter(e => e.event === "error")).toHaveLength(0)
-    expect(events.filter(e => e.event === "content_block_start")
-      .map(e => (e.data as any).content_block.id)).toEqual(["unstreamed-no-result"])
+    expect(events.filter(e => e.event === "content_block_start").map(e => e.data.content_block))
+      .toEqual([{ type: "tool_use", id: "unstreamed-no-result", name: "read", input: {} }])
 
     mockTerminalError = undefined
     mockMessages = [assistantMessage([{ type: "text", text: "fresh replay" }])]
@@ -2258,6 +2267,72 @@ describe("Integration: passthrough early stop", () => {
     expect(events.filter(e => e.event === "error")).toHaveLength(1)
     expect(events.filter(e => e.event === "message_start")).toHaveLength(0)
     expect(events.filter(e => e.event === "content_block_start")).toHaveLength(0)
+  })
+
+  it.each([
+    ["unstreamed", "publication", false, true],
+    ["unstreamed", "invalidation", false, false],
+    ["streamed", "publication", true, true],
+    ["streamed", "invalidation", true, false],
+  ] as const)("stream: closes %s capped recovery when %s loses its mapping", async (_mode, operation, streamed, canonical) => {
+    const sessionHeader = `es-recovery-loss-${streamed}-${operation}`
+    const sessionKey = `${sessionHeader}-${TEST_RUN_ID}`
+    const toolTurn = assistantMessage([
+      { type: "tool_use", id: "recovery-loss-tool", name: "read", input: { file_path: "x" } },
+    ])
+    mockMessages = [
+      ...(streamed ? [
+        messageStart("msg_recovery_loss"),
+        toolUseBlockStart(0, "read", "recovery-loss-tool"),
+        inputJsonDelta(0, '{"file_path":"x"}'),
+        blockStop(0),
+        messageDelta("tool_use"),
+      ] : []),
+      toolTurn,
+      ...(canonical ? [userDenyMessage("recovery-loss-tool")] : []),
+      ...(canonical ? [{ type: "result", subtype: "error_max_turns", is_error: true }] : []),
+    ]
+    mockTerminalError = new Error("Claude Code returned an error result: Reached maximum number of turns (1)")
+    // Another publisher wins after this request read its generation. Recovery
+    // must preserve that winner and report failure before authorizing tools.
+    mockBeforeTerminalError = () => {
+      expect(storeSharedSession(sessionKey, "concurrent-winner")).toBeTruthy()
+    }
+    const requestId = `recovery-loss-${streamed}-${operation}-${TEST_RUN_ID}`
+    const response = await post(app, {
+      model: "claude-sonnet-4-5", max_tokens: 400, stream: true, tools: [READ_TOOL],
+      messages: [{ role: "user", content: "read x during mapping conflict" }],
+    }, sessionHeader, { "x-request-id": requestId })
+    // Bound the reader so an unterminated regression fails instead of hanging.
+    const reader = response.body!.getReader()
+    const chunks: Uint8Array[] = []
+    const deadline = setTimeout(() => { void reader.cancel("recovery did not terminate") }, 2_000)
+    try {
+      while (true) {
+        const chunk = await reader.read()
+        if (chunk.done) break
+        chunks.push(chunk.value)
+      }
+    } finally {
+      clearTimeout(deadline)
+      reader.releaseLock()
+    }
+    const events = parseSSE(Buffer.concat(chunks).toString())
+    expect(events.filter(e => e.event === "message_start")).toHaveLength(1)
+    expect(events.filter(e => e.event === "message_delta").map(e => e.data.delta))
+      .toEqual([{ stop_reason: "max_tokens", stop_sequence: null }])
+    const errors = events.filter(e => e.event === "error")
+    expect(errors).toHaveLength(1)
+    expect(errors[0]!.data.error).toMatchObject({
+      type: "api_error",
+      message: `Shared session mapping changed before recovery ${operation}`,
+    })
+    expect(events.filter(e => e.event === "message_stop")).toHaveLength(1)
+    expect(events.findIndex(e => e.event === "error"))
+      .toBeLessThan(events.findIndex(e => e.event === "message_stop"))
+    expect(lookupSharedSession(sessionKey)?.claudeSessionId).toBe("concurrent-winner")
+    const row = telemetryStore.getRecent({ limit: 200 }).find(row => row.requestId === requestId)
+    expect(row).toMatchObject({ status: 500, error: "api_error" })
   })
 
   it("stream: a capped checkpoint fork does not store parent rollback UUIDs", async () => {

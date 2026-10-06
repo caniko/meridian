@@ -95,7 +95,19 @@ try {
     assert(text.includes(selected === 'control' ? 'MOCK_STREAMED_TEXT' : 'MOCK_FALLBACK_TEXT'), raw.slice(0, 2000))
     const tools = events.filter(event => event.type === 'content_block_start' && event.content_block?.type === 'tool_use')
     assert.equal(tools.length, isTool ? 1 : 0, raw.slice(0, 2000))
-    if (isTool) assert.equal(tools[0].content_block.name, 'get_weather')
+    if (isTool) {
+      assert.equal(tools[0].content_block.name, 'get_weather')
+      assert.equal(tools[0].content_block.id, 'toolu_fallback_weather')
+      const argumentsJson = events.filter(event => event.type === 'content_block_delta'
+        && event.index === tools[0].index && event.delta?.type === 'input_json_delta')
+        .map(event => event.delta.partial_json).join('')
+      assert.deepEqual(JSON.parse(argumentsJson), { city: 'Paris' })
+    }
+    const starts = events.filter(event => event.type === 'content_block_start').map(event => event.index)
+    const stops = events.filter(event => event.type === 'content_block_stop').map(event => event.index)
+    assert.deepEqual(stops, starts, 'Each visible block must close exactly once')
+    assert.equal(events.filter(event => event.type === 'message_delta').length, 1, raw.slice(0, 2000))
+    assert.equal(events.at(-1)?.type, 'message_stop', raw.slice(0, 2000))
     const stop = events.findLast(event => event.type === 'message_delta')?.delta.stop_reason
     assert.equal(stop, isTool ? 'tool_use' : 'end_turn', raw.slice(0, 2000))
     assert(upstreamStreamed > beforeStreamed, 'CLI did not request streaming')

@@ -53,4 +53,3 @@ function waitForAuthJoin(joined: Promise<void>): Promise<void> {
     }),
   ]).finally(() => clearTimeout(timer))
 }
-

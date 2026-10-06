@@ -4990,6 +4990,21 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
             let pendingStructuredFrames: Array<{ payload: Uint8Array; source: string }> = []
             let pendingStructuredTextLength = 0
             let terminalDeltaSent = false
+            let terminalStopSent = false
+            const enqueueTerminalDelta = (payload: Uint8Array, source: string): boolean => {
+              if (terminalDeltaSent) return false
+              const enqueued = safeEnqueue(payload, source)
+              if (enqueued) terminalDeltaSent = true
+              return enqueued
+            }
+            const sendTerminalStop = (source: string): boolean => {
+              if (terminalStopSent) return false
+              const enqueued = safeEnqueue(encoder.encode(
+                'event: message_stop\ndata: {"type":"message_stop"}\n\n'
+              ), source)
+              if (enqueued) terminalStopSent = true
+              return enqueued
+            }
             const sendTerminalDelta = (stopReasonOverride?: string): void => {
               if (terminalDeltaSent) return
               const payload = stopReasonOverride
@@ -5000,8 +5015,16 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
                   })}\n\n`)
                 : pendingTerminalDelta
               if (!payload) return
-              terminalDeltaSent = true
-              if (safeEnqueue(payload, "terminal_message_delta")) eventsForwarded += 1
+              if (enqueueTerminalDelta(payload, "terminal_message_delta")) eventsForwarded += 1
+            }
+            // Failure reporting is observational. A broken observer must not
+            // keep the HTTP response open or discard its queued terminal frames.
+            const observeStreamFailure = (observe: () => void): void => {
+              try {
+                observe()
+              } catch {
+                return
+              }
             }
             // Client block indices whose content_block_start was forwarded but
             // whose content_block_stop hasn't been yet. The single-step abort
@@ -5060,13 +5083,16 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
             // client closes only on the canonical turn-1 tool_use delta below,
             // after its blocks are complete; the SDK then drains invisibly.
 
-            const flushOpenClientBlocks = (source: string): void => {
+            const flushOpenClientBlocks = (
+              source: string,
+              observe: (callback: () => void) => void = callback => callback(),
+            ): void => {
               if (openClientBlocks.size === 0) return
-              recordEnvelopeViolations([...openClientBlocks].map((idx) => ({
+              observe(() => recordEnvelopeViolations([...openClientBlocks].map((idx) => ({
                 type: "dangling_block" as const,
                 detail: `content block ${idx} still open at ${source} close`,
-              })))
-              claudeLog("stream.dangling_blocks_closed", { source, count: openClientBlocks.size })
+              }))))
+              observe(() => claudeLog("stream.dangling_blocks_closed", { source, count: openClientBlocks.size }))
               for (const idx of openClientBlocks) {
                 flushToolArguments(idx)
                 safeEnqueue(encoder.encode(
@@ -5162,15 +5188,32 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
             // start() would discard its queued frames without an SSE terminal.
             terminateFailedStream = (error: unknown): void => {
               const message = error instanceof Error ? error.message : String(error)
-              claudeLog("stream.handler_failed", { model, error: message })
-              diagnosticLog.error(`${requestMeta.requestId} stream_handler_failed ${message}`, requestMeta.requestId)
               if (streamClosed) return
+              const closeStream = (): void => {
+                try {
+                  controller.close()
+                } catch (closeError) {
+                  if (!isClosedControllerError(closeError)) throw closeError
+                }
+                streamClosed = true
+              }
+              // Recovery can fail in its observers after committing a complete
+              // message. That terminal stop is irrevocable even while the
+              // controller remains open: only close, never append error frames.
+              if (terminalStopSent) {
+                closeStream()
+                return
+              }
+              observeStreamFailure(() => claudeLog("stream.handler_failed", { model, error: message }))
+              observeStreamFailure(() => diagnosticLog.error(
+                `${requestMeta.requestId} stream_handler_failed ${message}`, requestMeta.requestId,
+              ))
               const classified = classifyError(message, model)
               const retryAfter = retryAfterSeconds({ status: classified.status, errorMessage: message,
                 resetAtMs: observedResetAtMs(profile.id, Date.now()) })
               const totalMs = Date.now() - requestStartAt
               const queueWaitMs = totalQueueWaitMs(requestMeta)
-              telemetryStore.record({
+              observeStreamFailure(() => telemetryStore.record({
                 requestId: requestMeta.requestId, timestamp: Date.now(), adapter: adapter.name,
                 profileId: profile.id, routeKind, routeGroupId, routeAttempt, requestSource, model,
                 requestModel: body.model || undefined, mode: "stream", isResume,
@@ -5182,10 +5225,10 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
                 ttfbMs: requestMeta.ttfbMs ?? null, upstreamDurationMs: requestMeta.sdkActiveDurationMs,
                 totalDurationMs: totalMs, contentBlocks: contentBlocksForwarded,
                 textEvents: textEventsForwarded, error: classified.type,
-              })
+              }))
               if (messageStartEmitted) {
-                flushOpenClientBlocks("handler_error")
-                safeEnqueue(encoder.encode(`event: message_delta\ndata: ${JSON.stringify({
+                flushOpenClientBlocks("handler_error", observeStreamFailure)
+                enqueueTerminalDelta(encoder.encode(`event: message_delta\ndata: ${JSON.stringify({
                   type: "message_delta", delta: { stop_reason: "max_tokens", stop_sequence: null },
                   usage: { output_tokens: lastUsage?.output_tokens ?? 0 },
                 })}\n\n`), "handler_error_message_delta")
@@ -5197,15 +5240,9 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
                   ...retryAfterBodyFields(retryAfter) },
               })}\n\n`), "handler_error_event")
               if (messageStartEmitted) {
-                safeEnqueue(encoder.encode('event: message_stop\ndata: {"type":"message_stop"}\n\n'),
-                  "handler_error_message_stop")
+                sendTerminalStop("handler_error_message_stop")
               }
-              try {
-                controller.close()
-              } catch (closeError) {
-                if (!isClosedControllerError(closeError)) throw closeError
-              }
-              streamClosed = true
+              closeStream()
             }
 
             try {
@@ -6674,7 +6711,7 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
                 finalizePriorityPublication()
                 if (messageStartEmitted) {
                   sendTerminalDelta(streamedToolUseIds.size > 0 ? "tool_use" : unstreamedStopReason)
-                  safeEnqueue(encoder.encode(`event: message_stop\ndata: {"type":"message_stop"}\n\n`), "final_message_stop")
+                  sendTerminalStop("final_message_stop")
                 }
 
                 try { controller.close() } catch {}
@@ -7214,16 +7251,14 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
                 // recovered tool results.
                 assertPriorityPublicationReady()
                 finalizePriorityPublication()
-                const terminalDeltaEnqueued = safeEnqueue(encoder.encode(
+                const terminalDeltaEnqueued = enqueueTerminalDelta(encoder.encode(
                   `event: message_delta\ndata: ${JSON.stringify({
                     type: "message_delta",
                     delta: { stop_reason: "tool_use", stop_sequence: null },
                     usage: { output_tokens: lastUsage?.output_tokens ?? 0 }
                   })}\n\n`
                 ), "recover_message_delta")
-                const terminalStopEnqueued = safeEnqueue(encoder.encode(
-                  `event: message_stop\ndata: {"type":"message_stop"}\n\n`
-                ), "recover_message_stop")
+                const terminalStopEnqueued = sendTerminalStop("recover_message_stop")
                 let firstStreamedId: string | undefined
                 // NOTE: Pi's headerless refusal stores tools under the matching client call ID.
                 if (!profileSessionId && adapterBase === "pi") {
@@ -7393,16 +7428,14 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
                   blocks: nextClientBlockIndex,
                 })
                 plog(`[PROXY] ${requestMeta.requestId} capped turn produced no forwardable tool call — reporting as truncated`)
-                safeEnqueue(encoder.encode(
+                enqueueTerminalDelta(encoder.encode(
                   `event: message_delta\ndata: ${JSON.stringify({
                     type: "message_delta",
                     delta: { stop_reason: "max_tokens", stop_sequence: null },
                     usage: { output_tokens: lastUsage?.output_tokens ?? 0 }
                   })}\n\n`
                 ), "capped_turn_message_delta")
-                safeEnqueue(encoder.encode(
-                  `event: message_stop\ndata: {"type":"message_stop"}\n\n`
-                ), "capped_turn_message_stop")
+                sendTerminalStop("capped_turn_message_stop")
 
                 if (lastUsage) logUsage(requestMeta.requestId, lastUsage)
                 const cappedTotalMs = Date.now() - requestStartAt
@@ -7546,7 +7579,7 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
                   textEvents: textEventsForwarded,
                   classified: streamErr.type,
                 })
-                safeEnqueue(encoder.encode(
+                enqueueTerminalDelta(encoder.encode(
                   `event: message_delta\ndata: ${JSON.stringify({
                     type: "message_delta",
                     delta: { stop_reason: errorStopReason, stop_sequence: null },
@@ -7566,9 +7599,7 @@ export function createProxyServer(config: Partial<ProxyConfig> = {}): ProxyServe
                   type: "error",
                   error: { type: streamErr.type, message: streamErr.message, ...retryAfterBodyFields(streamRetryAfter) }
                 })}\n\n`), "error_event_before_stop")
-                safeEnqueue(encoder.encode(
-                  `event: message_stop\ndata: {"type":"message_stop"}\n\n`
-                ), "error_message_stop")
+                sendTerminalStop("error_message_stop")
               } else {
                 // No message_start was ever emitted, so there is no message to
                 // close — the error event is the whole response.

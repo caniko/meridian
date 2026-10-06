@@ -22,7 +22,7 @@ the separately reviewed fsync/publication subset was accepted. Revisit recovery
 with affirmative owner-death/boot evidence or a fencing protocol; elapsed grace
 alone is insufficient.
 
-## #1286: accepted with corrections, awaiting delivery CI
+## #1286: accepted with corrections and delivered as #1287
 
 [Source PR #1286](https://github.com/rynfar/meridian/pull/1286) was created during
 this delivery pass. Consequently the fresh Meridian inventory still has 20
@@ -61,6 +61,17 @@ sync arm failed an unsupported fallback-source assertion after its PATH was
 changed inside Bun; its result was not logged first. That failure remains
 retained, and the corrected fixture supplies PATH before launching each fresh
 Bun arm. It does not count as a passed before/after control.
+
+Delivery [PR #1287](https://github.com/rynfar/meridian/pull/1287) merged on
+2026-10-06 at 20:34:29 UTC, after all six executed final-head checks passed
+and the expected changelog check skipped. The [test run](https://github.com/rynfar/meridian/actions/runs/37496805897)
+passed on head `c06c03535da79f72b2a389dc036a60d7fdc02b38`.
+Merge `ca6a5c0a4eddb87da52d83993f8f9e105712f0f6` has the exact validated tree
+`aa4ff3f0c2ba83594f96c3ca7a168965db9e49cd` and verified
+`Co-authored-by: Nowaker <spam@nowaker.net>` credit. Source #1286 was rechecked
+at unchanged `b7caeacaf89f3f9c95d2e13ca5d1e53556eb6b46` and closed at
+20:35:06 UTC. Earlier CI-pending statements above describe preparation only;
+the retained local benchmark and first fixture failures remain unchanged.
 
 This pass adds no shared guardian or general test-platform work. The owner's
 dirty checkout remains preserved; releases and public comments remain

@@ -2,21 +2,29 @@
 // Real Agent SDK/Claude Code fallback against a local Anthropic API fixture.
 // The fixture creates the upstream refusal; no model quota is consumed.
 import assert from 'node:assert/strict'
-import { mkdtempSync, realpathSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, realpathSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 const repo = resolve(process.env.E2E_MERIDIAN_ROOT ?? '.')
 const root = realpathSync(mkdtempSync(join(tmpdir(), 'meridian-unstreamed-fallback-')))
+const claude = process.env.E2E_CLAUDE_BIN ? realpathSync(process.env.E2E_CLAUDE_BIN) : undefined
 for (const key of Object.keys(process.env)) {
   if (key.startsWith('MERIDIAN_') || key.startsWith('CLAUDE_PROXY_')) delete process.env[key]
+}
+for (const key of ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN_FILE']) {
+  delete process.env[key]
 }
 Object.assign(process.env, {
   MERIDIAN_CONFIG_DIR: join(root, 'config'), MERIDIAN_SESSION_DIR: join(root, 'sessions'),
   MERIDIAN_WORKDIR: root, MERIDIAN_PASSTHROUGH: '1', MERIDIAN_PASSTHROUGH_MAX_TURNS: '4',
-  MERIDIAN_TELEMETRY_PERSIST: '0',
+  MERIDIAN_TELEMETRY_PERSIST: '0', MERIDIAN_NO_UPDATE_CHECK: '1', MERIDIAN_CREDENTIALS_READONLY: '1',
+  CLAUDE_CONFIG_DIR: join(root, 'cli-empty'), CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
+  DISABLE_AUTOUPDATER: '1', DISABLE_TELEMETRY: '1', DISABLE_ERROR_REPORTING: '1',
+  ...(claude ? { MERIDIAN_CLAUDE_PATH: claude } : {}),
 })
+mkdirSync(process.env.CLAUDE_CONFIG_DIR, { mode: 0o700 })
 
 const requested = process.argv.find(arg => arg.startsWith('--case='))?.slice(7)
 const cases = requested ? [requested] : ['text', 'tool', 'tool-capped', 'control']
@@ -69,6 +77,13 @@ const proxyPort = proxy.server.address().port
 const tool = { name: 'get_weather', description: 'Get weather in a city.',
   input_schema: { type: 'object', properties: { city: { type: 'string' } }, required: ['city'] } }
 try {
+  if (claude) {
+    const { getResolvedClaudeExecutableInfo } = await import(pathToFileURL(join(repo, 'src/proxy/models.ts')).href)
+    const executable = getResolvedClaudeExecutableInfo()
+    assert.equal(executable?.path, claude, 'Proxy must use the selected fixture CLI')
+    assert.equal(executable.source, 'env')
+    console.log(JSON.stringify({ fixture: 'local-api', executable }))
+  }
   for (const selected of cases) {
     mode = selected
     // tool-capped keeps the default one-turn cap, so the CLI stops at

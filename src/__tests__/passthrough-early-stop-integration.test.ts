@@ -6,7 +6,7 @@
  * the hidden digest through a canonical result; only then is the assistant UUID
  * known durable enough for resumeSessionAt.
  */
-import { describe, it, expect, mock, beforeAll, beforeEach, afterEach, afterAll } from "bun:test"
+import { describe, it, expect, mock, spyOn, beforeAll, beforeEach, afterEach, afterAll } from "bun:test"
 import { installSdkMock } from "./sdkMock"
 import { installLoggerMock } from "./loggerMock"
 import { installMcpToolsMock } from "./mcpToolsMock"
@@ -26,6 +26,7 @@ let capturedQueryParams: any = null
 let capturedQueryParamsAll: any[] = []
 let mockTerminalError: Error | undefined
 let mockBeforeTerminalError: (() => void) | undefined
+let mockLogObserver: ((event: string) => void) | undefined
 /**
  * Per-attempt SDK scripts, consumed one per `query()` call. Retry paths need
  * the second attempt to behave differently from the first; without this every
@@ -115,7 +116,7 @@ installSdkMock(() => ({
 }), "passthrough-early-stop-integration.test.ts")
 
 installLoggerMock(() => ({
-  claudeLog: () => {},
+  claudeLog: (event: string) => { mockLogObserver?.(event) },
   withClaudeLogContext: (_ctx: any, fn: any) => fn(),
 }))
 
@@ -191,6 +192,28 @@ async function post(app: any, body: any, sessionHeader = "es-session", extraHead
   }))
 }
 
+async function readNaturallyClosedStream(response: Response): Promise<string> {
+  const reader = response.body!.getReader()
+  const chunks: Uint8Array[] = []
+  let timedOut = false
+  const deadline = setTimeout(() => {
+    timedOut = true
+    void reader.cancel("recovery did not terminate")
+  }, 2_000)
+  try {
+    while (true) {
+      const chunk = await reader.read()
+      if (chunk.done) break
+      chunks.push(chunk.value)
+    }
+  } finally {
+    clearTimeout(deadline)
+    reader.releaseLock()
+  }
+  expect(timedOut).toBe(false)
+  return Buffer.concat(chunks).toString()
+}
+
 /** Live Claude Code request: session identity in metadata.user_id, claude-cli
  * UA, and no x-opencode-session header. */
 async function postClaudeCode(app: any, body: any, sessionId: string, extraHeaders: Record<string, string> = {}) {
@@ -239,6 +262,7 @@ describe("Integration: passthrough early stop", () => {
     capturedQueryParamsAll = []
     mockTerminalError = undefined
     mockBeforeTerminalError = undefined
+    mockLogObserver = undefined
     mockAttemptScripts = []
     forkSessionSequence = 0
     mockBaseSessionId = `test-session-${crypto.randomUUID()}`
@@ -2303,21 +2327,8 @@ describe("Integration: passthrough early stop", () => {
       model: "claude-sonnet-4-5", max_tokens: 400, stream: true, tools: [READ_TOOL],
       messages: [{ role: "user", content: "read x during mapping conflict" }],
     }, sessionHeader, { "x-request-id": requestId })
-    // Bound the reader so an unterminated regression fails instead of hanging.
-    const reader = response.body!.getReader()
-    const chunks: Uint8Array[] = []
-    const deadline = setTimeout(() => { void reader.cancel("recovery did not terminate") }, 2_000)
-    try {
-      while (true) {
-        const chunk = await reader.read()
-        if (chunk.done) break
-        chunks.push(chunk.value)
-      }
-    } finally {
-      clearTimeout(deadline)
-      reader.releaseLock()
-    }
-    const events = parseSSE(Buffer.concat(chunks).toString())
+    // Cancellation bounds a regression; only natural EOF is a passing close.
+    const events = parseSSE(await readNaturallyClosedStream(response))
     expect(events.filter(e => e.event === "message_start")).toHaveLength(1)
     expect(events.filter(e => e.event === "message_delta").map(e => e.data.delta))
       .toEqual([{ stop_reason: "max_tokens", stop_sequence: null }])
@@ -2333,6 +2344,109 @@ describe("Integration: passthrough early stop", () => {
     expect(lookupSharedSession(sessionKey)?.claudeSessionId).toBe("concurrent-winner")
     const row = telemetryStore.getRecent({ limit: 200 }).find(row => row.requestId === requestId)
     expect(row).toMatchObject({ status: 500, error: "api_error" })
+  })
+
+  it("stream: closes committed capped recovery without a second terminal pair when its telemetry observer throws", async () => {
+    const toolTurn = assistantMessage([
+      { type: "tool_use", id: "recovery-observer-tool", name: "read", input: { file_path: "x" } },
+    ])
+    mockMessages = [
+      toolTurn,
+      userDenyMessage("recovery-observer-tool"),
+      { type: "result", subtype: "error_max_turns", is_error: true },
+    ]
+    mockTerminalError = new Error("Claude Code returned an error result: Reached maximum number of turns (1)")
+    const requestId = `recovery-observer-${TEST_RUN_ID}`
+    const originalRecord = telemetryStore.record.bind(telemetryStore)
+    let observerFailures = 0
+    const record = spyOn(telemetryStore, "record").mockImplementation(metric => {
+      if (metric.requestId === requestId && metric.status === 200) {
+        observerFailures++
+        throw new Error("test recovery telemetry observer failed")
+      }
+      originalRecord(metric)
+    })
+    try {
+      const response = await post(app, {
+        model: "claude-sonnet-4-5", max_tokens: 400, stream: true, tools: [READ_TOOL],
+        messages: [{ role: "user", content: "read x despite observer failure" }],
+      }, "es-recovery-observer", { "x-request-id": requestId })
+      const events = parseSSE(await readNaturallyClosedStream(response))
+      expect(observerFailures).toBe(1)
+      expect(events.filter(e => e.event === "message_delta").map(e => e.data.delta))
+        .toEqual([{ stop_reason: "tool_use", stop_sequence: null }])
+      expect(events.filter(e => e.event === "message_stop")).toHaveLength(1)
+      expect(events.filter(e => e.event === "error")).toHaveLength(0)
+      expect(events.at(-1)?.event).toBe("message_stop")
+      expect(lookupSharedSession(`es-recovery-observer-${TEST_RUN_ID}`)?.claudeSessionId)
+        .toBe(initialManagedSessionId())
+    } finally {
+      record.mockRestore()
+    }
+  })
+
+  it("stream: naturally closes failed recovery even when its failure observers throw", async () => {
+    const sessionHeader = "es-recovery-failed-observer"
+    const sessionKey = `${sessionHeader}-${TEST_RUN_ID}`
+    mockMessages = [
+      assistantMessage([
+        { type: "tool_use", id: "recovery-failed-observer-tool", name: "read", input: { file_path: "x" } },
+      ]),
+      userDenyMessage("recovery-failed-observer-tool"),
+      { type: "result", subtype: "error_max_turns", is_error: true },
+    ]
+    mockTerminalError = new Error("Claude Code returned an error result: Reached maximum number of turns (1)")
+    mockBeforeTerminalError = () => {
+      expect(storeSharedSession(sessionKey, "concurrent-observer-winner")).toBeTruthy()
+    }
+    const requestId = `recovery-failed-observer-${TEST_RUN_ID}`
+    let logFailures = 0
+    let diagnosticFailures = 0
+    let telemetryFailures = 0
+    mockLogObserver = event => {
+      if (event === "stream.handler_failed") {
+        logFailures++
+        throw new Error("test failure logger failed")
+      }
+    }
+    const originalError = diagnosticLog.error.bind(diagnosticLog)
+    const errorLog = spyOn(diagnosticLog, "error").mockImplementation((message, id) => {
+      if (id === requestId && message.includes("stream_handler_failed")) {
+        diagnosticFailures++
+        throw new Error("test failure diagnostic observer failed")
+      }
+      originalError(message, id)
+    })
+    const originalRecord = telemetryStore.record.bind(telemetryStore)
+    const record = spyOn(telemetryStore, "record").mockImplementation(metric => {
+      if (metric.requestId === requestId && metric.status === 500) {
+        telemetryFailures++
+        throw new Error("test failure telemetry observer failed")
+      }
+      originalRecord(metric)
+    })
+    try {
+      const response = await post(app, {
+        model: "claude-sonnet-4-5", max_tokens: 400, stream: true, tools: [READ_TOOL],
+        messages: [{ role: "user", content: "read x during mapping conflict and observer failure" }],
+      }, sessionHeader, { "x-request-id": requestId })
+      const events = parseSSE(await readNaturallyClosedStream(response))
+      expect([logFailures, diagnosticFailures, telemetryFailures]).toEqual([1, 1, 1])
+      expect(events.filter(e => e.event === "message_delta").map(e => e.data.delta))
+        .toEqual([{ stop_reason: "max_tokens", stop_sequence: null }])
+      const errors = events.filter(e => e.event === "error")
+      expect(errors).toHaveLength(1)
+      expect(errors[0]!.data.error).toMatchObject({
+        type: "api_error", message: "Shared session mapping changed before recovery publication",
+      })
+      expect(events.filter(e => e.event === "message_stop")).toHaveLength(1)
+      expect(events.at(-1)?.event).toBe("message_stop")
+      expect(lookupSharedSession(sessionKey)?.claudeSessionId).toBe("concurrent-observer-winner")
+    } finally {
+      mockLogObserver = undefined
+      errorLog.mockRestore()
+      record.mockRestore()
+    }
   })
 
   it("stream: a capped checkpoint fork does not store parent rollback UUIDs", async () => {

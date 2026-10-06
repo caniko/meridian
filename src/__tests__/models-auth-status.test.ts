@@ -144,7 +144,9 @@ Object.assign(process.env, { MERIDIAN_CONFIG_DIR: join(fixtureRoot, "config"),
   MERIDIAN_NO_UPDATE_CHECK: "1", MERIDIAN_TELEMETRY_PERSIST: "0" })
 
 const savedClaudePath = process.env.MERIDIAN_CLAUDE_PATH
-process.env.MERIDIAN_CLAUDE_PATH = "/fake/claude"
+const ownedExecutable = join(fixtureRoot, "owned-auth-program")
+writeFileSync(ownedExecutable, "# Owned placeholder: every process call is mocked before import.\n", { mode: 0o700 })
+process.env.MERIDIAN_CLAUDE_PATH = ownedExecutable
 
 const {
   getClaudeAuthStatusAsync,

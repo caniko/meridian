@@ -98,8 +98,11 @@ Claude CLI, delaying only `auth status` by two seconds. Five concurrent warm
 `/health` probes must answer within one second while a single refresh remains
 in flight; `/v1/models` must also answer during that refresh. It asserts healthy
 actual login and that fresh probes do not start another subprocess. Disposable
-configuration/session/work directories and read-only credentials isolate state.
-No authentication payload is fabricated. On an unchanged pre-fix checkout,
+configuration/session/work directories isolate Meridian's own files. The
+read-only flag disables Meridian writers, but does not fence the official CLI's
+credential rotation. This legacy gate needs a separately admitted task-owned
+credential/OS boundary before another live run; the cold-start gate below
+requires that admission explicitly. No authentication payload is fabricated. On an unchanged pre-fix checkout,
 the same harness with `--expect-blocking` must exhibit the two-second stall.
 
 Verified macOS arm64 with Claude Code 2.1.284: baseline five probes 2258 ms

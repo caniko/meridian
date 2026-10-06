@@ -27,8 +27,8 @@ const execFile = promisify(execFileCallback)
 const STUB_SIZE_THRESHOLD = 4096
 
 /**
- * How long `claude --version` may take before a `claude` found on PATH is
- * passed over for the packaged binary.
+ * Shared time budget for finding Claude on PATH and probing its candidates
+ * before falling back to a packaged binary.
  *
  * A working installation answers in well under a second when its pages are
  * resident, but it is a ~220 MB binary: on a host under memory pressure they
@@ -38,9 +38,11 @@ const STUB_SIZE_THRESHOLD = 4096
  * different Claude Code version - and keeping both binaries resident deepened
  * the pressure behind the race. A broken installation or unrelated shim
  * answers with an error or the wrong output, judged the moment it arrives;
- * this only bounds one that never answers at all.
+ * a candidate that never answers consumes the remaining lookup budget.
  */
-const CLAUDE_PROBE_TIMEOUT_MS = 90_000
+// Share this budget across the lookup and every candidate. Desktop startup
+// waits 60 s for health; leave room for the remaining auth/identity checks.
+const CLAUDE_PROBE_TIMEOUT_MS = 45_000
 /** A PATH candidate that answered this slowly is still used, and the wait is logged. */
 const CLAUDE_PROBE_SLOW_MS = 5_000
 
@@ -724,8 +726,10 @@ type ResolverDeps = {
   statSync: (p: string) => { size: number }
   exec: (cmd: string) => Promise<{ stdout: string }>
   execLookupSync?: (command: string, args: string[]) => string
-  probeClaude?: (candidate: string) => Promise<ClaudeProbeResult>
-  probeClaudeSync?: (candidate: string) => ClaudeProbeResult
+  probeClaude?: (candidate: string, timeoutMs?: number) => Promise<ClaudeProbeResult>
+  probeClaudeSync?: (candidate: string, timeoutMs?: number) => ClaudeProbeResult
+  /** Monotonic clock; injectable for aggregate-budget controls. */
+  now?: () => number
   /** Reports a PATH candidate passed over or slow to answer; silent when absent. */
   warn?: (message: string) => void
   resolvePackage: (specifier: string) => string
@@ -751,8 +755,8 @@ const DEFAULT_DEPS: ResolverDeps = {
     encoding: "utf8", windowsHide: true, timeout: 2000, maxBuffer: 64 * 1024,
     stdio: ["ignore", "pipe", "pipe"], env: process.env,
   }),
-  probeClaude: candidate => probeClaudeVersion(candidate),
-  probeClaudeSync: candidate => probeClaudeVersionSync(candidate),
+  probeClaude: (candidate, timeoutMs) => probeClaudeVersion(candidate, timeoutMs),
+  probeClaudeSync: (candidate, timeoutMs) => probeClaudeVersionSync(candidate, timeoutMs),
   warn: message => console.warn(message),
   resolvePackage: (specifier) => fileURLToPath(import.meta.resolve(specifier)),
   envGet: (name) => process.env[name],
@@ -912,10 +916,18 @@ function tryPlatformPackage(deps: ResolverDeps): string | null {
  */
 async function tryPathLookup(deps: ResolverDeps): Promise<string | null> {
   const cmd = deps.platform === "win32" ? "where claude" : "which claude"
+  const now = deps.now ?? (() => performance.now())
+  const deadline = now() + CLAUDE_PROBE_TIMEOUT_MS
   try {
     const { stdout } = await deps.exec(cmd)
     for (const candidate of existingPathCandidates(stdout, deps)) {
-      if (!deps.probeClaude || keepPathCandidate(candidate, await deps.probeClaude(candidate), deps)) return candidate
+      if (!deps.probeClaude) return candidate
+      const remainingMs = Math.max(0, Math.floor(deadline - now()))
+      if (remainingMs === 0) {
+        warnProbeBudgetExhausted(candidate, deps)
+        break
+      }
+      if (keepPathCandidate(candidate, await deps.probeClaude(candidate, remainingMs), deps)) return candidate
     }
   } catch {
     // No `claude` on PATH (or `where`/`which` not available).
@@ -936,16 +948,28 @@ function existingPathCandidates(stdout: string, deps: ResolverDeps): string[] {
 
 function tryPathLookupSync(deps: ResolverDeps): string | null {
   if (!deps.execLookupSync) return null
+  const now = deps.now ?? (() => performance.now())
+  const deadline = now() + CLAUDE_PROBE_TIMEOUT_MS
   try {
     const stdout = deps.execLookupSync(deps.platform === "win32" ? "where" : "which", ["claude"])
     for (const candidate of existingPathCandidates(stdout, deps)) {
-      if (!deps.probeClaudeSync || keepPathCandidate(candidate, deps.probeClaudeSync(candidate), deps)) return candidate
+      if (!deps.probeClaudeSync) return candidate
+      const remainingMs = Math.max(0, Math.floor(deadline - now()))
+      if (remainingMs === 0) {
+        warnProbeBudgetExhausted(candidate, deps)
+        break
+      }
+      if (keepPathCandidate(candidate, deps.probeClaudeSync(candidate, remainingMs), deps)) return candidate
     }
     return null
   } catch {
     // A missing/failed lookup must still allow the packaged fallback.
     return null
   }
+}
+
+function warnProbeBudgetExhausted(candidate: string, deps: ResolverDeps): void {
+  deps.warn?.(`[PROXY] Not probing the claude found on PATH at ${candidate}: the ${CLAUDE_PROBE_TIMEOUT_MS / 1000}s PATH lookup/probe budget is exhausted. Falling back to the next Claude Code installation; set MERIDIAN_CLAUDE_PATH to choose one explicitly.`)
 }
 
 /**

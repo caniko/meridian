@@ -5853,6 +5853,23 @@ Run `bun scripts/e2e-unstreamed-fallback.mjs`. This starts the real Agent SDK an
 
 Optional `E2E_CLAUDE_BIN=/absolute/path/to/claude` selects an exact installed CLI after the fixture clears inherited Meridian settings. The harness asserts and prints the proxy's resolved executable path. It uses an empty isolated Claude config directory, clears inherited auth tokens, makes Meridian credentials read-only, and disables updates and nonessential subprocess traffic; the API profile supplies only a dummy local key. This is credentialless SDK/CLI fixture evidence and does not establish actual Pi, model, or provider acceptance.
 
+For the actual Pi path in #1289, `scripts/e2e-pi-capped-unstreamed.mjs --controlled`
+uses installed Pi 1.0.2, SDK 0.2.141, CLI 2.1.285 and independently installed
+Pi scrub 0.2.2 with the same local streaming refusal. Set `E2E_MERIDIAN_ROOT`,
+`E2E_PI_CLI`, `E2E_NODE_BIN`, `E2E_CLAUDE_BIN` and `E2E_PLUGIN_PATH` to those
+assets. It checks the real client read and exact returned receipt, plugin
+routing/content, the default one-turn cap, checkpoint fork, saved-session
+follow-up and the active history through supported `getSessionMessages()`.
+Run the identical harness against unchanged main and the candidate.
+
+The separate explicit `--live` arm requires `E2E_LIVE_PROFILE_FILE`, a private
+access-token-only supported `oauth-token` profile snapshot, and verifies actual
+Opus 5.5 assistant model metadata. The local API arm consumes no model quota
+and proves no provider access. Both arms retain the scrub's leftover docs-wrapper
+qualification; #1289 omits its reporter's Pi version and OS. Run E41's four
+modes separately for cache and multi-call history evidence. Raw HTTP with Pi
+headers remains a protocol control, not actual Pi proof.
+
 ## E62: Legacy single-step tool handoff
 
 Run `bun scripts/e2e-single-step-abort.mjs --case=repeat` and again with `--case=single`. The local API fixture drives the real SDK/CLI with `MERIDIAN_PASSTHROUGH_EARLY_STOP=0`: one response emits two calls to the same client tool, and the control emits one. Both must deliver complete tool blocks and one `tool_use` terminal envelope without a client error. The fixture currently passes on unchanged main as well as the fix, so it is a regression control for the real SDK path, not a reproduction of #1095's alternate timing. The HTTP regression in `proxy-passthrough-deny-abort.test.ts` makes the SDK iterator complete normally after Meridian's self-abort; that case fails on unchanged main and passes with the cause-aware recovery correction. `E2E_MERIDIAN_ROOT` selects another checkout.

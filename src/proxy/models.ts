@@ -797,19 +797,22 @@ function startAuthStatusRefresh(
     }
   })()
 
-  state.promise = refresh
-  if (cache) cache.promise = refresh
-  else cachedAuthStatusPromise = refresh
-  // Only actual process/pipe join releases ownership and the deduplication
-  // slot. A bounded result failure alone cannot permit an overlapping probe.
-  void Promise.all([refresh, state.joined]).then(() => {
+  const release = () => {
     if (authRefreshes.get(profileId ?? "") === state) authRefreshes.delete(profileId ?? "")
     if (cache) {
-      if (cache.promise === refresh) cache.promise = null
-    } else if (cachedAuthStatusPromise === refresh) cachedAuthStatusPromise = null
+      if (cache.promise === state.promise) cache.promise = null
+    } else if (cachedAuthStatusPromise === state.promise) cachedAuthStatusPromise = null
     for (const owner of state.owners) owner.refreshes.delete(state)
     state.owners.clear()
+  }
+  // Release confirmed settlement before exposing the result to callers. A
+  // result that failed due to an unknown join keeps its slot until a late join.
+  state.promise = refresh.finally(() => {
+    if (!state.process || state.process.isJoined()) release()
   })
+  if (cache) cache.promise = state.promise
+  else cachedAuthStatusPromise = state.promise
+  void Promise.all([state.promise, state.joined]).then(release)
   return state
 }
 

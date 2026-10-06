@@ -107,6 +107,11 @@ mock.module("child_process", () => ({
   },
 }))
 
+mock.module("../proxy/setup", () => ({
+  checkPluginConfigured: () => false,
+  isPluginlessOpenCodeRequest: () => false,
+  notePluginlessOpenCodeRequest: () => undefined,
+}))
 // All store/SDK doubles are installed before production imports. Only the
 // mtime tests below name an owned synthetic .credentials.json file.
 mock.module("../proxy/tokenRefresh", () => ({

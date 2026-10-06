@@ -18,6 +18,7 @@ export interface AuthStatusProcess {
   result: Promise<string>
   /** Resolves only after observed process settlement and both captured pipes close. */
   joined: Promise<void>
+  isJoined(): boolean
   cancel(): Promise<void>
 }
 
@@ -82,6 +83,7 @@ export function startAuthStatusProcess(file: string, options: ProcessOptions): A
     failure = new AuthStatusProcessFailure(reason)
     clearTimeout(processTimer)
     signalOwned('SIGTERM')
+    if (settled) return joined
     killTimer = setTimeout(() => signalOwned('SIGKILL'), options.killGraceMs ?? 1000)
     killTimer.unref?.()
     stopPromise = new Promise<void>((resolve, reject) => {
@@ -123,5 +125,5 @@ export function startAuthStatusProcess(file: string, options: ProcessOptions): A
     // execFile throwing synchronously creates no child to join.
     settled = true; resolveJoined(); rejectResult(error)
   }
-  return { result, joined, cancel: () => stop('cancelled') }
+  return { result, joined, isJoined: () => settled, cancel: () => stop('cancelled') }
 }

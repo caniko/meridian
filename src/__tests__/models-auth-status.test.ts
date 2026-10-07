@@ -64,11 +64,32 @@ interface FakeAuthChild {
   witnesses(code?: number | null, signal?: NodeJS.Signals | null): void
 }
 let fakeAuthChildren: FakeAuthChild[] = []
+let resolverChildren: FakeAuthChild[] = []
+let resolverLookups = 0
+let resolverVersions = 0
+function resolverFixture(done: (error: Error | null, stdout: string, stderr: string) => void): realChildProcess.ChildProcess {
+  const signals: NodeJS.Signals[] = []
+  const child = Object.assign(new EventEmitter(), { pid: 20_000 + resolverChildren.length,
+    stdout: new PassThrough(), stderr: new PassThrough(),
+    kill: (signal: NodeJS.Signals = 'SIGTERM') => { signals.push(signal); return true },
+  }) as unknown as realChildProcess.ChildProcess
+  resolverChildren.push({ child, signals, callback: (error, output) => done(error, output.stdout, output.stderr),
+    witnesses(code = 0, signal = null) {
+      child.emit('exit', code, signal); child.stdout?.emit('close'); child.stderr?.emit('close'); child.emit('close', code, signal)
+    } })
+  return child
+}
 // These are unspawned EventEmitter/pipe fixtures, not native processes.
 mock.module("child_process", () => ({
   ...realChildProcess,
+  exec: (_command: string, _options: realChildProcess.ExecOptions,
+    done: (error: Error | null, stdout: string, stderr: string) => void) => {
+    resolverLookups++
+    return resolverFixture(done)
+  },
   execFile: (_file: string, _args: string[], options: realChildProcess.ExecFileOptions,
     done: (error: Error | null, stdout: string, stderr: string) => void) => {
+    if (_args[0] === '--version') { resolverVersions++; return resolverFixture(done) }
     execFileCalls++
     execFileOptions = options
     const signals: NodeJS.Signals[] = []
@@ -150,6 +171,8 @@ process.env.MERIDIAN_CLAUDE_PATH = ownedExecutable
 
 const {
   getClaudeAuthStatusAsync,
+  resolveClaudeExecutableAsync,
+  resetCachedClaudePath,
   getAuthCacheInfo,
   resetCachedClaudeAuthStatus,
   expireAuthStatusCache,
@@ -894,5 +917,89 @@ describe("HTTP surfaces during a slow first auth check", () => {
     releaseHungSpawns()
     await pendingAuthStatusRefresh("slow-first")
     expect(await listed()).toMatchObject({ loggedIn: true, authProvenance: "live" })
+  })
+})
+
+
+describe('auth refresh owns the actual asynchronous resolver path', () => {
+  beforeEach(() => {
+    delete process.env.MERIDIAN_CLAUDE_PATH
+    resetCachedClaudePath(); resetCachedClaudeAuthStatus()
+    resolverChildren = []; resolverLookups = 0; resolverVersions = 0; execFileCalls = 0
+    authBehavior = 'success'
+    setAuthStatusWaitMsForTesting(10)
+  })
+  afterEach(async () => {
+    for (const fixture of resolverChildren) {
+      fixture.callback(null, { stdout: '', stderr: '' }); fixture.witnesses()
+    }
+    await tick()
+    process.env.MERIDIAN_CLAUDE_PATH = ownedExecutable
+    resetCachedClaudePath(); resetCachedClaudeAuthStatus(); setAuthStatusWaitMsForTesting()
+  })
+  const owners = async () => (await import('../proxy/authStatusOwnership')).createAuthStatusOwner
+  const finishLookup = async () => {
+    resolverChildren[0]!.callback(null, { stdout: ownedExecutable + '\n', stderr: '' })
+    resolverChildren[0]!.witnesses(); await tick()
+  }
+  const finishVersion = async () => {
+    resolverChildren[1]!.callback(null, { stdout: '2.1.999 (Claude Code)', stderr: '' })
+    resolverChildren[1]!.witnesses(); await tick()
+  }
+  it('last owner cancels a pending PATH child and cannot spawn a late version/auth process', async () => {
+    const owner = (await owners())(); const profile = nextProfile()
+    const answer = owner.run(() => getClaudeAuthStatusAsync(profile)); await tick()
+    expect(resolverLookups).toBe(1)
+    const closing = owner.close(); await tick()
+    expect(resolverChildren[0]!.signals).toEqual(['SIGTERM'])
+    resolverChildren[0]!.callback(null, { stdout: ownedExecutable, stderr: '' })
+    let closed = false; void closing.then(() => { closed = true })
+    await tick(); expect(closed).toBe(false)
+    resolverChildren[0]!.witnesses(); await closing; await answer; await tick()
+    expect(resolverVersions).toBe(0); expect(execFileCalls).toBe(0)
+    expect(pendingAuthStatusRefresh(profile)).toBeNull()
+  })
+  it('version callback alone does not join the resolver; late witnesses close without auth spawn', async () => {
+    const owner = (await owners())(); const profile = nextProfile()
+    const answer = owner.run(() => getClaudeAuthStatusAsync(profile)); await tick(); await finishLookup()
+    expect(resolverVersions).toBe(1)
+    const closing = owner.close(); await tick()
+    resolverChildren[1]!.callback(null, { stdout: '2.1.999 (Claude Code)', stderr: '' })
+    let closed = false; void closing.then(() => { closed = true })
+    await tick(); expect(closed).toBe(false); expect(execFileCalls).toBe(0)
+    resolverChildren[1]!.witnesses(); await closing; await answer
+    expect(execFileCalls).toBe(0)
+  })
+  it('a distinct profile owner retains the shared resolver while its sibling closes', async () => {
+    const create = await owners(); const first = create(); const second = create()
+    const a = first.run(() => getClaudeAuthStatusAsync(nextProfile()))
+    const b = second.run(() => getClaudeAuthStatusAsync(nextProfile()))
+    await tick(); await first.close()
+    expect(resolverChildren[0]!.signals).toEqual([]); expect(resolverLookups).toBe(1)
+    await finishLookup(); await finishVersion(); await a; await b
+    expect(execFileCalls).toBe(1); await second.close()
+  })
+  it('a direct resolver caller keeps lookup/version custody after the last auth owner closes', async () => {
+    const owner = (await owners())()
+    const answer = owner.run(() => getClaudeAuthStatusAsync(nextProfile()))
+    const direct = resolveClaudeExecutableAsync(); await tick(); await owner.close()
+    expect(resolverChildren[0]!.signals).toEqual([])
+    await finishLookup(); await finishVersion()
+    expect(await direct).toBe(ownedExecutable); await answer
+    expect(execFileCalls).toBe(0)
+  })
+  it('missing resolver close rejects shutdown and retains the shared slot until actual late join', async () => {
+    const owner = (await owners())(); const profile = nextProfile()
+    const answer = owner.run(() => getClaudeAuthStatusAsync(profile)); await tick()
+    const closing = owner.close()
+    await expect(closing).rejects.toThrow('cleanup is unconfirmed')
+    await answer
+    expect(resolverChildren[0]!.signals).toEqual(['SIGTERM', 'SIGKILL'])
+    expect(pendingAuthStatusRefresh(profile)).not.toBeNull()
+    const direct = resolveClaudeExecutableAsync(); void direct.catch(() => undefined)
+    await expect(direct).rejects.toThrow('cleanup is unconfirmed')
+    expect(resolverLookups).toBe(1); expect(resolverVersions).toBe(0); expect(execFileCalls).toBe(0)
+    resolverChildren[0]!.callback(null, { stdout: ownedExecutable, stderr: '' }); resolverChildren[0]!.witnesses()
+    await tick(); expect(pendingAuthStatusRefresh(profile)).toBeNull()
   })
 })

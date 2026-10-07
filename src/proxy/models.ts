@@ -2,21 +2,19 @@
  * Model mapping and Claude executable resolution.
  */
 
-import { exec as execCallback, execFile as execFileCallback, execFileSync } from "child_process"
+import { execFileSync } from "child_process"
 import { existsSync, statSync } from "fs"
 import { fileURLToPath } from "url"
 import { join, dirname } from "path"
-import { promisify } from "util"
 import { env } from "../env"
 import { isCredentialsReadOnly } from "./credentialsMode"
 import { credentialsFilePathForProfile } from "./tokenRefresh"
 import { claudeLog } from "../logger"
 import { authFieldPaths, describeAuthFields } from "./authDiscovery"
-import { startAuthStatusProcess, AuthStatusProcessFailure } from "./authStatusProcess"
+import { startAuthStatusProcess, startOwnedClaudeProcess, AuthStatusProcessFailure, type AuthStatusProcess } from "./authStatusProcess"
 import { authStatusOwnerContext, type AuthStatusOwnerState, type AuthRefresh } from "./authStatusOwnership"
 
-const exec = promisify(execCallback)
-const execFile = promisify(execFileCallback)
+import { createClaudeResolution, type ClaudeResolutionScope } from "./claudeResolverOwnership"
 
 /**
  * Files smaller than this are treated as the placeholder stub that
@@ -732,7 +730,8 @@ function startAuthStatusRefresh(
       // so this path works in every install layout the SDK already
       // supports. execFile (vs exec) avoids any quoting issues with
       // spaces in the resolved path.
-      const claudePath = await resolveClaudeExecutableAsync()
+      state.resolver = acquireClaudeResolution()
+      const claudePath = await state.resolver.result
       if (state.cancelled) return cache ? cache.lastKnownGood : lastKnownGoodAuthStatus
       state.process = startAuthStatusProcess(claudePath, {
         timeoutMs: AUTH_STATUS_SPAWN_TIMEOUT_MS,
@@ -793,7 +792,7 @@ function startAuthStatusRefresh(
         return lastKnownGoodAuthStatus
       }
     } finally {
-      if (!state.process) resolveJoined()
+      if (!state.process) void state.resolver?.joined.then(resolveJoined)
     }
   })()
 
@@ -808,7 +807,7 @@ function startAuthStatusRefresh(
   // Release confirmed settlement before exposing the result to callers. A
   // result that failed due to an unknown join keeps its slot until a late join.
   state.promise = refresh.finally(() => {
-    if (!state.process || state.process.isJoined()) release()
+    if (state.resolver?.isJoined() && (!state.process || state.process.isJoined())) release()
   })
   if (cache) cache.promise = state.promise
   else cachedAuthStatusPromise = state.promise
@@ -844,7 +843,7 @@ export interface ClaudeExecutableInfo {
 }
 
 let cachedClaudeInfo: ClaudeExecutableInfo | null = null
-let cachedClaudePathPromise: Promise<string> | null = null
+let cachedClaudeResolution: ReturnType<typeof createClaudeResolution> | null = null
 
 /**
  * Resolve the Claude executable path asynchronously (non-blocking).
@@ -866,6 +865,7 @@ type ResolverDeps = {
   existsSync: (p: string) => boolean
   statSync: (p: string) => { size: number }
   exec: (cmd: string) => Promise<{ stdout: string }>
+  checkActive?: () => void
   execLookupSync?: (command: string, args: string[]) => string
   probeClaude?: (candidate: string, timeoutMs?: number) => Promise<ClaudeProbeResult>
   probeClaudeSync?: (candidate: string, timeoutMs?: number) => ClaudeProbeResult
@@ -888,7 +888,7 @@ type ClaudeProbeResult =
 const DEFAULT_DEPS: ResolverDeps = {
   existsSync,
   statSync: (p) => statSync(p),
-  exec: (cmd) => exec(cmd, { windowsHide: true, timeout: 2000, maxBuffer: 64 * 1024 }),
+  exec: async (cmd) => ({ stdout: await startOwnedClaudeProcess({ shell: cmd }, { timeoutMs: 2000, maxBuffer: 64 * 1024 }).result }),
   // `env` is explicit because Bun 1.3's execFileSync otherwise hands the child
   // the environment the process started with, so the sync resolver could search
   // a different PATH than the async one.
@@ -913,7 +913,9 @@ const DEFAULT_DEPS: ResolverDeps = {
 export async function probeClaudeVersion(candidate: string, timeoutMs = CLAUDE_PROBE_TIMEOUT_MS): Promise<ClaudeProbeResult> {
   const startedAt = Date.now()
   try {
-    const { stdout } = await execFile(candidate, ["--version"], { encoding: "utf8", windowsHide: true, timeout: timeoutMs, maxBuffer: 16 * 1024 })
+    const stdout = await startOwnedClaudeProcess({ file: candidate, args: ["--version"] }, {
+      timeoutMs, maxBuffer: 16 * 1024,
+    }).result
     return judgeVersionOutput(stdout, Date.now() - startedAt)
   } catch (err) {
     return { usable: false, reason: describeProbeFailure(err, timeoutMs) }
@@ -945,6 +947,7 @@ function judgeVersionOutput(stdout: string, elapsedMs: number): ClaudeProbeResul
 
 /** Why a candidate gave no usable answer to `--version`, in terms an operator can act on. */
 function describeProbeFailure(err: unknown, timeoutMs: number): string {
+  if (err instanceof AuthStatusProcessFailure && err.reason === "timeout") return `no answer to \`--version\` within ${timeoutMs / 1000}s`
   const e = err as { killed?: boolean; code?: unknown; status?: unknown; signal?: unknown; message?: unknown } | null
   // execFile kills at its timeout and leaves `code` empty; execFileSync reports ETIMEDOUT.
   if (e?.code === "ETIMEDOUT" || (e?.killed === true && e.code == null)) return `no answer to \`--version\` within ${timeoutMs / 1000}s`
@@ -1144,6 +1147,7 @@ export async function resolveClaudeExecutableWithSource(
   const env = tryEnvOverride(deps)
   if (env) return { path: env, source: "env" }
   const pathLookup = await tryPathLookup(deps)
+  deps.checkActive?.()
   if (pathLookup) return { path: pathLookup, source: "path-lookup" }
   const bundled = tryBundledBinary(deps)
   if (bundled) return { path: bundled, source: "bundled" }
@@ -1204,33 +1208,65 @@ export function getResolvedClaudeExecutableInfo(): ClaudeExecutableInfo | null {
   return cachedClaudeInfo
 }
 
-export async function resolveClaudeExecutableAsync(): Promise<string> {
-  if (cachedClaudeInfo) return cachedClaudeInfo.path
-  if (cachedClaudePathPromise) return cachedClaudePathPromise
-
-  cachedClaudePathPromise = (async () => {
-    const resolved = await resolveClaudeExecutableWithSource()
-    if (resolved) {
-      cachedClaudeInfo = resolved
-      return resolved.path
-    }
-    throw new Error(
-      "Could not find Claude Code executable. Install via: npm install -g @anthropic-ai/claude-code, " +
-      "or set MERIDIAN_CLAUDE_PATH=/path/to/claude to point at an existing binary.",
-    )
-  })()
-
-  try {
-    return await cachedClaudePathPromise
-  } finally {
-    cachedClaudePathPromise = null
+function ownedResolverDeps(scope: ClaudeResolutionScope): ResolverDeps {
+  const start = (command: { file: string; args: string[] } | { shell: string }, maxBuffer: number, timeoutMs = 2000): AuthStatusProcess => {
+    scope.active()
+    return scope.own(startOwnedClaudeProcess(command, { timeoutMs, maxBuffer }))
   }
+  return { ...DEFAULT_DEPS,
+    checkActive: () => scope.active(),
+    exec: async command => ({ stdout: await start({ shell: command }, 64 * 1024).result }),
+    probeClaude: async (candidate, timeoutMs = CLAUDE_PROBE_TIMEOUT_MS) => {
+      scope.active()
+      const startedAt = Date.now()
+      const process = start({ file: candidate, args: ['--version'] }, 16 * 1024, timeoutMs)
+      try { return judgeVersionOutput(await process.result, Date.now() - startedAt) }
+      catch (error) {
+        // A failed but joined probe is a normal miss. An unknown child cannot
+        // admit the next candidate/package or clear shared custody.
+        if (!process.isJoined()) throw error
+        return { usable: false, reason: describeProbeFailure(error, timeoutMs) }
+      }
+    },
+  }
+}
+
+function acquireClaudeResolution(): AuthStatusProcess {
+  if (cachedClaudeInfo) {
+    return { result: Promise.resolve(cachedClaudeInfo.path), joined: Promise.resolve(),
+      isJoined: () => true, cancel: () => Promise.resolve() }
+  }
+  if (!cachedClaudeResolution) {
+    const resolution = createClaudeResolution(async scope => {
+      const deps = ownedResolverDeps(scope)
+      const resolved = await resolveClaudeExecutableWithSource(deps)
+      scope.active()
+      if (resolved) { cachedClaudeInfo = resolved; return resolved.path }
+      throw new Error(
+        'Could not find Claude Code executable. Install via: npm install -g @anthropic-ai/claude-code, ' +
+        'or set MERIDIAN_CLAUDE_PATH=/path/to/claude to point at an existing binary.',
+      )
+    })
+    cachedClaudeResolution = resolution
+    void resolution.joined.then(() => {
+      if (cachedClaudeResolution === resolution) cachedClaudeResolution = null
+    })
+  }
+  return cachedClaudeResolution.acquire()
+}
+
+export async function resolveClaudeExecutableAsync(): Promise<string> {
+  // Direct callers hold a lease until shared resolution settles; auth shutdown
+  // may release only its own lease and must not cancel their subprocess.
+  const lease = acquireClaudeResolution()
+  try { return await lease.result }
+  finally { void lease.cancel().catch(() => undefined) }
 }
 
 /** Reset cached path — for testing only */
 export function resetCachedClaudePath(): void {
   cachedClaudeInfo = null
-  cachedClaudePathPromise = null
+  cachedClaudeResolution = null
 }
 
 /** Reset cached auth status — for testing only */

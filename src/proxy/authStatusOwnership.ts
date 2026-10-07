@@ -10,6 +10,7 @@ export interface AuthRefresh {
   unowned: boolean
   cancelled: boolean
   process?: AuthStatusProcess
+  resolver?: AuthStatusProcess
   joined: Promise<void>
 }
 export const authStatusOwnerContext = new AsyncLocalStorage<AuthStatusOwnerState>()
@@ -30,7 +31,7 @@ export function createAuthStatusOwner() {
           refresh.cancelled = true
           // Cancellation during executable resolution prevents the spawn.
           // Resolution is bounded separately; missing settlement stays unknown.
-          stops.push(refresh.process ? refresh.process.cancel() : waitForAuthJoin(refresh.joined))
+          stops.push(refresh.process ? refresh.process.cancel() : refresh.resolver ? refresh.resolver.cancel() : waitForAuthJoin(refresh.joined))
         }
         owner.refreshes.clear()
         const results = await Promise.allSettled(stops)

@@ -1,8 +1,9 @@
-import { execFile, type ChildProcess } from 'child_process'
+import { exec, execFile, type ChildProcess } from 'child_process'
 
 interface ProcessOptions {
   env?: NodeJS.ProcessEnv
   timeoutMs: number
+  maxBuffer?: number
   // Internal deadlines: callers do not control process shutdown.
   killGraceMs?: number
   joinGraceMs?: number
@@ -29,6 +30,11 @@ export interface AuthStatusProcess {
  * pending so the caller cannot release its single-flight slot prematurely.
  */
 export function startAuthStatusProcess(file: string, options: ProcessOptions): AuthStatusProcess {
+  return startOwnedClaudeProcess({ file, args: ['auth', 'status'] }, options)
+}
+
+/** Internal resolver/auth subprocess leaf; shell lookup preserves Windows where semantics. */
+export function startOwnedClaudeProcess(command: { file: string; args: string[] } | { shell: string }, options: ProcessOptions): AuthStatusProcess {
   let child: ChildProcess | undefined
   let ownedPid: number | undefined
   let callbackDone = false
@@ -80,7 +86,7 @@ export function startAuthStatusProcess(file: string, options: ProcessOptions): A
   const stop = (reason: 'cancelled' | 'timeout'): Promise<void> => {
     if (settled) return joined
     if (stopPromise) return stopPromise
-    failure = new AuthStatusProcessFailure(reason)
+    failure ??= new AuthStatusProcessFailure(reason)
     clearTimeout(processTimer)
     signalOwned('SIGTERM')
     if (settled) return joined
@@ -101,13 +107,18 @@ export function startAuthStatusProcess(file: string, options: ProcessOptions): A
   }
 
   try {
-    child = execFile(file, ['auth', 'status'], {
-      encoding: 'utf8', timeout: options.timeoutMs, windowsHide: true,
+    const execOptions = {
+      encoding: 'utf8' as const, timeout: options.timeoutMs, windowsHide: true,
+      ...(options.maxBuffer !== undefined ? { maxBuffer: options.maxBuffer } : {}),
       ...(options.env ? { env: options.env } : {}),
-    }, (error, output) => {
+    }
+    const callback = (error: Error | null, output: string) => {
       callbackDone = true; callbackError = error; stdout = output
       complete()
-    })
+    }
+    child = 'shell' in command
+      ? exec(command.shell, execOptions, callback)
+      : execFile(command.file, command.args, execOptions, callback)
     ownedPid = child.pid
     stdoutClosed = child.stdout === null
     stderrClosed = child.stderr === null

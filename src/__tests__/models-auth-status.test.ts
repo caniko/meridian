@@ -573,6 +573,17 @@ describe("auth refresh process ownership", () => {
     expect(execFileCalls).toBe(1)
   })
 
+  it("a direct independent caller retains the shared check when the embedded owner closes", async () => {
+    const { createAuthStatusOwner } = await import("../proxy/authStatusOwnership")
+    const owner = createAuthStatusOwner(); const profile = nextProfile()
+    await Promise.all([owner.run(() => getClaudeAuthStatusAsync(profile)), getClaudeAuthStatusAsync(profile)])
+    await owner.close()
+    expect(fakeAuthChildren[0]!.signals).toEqual([])
+    releaseHungSpawns(); await pendingAuthStatusRefresh(profile)
+    expect(await getClaudeAuthStatusAsync(profile)).toEqual(currentPayload)
+    expect(execFileCalls).toBe(1)
+  })
+
   it("expiry cannot start another process while the first check owns its slot", async () => {
     const profile = nextProfile()
     expect(await getClaudeAuthStatusAsync(profile)).toBeNull()
@@ -623,6 +634,31 @@ describe("auth refresh process ownership", () => {
     } finally {
       releaseHungSpawns()
       await instance.close()
+    }
+  })
+
+  it("closing one actual HTTP instance leaves the second instance's shared check intact", async () => {
+    const { startProxyServer } = await import("../proxy/server")
+    const config = { port: 0, host: "127.0.0.1", silent: true,
+      profiles: [{ id: "two-http-api", type: "api" as const, apiKey: "fixture-key" }], defaultProfile: "two-http-api" }
+    const first = await startProxyServer(config)
+    const second = await startProxyServer(config)
+    const health = async (instance: typeof first) => {
+      const address = instance.server.address()
+      if (!address || typeof address !== "object") throw new Error("Owned listener missing")
+      return (await (await fetch(`http://127.0.0.1:${address.port}/health`)).json() as { status: string }).status
+    }
+    try {
+      expect(await Promise.all([health(first), health(second)])).toEqual(["degraded", "degraded"])
+      expect(execFileCalls).toBe(1)
+      await first.close()
+      expect(fakeAuthChildren[0]!.signals).toEqual([])
+      releaseHungSpawns(); await pendingAuthStatusRefresh("two-http-api")
+      expect(await health(second)).toBe("healthy")
+      expect(execFileCalls).toBe(1)
+    } finally {
+      releaseHungSpawns()
+      await Promise.all([first.close(), second.close()])
     }
   })
 })

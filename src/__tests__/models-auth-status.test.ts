@@ -685,6 +685,9 @@ describe("auth-status warnings", () => {
   async function failAgain(p: string): Promise<void> {
     expireAuthStatusCache()
     await getClaudeAuthStatusAsync(p)
+    // A stale answer returns before its background refresh settles. Assert
+    // the refresh's warning only after that exact pending check completes.
+    await pendingAuthStatusRefresh(p)
   }
 
   it("warns why a check failed, then only on the 2nd, 4th, 8th... repeat", async () => {

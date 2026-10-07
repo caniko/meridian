@@ -118,7 +118,8 @@ mock.module("child_process", () => ({
       if (authBehavior === "timeout") { complete(timeoutError(), { stdout: "", stderr: "" }); return }
       if (authBehavior === "exit1") {
         const stdout = JSON.stringify({ loggedIn: false, email: "private@test.com" })
-        complete(Object.assign(new Error("Command failed: /fake/claude auth status\n"), { killed: false, signal: null, code: 1, stdout }), { stdout, stderr: "" }); return
+        // Node's callback error does not carry stdout: only promisify adds it.
+        complete(Object.assign(new Error("Command failed: /fake/claude auth status\n"), { killed: false, signal: null, code: 1 }), { stdout, stderr: "" }); return
       }
       if (authBehavior === "exit2") {
         complete(Object.assign(new Error("Command failed: /fake/claude auth status\n"), { killed: false, signal: null, code: 2, stdout: "not json" }), { stdout: "not json", stderr: "" }); return
@@ -748,12 +749,14 @@ describe("auth-status warnings", () => {
     expect(warnings()[0]).toContain("serving the last known status")
   })
 
-  it("reports a non-zero exit with its loggedIn answer, never the CLI's output", async () => {
+  it("reports the captured loggedIn answer when the callback error has no stdout, never private output", async () => {
     const p = nextProfile()
     authBehavior = "exit1"
     await getClaudeAuthStatusAsync(p)
     expect(warnings()[0]).toContain("exited with code 1 reporting loggedIn: false")
     expect(warnings().join("\n")).not.toContain("private@test.com")
+    expect(warnings().join("\n")).not.toContain('"loggedIn":false')
+    expect(warnings().join("\n")).not.toContain('"email"')
   })
 
   it("reports a non-zero exit whose output is not JSON by its code alone", async () => {

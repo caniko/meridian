@@ -69,7 +69,9 @@ export function startOwnedClaudeProcess(command: { file: string; args: string[] 
     clearTimeout(processTimer); clearTimeout(killTimer); clearTimeout(joinTimer)
     resolveJoined()
     if (failure) rejectResult(failure)
-    else if (callbackError) rejectResult(callbackError)
+    // execFile's callback error omits stdout; promisify used to attach it.
+    // Keep the captured answer for numeric diagnostics without printing it.
+    else if (callbackError) rejectResult(Object.assign(callbackError, { stdout }))
     else if (!exitSeen || exitCode !== 0 || exitSignal !== null) {
       rejectResult(Object.assign(new Error('Claude auth-status process did not exit successfully'), { code: exitCode, signal: exitSignal, stdout }))
     } else resolveResult(stdout)

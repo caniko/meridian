@@ -850,11 +850,11 @@ let cachedClaudeResolution: ReturnType<typeof createClaudeResolution> | null = n
  *
  * Uses a three-tier cache:
  * 1. cachedClaudePath — resolved path, returned immediately on subsequent calls
- * 2. cachedClaudePathPromise — deduplicates concurrent calls during resolution
+ * 2. cachedClaudeResolution — shares subprocess custody through independent leases
  * 3. Falls through to env → usable PATH → packaged CLI → legacy SDK resolution
  *
- * The promise is cleared in `finally` to allow retry on failure while
- * cachedClaudePath prevents re-resolution on success.
+ * Shared resolution releases only after its actual subprocess joins. Unknown
+ * cleanup retains the slot; a successful cached path avoids re-resolution.
  */
 /**
  * Resolver step contract — each tries one source, returns a path on success

@@ -67,6 +67,7 @@ let fakeAuthChildren: FakeAuthChild[] = []
 let resolverChildren: FakeAuthChild[] = []
 let resolverLookups = 0
 let resolverVersions = 0
+let resolverVersionOptions: realChildProcess.ExecFileOptions[] = []
 function resolverFixture(done: (error: Error | null, stdout: string, stderr: string) => void): realChildProcess.ChildProcess {
   const signals: NodeJS.Signals[] = []
   const child = Object.assign(new EventEmitter(), { pid: 20_000 + resolverChildren.length,
@@ -89,7 +90,7 @@ mock.module("child_process", () => ({
   },
   execFile: (_file: string, _args: string[], options: realChildProcess.ExecFileOptions,
     done: (error: Error | null, stdout: string, stderr: string) => void) => {
-    if (_args[0] === '--version') { resolverVersions++; return resolverFixture(done) }
+    if (_args[0] === '--version') { resolverVersions++; resolverVersionOptions.push(options); return resolverFixture(done) }
     execFileCalls++
     execFileOptions = options
     const signals: NodeJS.Signals[] = []
@@ -925,7 +926,7 @@ describe('auth refresh owns the actual asynchronous resolver path', () => {
   beforeEach(() => {
     delete process.env.MERIDIAN_CLAUDE_PATH
     resetCachedClaudePath(); resetCachedClaudeAuthStatus()
-    resolverChildren = []; resolverLookups = 0; resolverVersions = 0; execFileCalls = 0
+    resolverChildren = []; resolverLookups = 0; resolverVersions = 0; resolverVersionOptions = []; execFileCalls = 0
     authBehavior = 'success'
     setAuthStatusWaitMsForTesting(10)
   })
@@ -946,6 +947,36 @@ describe('auth refresh owns the actual asynchronous resolver path', () => {
     resolverChildren[1]!.callback(null, { stdout: '2.1.999 (Claude Code)', stderr: '' })
     resolverChildren[1]!.witnesses(); await tick()
   }
+  it('keeps the shared 45-second PATH budget for an instance-owned version probe', async () => {
+    let now = 0
+    const clock = spyOn(performance, 'now').mockImplementation(() => now)
+    const owner = (await owners())()
+    const profile = nextProfile()
+    try {
+      const answer = owner.run(() => getClaudeAuthStatusAsync(profile))
+      await tick()
+      now = 2000
+      await finishLookup()
+      expect(resolverVersionOptions).toHaveLength(1)
+      expect(resolverVersionOptions[0]!.timeout).toBe(43_000)
+      await finishVersion()
+      await answer
+      expect(await getClaudeAuthStatusAsync(profile)).toMatchObject({ loggedIn: true })
+      expect(execFileCalls).toBe(1)
+      expect(execFileOptions?.timeout).toBe(90_000)
+      await owner.close()
+      expect(resolverChildren.flatMap(child => child.signals)).toEqual([])
+    } finally {
+      clock.mockRestore()
+    }
+  })
+  it('closing before resolver admission prevents even the first lookup', async () => {
+    const owner = (await owners())(); const profile = nextProfile()
+    const answer = owner.run(() => getClaudeAuthStatusAsync(profile))
+    await owner.close(); await answer; await tick()
+    expect(resolverLookups).toBe(0); expect(resolverVersions).toBe(0); expect(execFileCalls).toBe(0)
+    expect(pendingAuthStatusRefresh(profile)).toBeNull()
+  })
   it('last owner cancels a pending PATH child and cannot spawn a late version/auth process', async () => {
     const owner = (await owners())(); const profile = nextProfile()
     const answer = owner.run(() => getClaudeAuthStatusAsync(profile)); await tick()

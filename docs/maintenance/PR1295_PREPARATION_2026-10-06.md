@@ -1,7 +1,10 @@
 # #1295 authored incorporation preparation
 
-Status: prepared for further review and required gates; no acceptance, merge,
-publication or affected-production proof is claimed. This record covers only
+Historical preparation below predates the release rebase and live runs.
+[Current verification](evidence/1295-live.md) records code head `0a504fc0`,
+released baseline `c2052aac`, completed local/live proof and preserved failures.
+Final independent acceptance review and delivery-head CI remain before merge.
+This record covers only
 [#1295](https://github.com/rynfar/meridian/pull/1295).
 
 ## Source and author custody

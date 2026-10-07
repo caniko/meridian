@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.80.1](https://github.com/rynfar/meridian/compare/meridian-v1.80.0...meridian-v1.80.1) (2026-10-07)
+
+
+### Bug Fixes
+
+* **auth:** finish slow checks without blocking health callers ([#1300](https://github.com/rynfar/meridian/issues/1300)) ([30c738d](https://github.com/rynfar/meridian/commit/30c738d77d5e7839577ebc5d144b74da4590e319))
+* **session:** deliver answered turns when lifecycle publication stalls ([097530c](https://github.com/rynfar/meridian/commit/097530c824c7c2096c82b89de85fd6550479b603))
+
 ## [1.80.0](https://github.com/rynfar/meridian/compare/meridian-v1.79.0...meridian-v1.80.0) (2026-10-07)
 
 

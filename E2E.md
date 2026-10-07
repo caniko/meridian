@@ -101,8 +101,8 @@ actual login and that fresh probes do not start another subprocess. Disposable
 configuration/session/work directories isolate Meridian's own files. The
 read-only flag disables Meridian writers, but does not fence the official CLI's
 credential rotation. This legacy gate needs a separately admitted task-owned
-credential/OS boundary before another live run; the cold-start gate below
-requires that admission explicitly. No authentication payload is fabricated. On an unchanged pre-fix checkout,
+credential/OS boundary before another live run. The contributor cold-start
+prototype below has the same hold. No authentication payload is fabricated. On an unchanged pre-fix checkout,
 the same harness with `--expect-blocking` must exhibit the two-second stall.
 
 Verified macOS arm64 with Claude Code 2.1.284: baseline five probes 2258 ms
@@ -114,23 +114,37 @@ the contributor's entire overloaded Linux deployment or Windows behavior.
 
 ## Auth-status cold start
 
-```sh
-bun scripts/e2e-auth-status-cold-start.mjs
-```
+`scripts/e2e-auth-status-cold-start.mjs` is the retained contributor prototype,
+not an admitted live gate. Do not run it against a default owner credential
+store. Before execution, prepare and review a narrowly scoped task-owned
+supported credential configuration and a fixture that records native child
+exit/close/both-pipe joins, snapshot preservation and owned cleanup. The
+prototype alone does not establish those facts; Meridian's readonly flag also
+does not fence native credential rotation. No generic controller or capture
+platform is supplied by this production port.
 
-Requires actual Claude login on macOS/Linux. A freshly started proxy whose
+Its intended assertion covers a freshly started proxy whose
 first `claude auth status` is slower than any caller waits: the gate forwards
 to the installed Claude CLI, delaying only `auth status` by eight seconds. The
 first `/health` must answer `degraded` before the delay ends, the delayed check
 must run to completion, and the next `/health` must answer healthy from it, with
-one auth subprocess in total. Isolation is the same as the refresh gate above.
+one auth subprocess in total. Source and independently installed package proof,
+default/profile paths and pending-shutdown/sibling-owner controls remain open.
 On an unchanged pre-fix checkout, `--expect-killed` must show the check killed
 before it answered and the proxy still degraded.
 
-Verified Linux x64 with Claude Code 2.1.284: baseline first probe degraded at
+Contributor-reported Linux x64 with Claude Code 2.1.284: baseline first probe degraded at
 5159 ms, check killed, second probe still degraded; fixed first probe degraded
 at 5127 ms, check answered at 8.7 s, second probe healthy in 85 ms, one real
 auth subprocess.
+
+These are not independently repeated artifacts. The source PR body names CLI
+2.1.289 for its Linux delay run, while its submitted E2E note names 2.1.284;
+the discrepancy remains open. The reported macOS arm64 memory-pressure runs
+use 2.1.284. A controlled native delay is not a reproduction of host paging.
+This auth-only flow needs no model generation and makes no client/catalog or
+whole-OS custody claim. Existing frozen auth398 evidence retains its narrower
+static/copied scope and unimplemented native boundary holds.
 
 ## Local build provenance
 
